@@ -1,4 +1,4 @@
-import { Database } from './db/conect'
+import { Database } from './db/connect'
 import { initializeMapRoutes } from './maps/routes'
 
 const express = require('express')
