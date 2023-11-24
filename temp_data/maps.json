@@ -1,0 +1,196 @@
+{
+    "maps": [
+        {
+            "mapId": 1,
+            "slug": "the-map-map",
+            "title": "The Map Map",
+            "status": 2,
+            "creators": [
+                {
+                    "username": "CrazyCowMM",
+                    "link": "https://benmeie.github.io",
+                    "linkType": "other",
+                    "userId": 1,
+                    "hasMatchingUser": true
+                }
+            ],
+            "shortDescription": "How well do you know other maps!",
+            "description": "Peepee poopoo",
+            "images": [
+                ""
+            ],
+            "videoUrl": "",
+            "files": [
+                {
+                    "type": "map",
+                    "worldUrl": "",
+                    "resourceUrl": "",
+                    "dataUrl": "",
+                    "minecraftVersion": "20w17a",
+                    "contentVersion": "1.0.0"
+                }
+            ],
+            "downloads": 34,
+            "likes": 1,
+            "views": 0,
+            "clicks": 0,
+            "comments": [
+                {
+                    "commenter": "CrazyCowMM",
+                    "comment": "Woooo",
+                    "replies": [
+                        {
+                            "commenter": "CrazyCowMM",
+                            "comment": "I'm replying to myself?",
+                            "replies": []
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "mapId": 2,
+            "slug": "the-map-map",
+            "title": "The Map Map",
+            "status": 2,
+            "creators": [
+                {
+                    "username": "CrazyCowMM",
+                    "link": "https://benmeie.github.io",
+                    "linkType": "other",
+                    "userId": 1,
+                    "hasMatchingUser": true
+                }
+            ],
+            "shortDescription": "How well do you know other maps!",
+            "description": "Peepee poopoo",
+            "images": [
+                ""
+            ],
+            "videoUrl": "",
+            "files": [
+                {
+                    "type": "map",
+                    "worldUrl": "",
+                    "resourceUrl": "",
+                    "dataUrl": "",
+                    "minecraftVersion": "20w17a",
+                    "contentVersion": "1.0.0"
+                }
+            ],
+            "downloads": 34,
+            "likes": 1,
+            "views": 0,
+            "clicks": 0,
+            "comments": [
+                {
+                    "commenter": "CrazyCowMM",
+                    "comment": "Woooo",
+                    "replies": [
+                        {
+                            "commenter": "CrazyCowMM",
+                            "comment": "I'm replying to myself?",
+                            "replies": []
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "mapId": 4,
+            "slug": "the-map-map",
+            "title": "The Map Map",
+            "status": 2,
+            "creators": [
+                {
+                    "username": "CrazyCowMM",
+                    "link": "https://benmeie.github.io",
+                    "linkType": "other",
+                    "userId": 1,
+                    "hasMatchingUser": true
+                }
+            ],
+            "shortDescription": "How well do you know other maps!",
+            "description": "Peepee poopoo",
+            "images": [
+                ""
+            ],
+            "videoUrl": "",
+            "files": [
+                {
+                    "type": "map",
+                    "worldUrl": "",
+                    "resourceUrl": "",
+                    "dataUrl": "",
+                    "minecraftVersion": "20w17a",
+                    "contentVersion": "1.0.0"
+                }
+            ],
+            "downloads": 34,
+            "likes": 1,
+            "views": 0,
+            "clicks": 0,
+            "comments": [
+                {
+                    "commenter": "CrazyCowMM",
+                    "comment": "Woooo",
+                    "replies": [
+                        {
+                            "commenter": "CrazyCowMM",
+                            "comment": "I'm replying to myself?",
+                            "replies": []
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "mapId": 1,
+            "slug": "the-trolley-problem",
+            "title": "The Trolley Problem",
+            "status": 3,
+            "creators": [
+                {
+                    "username": "Henzoid",
+                    "link": "https://benmeie.github.io",
+                    "linkType": "other",
+                    "userId": 1,
+                    "hasMatchingUser": true
+                }
+            ],
+            "shortDescription": "An Ethical Survey about the moral ramifications of action versus inaction",
+            "description": "Peepee poopoo",
+            "images": [
+                "https://mccreations.s3.us-west-1.amazonaws.com/thetroleyprolem2.png"
+            ],
+            "videoUrl": "",
+            "files": [
+                {
+                    "type": "map",
+                    "worldUrl": "",
+                    "resourceUrl": "",
+                    "dataUrl": "",
+                    "minecraftVersion": "20w17a",
+                    "contentVersion": "1.0.0"
+                }
+            ],
+            "downloads": 34,
+            "likes": 1,
+            "views": 0,
+            "clicks": 0,
+            "comments": [
+                {
+                    "commenter": "CrazyCowMM",
+                    "comment": "Woooo",
+                    "replies": [
+                        {
+                            "commenter": "CrazyCowMM",
+                            "comment": "I'm replying to myself?",
+                            "replies": []
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

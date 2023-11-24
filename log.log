@@ -1,0 +1,46 @@
+(node:163720) [MONGODB DRIVER] Warning: cursor.count is deprecated and will be removed in the next major version, please use `collection.estimatedDocumentCount` or `collection.countDocuments` instead 
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:163739) [MONGODB DRIVER] Warning: cursor.count is deprecated and will be removed in the next major version, please use `collection.estimatedDocumentCount` or `collection.countDocuments` instead 
+(Use `node --trace-warnings ...` to show where the warning was created)
+::ffff:51.159.23.43 - - [12/Nov/2023:22:29:12 +0000] "GET / HTTP/1.1" 404 139 "-" "-"
+(node:163985) [MONGODB DRIVER] Warning: cursor.count is deprecated and will be removed in the next major version, please use `collection.estimatedDocumentCount` or `collection.countDocuments` instead 
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:163999) [MONGODB DRIVER] Warning: cursor.count is deprecated and will be removed in the next major version, please use `collection.estimatedDocumentCount` or `collection.countDocuments` instead 
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:164011) [MONGODB DRIVER] Warning: cursor.count is deprecated and will be removed in the next major version, please use `collection.estimatedDocumentCount` or `collection.countDocuments` instead 
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:164024) [MONGODB DRIVER] Warning: cursor.count is deprecated and will be removed in the next major version, please use `collection.estimatedDocumentCount` or `collection.countDocuments` instead 
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:164038) [MONGODB DRIVER] Warning: cursor.count is deprecated and will be removed in the next major version, please use `collection.estimatedDocumentCount` or `collection.countDocuments` instead 
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:164050) [MONGODB DRIVER] Warning: cursor.count is deprecated and will be removed in the next major version, please use `collection.estimatedDocumentCount` or `collection.countDocuments` instead 
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:164063) [MONGODB DRIVER] Warning: cursor.count is deprecated and will be removed in the next major version, please use `collection.estimatedDocumentCount` or `collection.countDocuments` instead 
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:164075) [MONGODB DRIVER] Warning: cursor.count is deprecated and will be removed in the next major version, please use `collection.estimatedDocumentCount` or `collection.countDocuments` instead 
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:164089) [MONGODB DRIVER] Warning: cursor.count is deprecated and will be removed in the next major version, please use `collection.estimatedDocumentCount` or `collection.countDocuments` instead 
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:164195) [MONGODB DRIVER] Warning: cursor.count is deprecated and will be removed in the next major version, please use `collection.estimatedDocumentCount` or `collection.countDocuments` instead 
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:164216) [MONGODB DRIVER] Warning: cursor.count is deprecated and will be removed in the next major version, please use `collection.estimatedDocumentCount` or `collection.countDocuments` instead 
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:164232) [MONGODB DRIVER] Warning: cursor.count is deprecated and will be removed in the next major version, please use `collection.estimatedDocumentCount` or `collection.countDocuments` instead 
+(Use `node --trace-warnings ...` to show where the warning was created)
+::ffff:185.180.143.11 - - [12/Nov/2023:22:56:37 +0000] "GET /cgi-bin/authLogin.cgi HTTP/1.1" 404 160 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.113 Safari/537.36"
+(node:164301) [MONGODB DRIVER] Warning: cursor.count is deprecated and will be removed in the next major version, please use `collection.estimatedDocumentCount` or `collection.countDocuments` instead 
+(Use `node --trace-warnings ...` to show where the warning was created)
+::ffff:185.180.143.11 - - [12/Nov/2023:22:56:59 +0000] "GET / HTTP/1.1" 404 139 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.113 Safari/537.36"
+::ffff:185.180.143.11 - - [12/Nov/2023:22:57:21 +0000] "GET /api/session/properties HTTP/1.1" 404 161 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.113 Safari/537.36"
+(node:164344) [MONGODB DRIVER] Warning: cursor.count is deprecated and will be removed in the next major version, please use `collection.estimatedDocumentCount` or `collection.countDocuments` instead 
+(Use `node --trace-warnings ...` to show where the warning was created)
+::ffff:185.180.143.11 - - [12/Nov/2023:22:57:43 +0000] "GET / HTTP/1.1" 404 139 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.113 Safari/537.36"
+::ffff:185.180.143.11 - - [12/Nov/2023:22:58:05 +0000] "GET /Telerik.Web.UI.WebResource.axd?type=rau HTTP/1.1" 404 169 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.113 Safari/537.36"
+::ffff:185.180.143.11 - - [12/Nov/2023:22:58:25 +0000] "GET / HTTP/1.1" 404 139 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.113 Safari/537.36"
+::ffff:185.180.143.11 - - [12/Nov/2023:22:58:36 +0000] "GET /sugar_version.json HTTP/1.1" 404 157 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.113 Safari/537.36"
+::ffff:185.180.143.11 - - [12/Nov/2023:22:58:45 +0000] "GET /solr/ HTTP/1.1" 404 144 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.113 Safari/537.36"
+::ffff:185.180.143.11 - - [12/Nov/2023:22:58:50 +0000] "GET /owa/ HTTP/1.1" 404 143 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.113 Safari/537.36"
+::ffff:185.180.143.11 - - [12/Nov/2023:22:58:54 +0000] "GET /cf_scripts/scripts/ajax/ckeditor/ckeditor.js HTTP/1.1" 404 183 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.113 Safari/537.36"
+::ffff:185.180.143.11 - - [12/Nov/2023:22:59:01 +0000] "GET /admin/ HTTP/1.1" 404 145 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.113 Safari/537.36"
+(node:164470) [MONGODB DRIVER] Warning: cursor.count is deprecated and will be removed in the next major version, please use `collection.estimatedDocumentCount` or `collection.countDocuments` instead 
+(Use `node --trace-warnings ...` to show where the warning was created)
