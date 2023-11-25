@@ -1,7 +1,7 @@
-import { IDatabaseQuery } from "./types.js";
+import { IDatabaseQuery, MapDoc } from "./types.js";
 
 // const { MongoClient, ServerApiVersion } = require('mongodb');
-import { MongoClient, ServerApiVersion, Sort, SortDirection } from 'mongodb';
+import { Collection, Filter, MongoClient, ServerApiVersion, Sort, SortDirection, Document, FilterOperators } from 'mongodb';
 
 const uri = "***REMOVED***";
 
@@ -38,7 +38,7 @@ export class DatabaseQueryBuilder {
     projection
     skip
 
-    constructor(query?: any, sort?: Sort, projection?: any, limit?: number, skip?: number) {
+    constructor(query?: Filter<Document>, sort?: Sort, projection?: any, limit?: number, skip?: number) {
         this.query = query || {};
         this.sort = sort || {};
         this.projection = projection || {};
@@ -50,8 +50,10 @@ export class DatabaseQueryBuilder {
         this.query[field] = value;
     }
 
-    buildQueryWithOperation(field: string, value: any, operation: string) {
-        this.query[field][operation] = value;
+    buildQueryWithOperation(field: string, value: any, operation: any) {
+        let operator: FilterOperators<typeof value> = {}
+        operator[operation] = value;
+        this.query = {[field]: operator}
     }
 
     setQuery(query: any) {
