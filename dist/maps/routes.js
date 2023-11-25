@@ -1,4 +1,3 @@
-"use strict";
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -15,12 +14,10 @@ var __asyncValues = (this && this.__asyncValues) || function (o) {
     function verb(n) { i[n] = o[n] && function (v) { return new Promise(function (resolve, reject) { v = o[n](v), settle(resolve, reject, v.done, v.value); }); }; }
     function settle(resolve, reject, d, v) { Promise.resolve(v).then(function(v) { resolve({ value: v, done: d }); }, reject); }
 };
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.initializeMapRoutes = void 0;
-const __1 = require("..");
-const connect_1 = require("../db/connect");
-function initializeMapRoutes() {
-    __1.app.get('/maps', (req, res) => __awaiter(this, void 0, void 0, function* () {
+import { app } from '../index.js';
+import { Database, DatabaseQueryBuilder } from '../db/connect.js';
+export function initializeMapRoutes() {
+    app.get('/maps', (req, res) => __awaiter(this, void 0, void 0, function* () {
         let result = yield findMaps(req.query);
         if (req.query.sendCount && req.query.sendCount === "true") {
             res.send({ count: result.totalCount });
@@ -29,17 +26,16 @@ function initializeMapRoutes() {
             res.send(result);
         }
     }));
-    __1.app.get('/maps/:slug', (req, res) => __awaiter(this, void 0, void 0, function* () {
+    app.get('/maps/:slug', (req, res) => __awaiter(this, void 0, void 0, function* () {
         let result = yield findMaps({ limit: 1, slug: req.params.slug });
         res.send(result.documents[0]);
     }));
 }
-exports.initializeMapRoutes = initializeMapRoutes;
 function findMaps(requestQuery) {
     var _a, e_1, _b, _c;
     return __awaiter(this, void 0, void 0, function* () {
-        let database = new connect_1.Database();
-        let query = new connect_1.DatabaseQueryBuilder();
+        let database = new Database();
+        let query = new DatabaseQueryBuilder();
         switch (requestQuery.sort) {
             case "newest":
                 query.buildSort("createdDate", -1);

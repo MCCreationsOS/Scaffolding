@@ -1,4 +1,3 @@
-"use strict";
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -8,13 +7,11 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.initializeCommunityRoutes = void 0;
-const __1 = require("..");
-const connect_1 = require("../db/connect");
-function initializeCommunityRoutes() {
-    __1.app.post('/maps/rate/:slug', (req, res, next) => __awaiter(this, void 0, void 0, function* () {
-        let database = new connect_1.Database();
+import { app } from "../index.js";
+import { Database } from "../db/connect.js";
+export function initializeCommunityRoutes() {
+    app.post('/maps/rate/:slug', (req, res, next) => __awaiter(this, void 0, void 0, function* () {
+        let database = new Database();
         let map = req.body.map;
         // Calculate new rating
         let rating = 0;
@@ -38,10 +35,9 @@ function initializeCommunityRoutes() {
             res.sendStatus(500);
         });
     }));
-    __1.app.post('/maps/comment/:slug', (req, res) => __awaiter(this, void 0, void 0, function* () {
-        let database = new connect_1.Database();
+    app.post('/maps/comment/:slug', (req, res) => __awaiter(this, void 0, void 0, function* () {
+        let database = new Database();
         database.collection.updateOne({ slug: req.params.slug }, { $push: { comments: { username: req.body.username, comment: req.body.comment, date: Date.now(), likes: 0, comments: {} } } });
         res.sendStatus(200);
     }));
 }
-exports.initializeCommunityRoutes = initializeCommunityRoutes;

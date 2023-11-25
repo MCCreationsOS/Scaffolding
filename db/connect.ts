@@ -1,4 +1,4 @@
-import { IDatabaseQuery } from "./types";
+import { IDatabaseQuery } from "./types.js";
 
 const { MongoClient, ServerApiVersion } = require('mongodb');
 // import { MongoClient, ServerApiVersion } from 'mongodb';
