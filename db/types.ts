@@ -1,28 +1,30 @@
-import { Sort } from "mongodb"
+import { Document, Filter, Sort } from "mongodb"
 
 export interface IDatabaseQuery {
-    query: IDatabaseSearch,
+    query: Filter<Document>,
     limit: number,
     skip: number,
     sort: Sort,
     projection: IDatabaseProjection
 }
 
-export interface IDatabaseSearch {
-    createdDate: Date | {},
-    updatedDate: Date | {},
-    title: string,
-    version: string,
-    $text: { $search: string },
+export interface MapDoc extends Document {
+    comments: [{username?: string, comment?: string}],
+    creators: [{username: string}],
+    description: string,
+    files: [{type: string, worldUrl: URL, resourceUrl?: URL, dataUrl?: URL, minecraftVersion: string, contentVersion?: string}]
+    images: URL[],
+    shortDescription: string,
     slug: string,
-}
-
-export interface IDatabaseSort {
-    createdDate : number | {},
-    updatedDate : number | {},
-    title: number | {},
-    rating: number | {},
-    "creators.username": number | {} 
+    status: number,
+    title: string,
+    videoUrl?: URL,
+    downloads: number,
+    views: number,
+    rating: number,
+    ratings?: number[]
+    createdDate: Date,
+    updatedDate: Date
 }
 
 export interface IDatabaseProjection {

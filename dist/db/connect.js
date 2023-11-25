@@ -33,7 +33,9 @@ export class DatabaseQueryBuilder {
         this.query[field] = value;
     }
     buildQueryWithOperation(field, value, operation) {
-        this.query[field][operation] = value;
+        let operator = {};
+        operator[operation] = value;
+        this.query = { [field]: operator };
     }
     setQuery(query) {
         this.query = query;
