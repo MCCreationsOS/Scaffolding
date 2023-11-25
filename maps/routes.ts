@@ -1,6 +1,6 @@
 import QueryString from 'qs';
-import { app } from '..'
-import { Database, DatabaseQueryBuilder } from '../db/connect';
+import { app } from '../index.js'
+import { Database, DatabaseQueryBuilder } from '../db/connect.js';
 
 export function initializeMapRoutes() {
     app.get('/maps', async (req, res) => {

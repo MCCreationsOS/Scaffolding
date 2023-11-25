@@ -1,10 +1,7 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.DatabaseQueryBuilder = exports.Database = void 0;
 const { MongoClient, ServerApiVersion } = require('mongodb');
 // import { MongoClient, ServerApiVersion } from 'mongodb';
 const uri = "***REMOVED***";
-class Database {
+export class Database {
     constructor(databaseName, collectionName) {
         this.client = new MongoClient(uri).connect();
         this.client.connect();
@@ -24,8 +21,7 @@ class Database {
         return this.collection.find(query.query).limit(query.limit).sort(query.sort).project(query.projection).skip(query.skip);
     }
 }
-exports.Database = Database;
-class DatabaseQueryBuilder {
+export class DatabaseQueryBuilder {
     constructor(query, sort, projection, limit, skip) {
         this.query = query || {};
         this.sort = sort || {};
@@ -64,4 +60,3 @@ class DatabaseQueryBuilder {
         return new DatabaseQueryBuilder(this.query, this.sort, this.projection, this.limit, this.skip);
     }
 }
-exports.DatabaseQueryBuilder = DatabaseQueryBuilder;

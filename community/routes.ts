@@ -1,5 +1,5 @@
-import { app } from "..";
-import { Database } from "../db/connect";
+import { app } from "../index.js";
+import { Database } from "../db/connect.js";
 
 export function initializeCommunityRoutes() {
     app.post('/maps/rate/:slug', async (req, res, next) => {
