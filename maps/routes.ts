@@ -1,14 +1,15 @@
-import { app } from "..";
-import { Database, DatabaseQueryBuilder } from "../db/conect";
+import QueryString from 'qs';
+import { app } from '..'
+import { Database, DatabaseQueryBuilder } from '../db/connect';
 
 export function initializeMapRoutes() {
     app.get('/maps', async (req, res) => {
         let result = await findMaps(req.query);
 
         if(req.query.sendCount && req.query.sendCount === "true") {
-            app.send({count: result.totalCount})
+            res.send({count: result.totalCount})
         } else {
-            app.send(result);
+            res.send(result);
         }
     })
     app.get('/maps/:slug', async (req, res) => {
@@ -18,7 +19,7 @@ export function initializeMapRoutes() {
     })
 }
 
-async function findMaps(requestQuery) {
+async function findMaps(requestQuery: any) {
     let database = new Database();
     let query = new DatabaseQueryBuilder();
 
@@ -58,9 +59,9 @@ async function findMaps(requestQuery) {
 	}
 
 	if(requestQuery.status) {
-        query.buildQuery("status", Number.parseInt(requestQuery.status), "$gte")
+        query.buildQueryWithOperation("status", Number.parseInt(requestQuery.status), "$gte")
 	} else {
-		query.buildQuery("status", 2, "$gte")
+		query.buildQueryWithOperation("status", 2, "$gte")
 	}
 
 	if(requestQuery.version) {
@@ -69,7 +70,7 @@ async function findMaps(requestQuery) {
 	}
 
 	if(requestQuery.search && requestQuery.search.length > 3 && !(requestQuery.search === "undefined" || requestQuery.search === "null")) {
-        query.buildQuery("$text", requestQuery.search, "$search")
+        query.buildQueryWithOperation("$text", requestQuery.search, "$search")
 	}
 
     if(requestQuery.slug) {
@@ -80,7 +81,7 @@ async function findMaps(requestQuery) {
 		query.setLimit(Number.parseInt(requestQuery.limit))
 	}
 	if(requestQuery.skip) {
-		if(skip < 0) {
+		if(requestQuery.skip < 0) {
 			requestQuery.skip = "0"
 		}
 		query.setSkip(Number.parseInt(requestQuery.skip));
@@ -101,7 +102,7 @@ async function findMaps(requestQuery) {
 
     query.setProjection(projection);
 
-	let count = await database.maps.countDocuments(query.query)
+	let count = await database.collection.countDocuments(query.query)
 
 	let cursor = database.executeQuery(query);
 
