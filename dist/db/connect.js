@@ -1,17 +1,17 @@
-const { MongoClient, ServerApiVersion } = require('mongodb');
-// import { MongoClient, ServerApiVersion } from 'mongodb';
+// const { MongoClient, ServerApiVersion } = require('mongodb');
+import { MongoClient } from 'mongodb';
 const uri = "***REMOVED***";
 export class Database {
     constructor(databaseName, collectionName) {
-        this.client = new MongoClient(uri).connect();
+        this.client = new MongoClient(uri);
         this.client.connect();
         if (databaseName) {
             this.database = this.client.db(databaseName);
-            this.collection = this.client.collection(collectionName);
+            this.collection = this.database.collection(collectionName || "");
         }
         else {
             this.database = this.client.db('content');
-            this.collection = this.client.collection('Maps');
+            this.collection = this.database.collection('Maps');
         }
     }
     createSearchIndex() {
@@ -39,10 +39,7 @@ export class DatabaseQueryBuilder {
         this.query = query;
     }
     buildSort(field, value) {
-        this.sort[field] = value;
-    }
-    buildSortWithOperation(field, value, operation) {
-        this.sort[field][operation] = value;
+        this.sort = { [field]: value };
     }
     setSort(sort) {
         this.sort = sort;
