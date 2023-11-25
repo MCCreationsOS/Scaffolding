@@ -1,5 +1,6 @@
-import { Database } from './db/connect'
-import { initializeMapRoutes } from './maps/routes'
+// import { Database } from './db/connect'
+const Database = require('./db/connect');
+// import { initializeMapRoutes } from './maps/routes'
 
 const express = require('express')
 const bodyParser = require('body-parser')
@@ -13,7 +14,7 @@ var privateKey  = fs.readFileSync('/etc/letsencrypt/live/api.mccreations.net/pri
 var certificate = fs.readFileSync('/etc/letsencrypt/live/api.mccreations.net/fullchain.pem', 'utf8');
 
 var credentials = {key: privateKey, cert: certificate};
-export const app = express();
+const app = express();
 app.use(helmet());
 app.use(bodyParser.json());
 app.use(cors());
