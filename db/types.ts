@@ -1,8 +1,10 @@
+import { Sort } from "mongodb"
+
 export interface IDatabaseQuery {
     query: IDatabaseSearch,
     limit: number,
     skip: number,
-    sort: IDatabaseSort,
+    sort: Sort,
     projection: IDatabaseProjection
 }
 

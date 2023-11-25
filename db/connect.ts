@@ -1,12 +1,12 @@
 import { IDatabaseQuery } from "./types.js";
 
-const { MongoClient, ServerApiVersion } = require('mongodb');
-// import { MongoClient, ServerApiVersion } from 'mongodb';
+// const { MongoClient, ServerApiVersion } = require('mongodb');
+import { MongoClient, ServerApiVersion, Sort, SortDirection } from 'mongodb';
 
 const uri = "***REMOVED***";
 
 export class Database {
-    client = new MongoClient(uri).connect();
+    client = new MongoClient(uri);
     database
     collection
 
@@ -14,10 +14,10 @@ export class Database {
         this.client.connect();
         if(databaseName) {
             this.database = this.client.db(databaseName);
-            this.collection = this.client.collection(collectionName);
+            this.collection = this.database.collection(collectionName || "");
         } else {
             this.database = this.client.db('content');
-            this.collection = this.client.collection('Maps');
+            this.collection = this.database.collection('Maps');
         }
 
     }
@@ -38,7 +38,7 @@ export class DatabaseQueryBuilder {
     projection
     skip
 
-    constructor(query?: any, sort?: any, projection?: any, limit?: number, skip?: number) {
+    constructor(query?: any, sort?: Sort, projection?: any, limit?: number, skip?: number) {
         this.query = query || {};
         this.sort = sort || {};
         this.projection = projection || {};
@@ -58,12 +58,8 @@ export class DatabaseQueryBuilder {
         this.query = query;
     }
 
-    buildSort(field: string, value: any) {
-        this.sort[field] = value
-    }
-
-    buildSortWithOperation(field: string, value: any, operation: string) {
-        this.sort[field][operation] = value;
+    buildSort(field: string, value: SortDirection) {
+        this.sort = {[field]: value};
     }
 
     setSort(sort: any) {
