@@ -206,10 +206,11 @@ async function signInWithGithub(code: string)  {
     })
 
     let data = await res.json();
+    console.log(data)
     let access_token = data.access_token;
     let token_type = data.token_type
 
-    if(!access_token) return {message: "Access token was not received " + data.toString()}
+    if(!access_token) return {message: "Access token was not received "}
 
     res = await fetch('https://api.github.com/user', {
         headers: {

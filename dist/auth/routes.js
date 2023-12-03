@@ -205,10 +205,11 @@ function signInWithGithub(code) {
             method: 'POST'
         });
         let data = yield res.json();
+        console.log(data);
         let access_token = data.access_token;
         let token_type = data.token_type;
         if (!access_token)
-            return { message: "Access token was not received " + data.toString() };
+            return { message: "Access token was not received " };
         res = yield fetch('https://api.github.com/user', {
             headers: {
                 authorization: `${token_type} ${access_token}`
