@@ -1,3 +1,12 @@
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 import { app } from "../index.js";
 import bcrypt from "bcrypt";
 import { Database } from "../db/connect.js";
@@ -24,9 +33,28 @@ export function initializeAuthRoutes() {
             database.collection.insertOne(user);
         });
     });
-    app.get('/auth/signUpWithProvider', (req, res) => {
-        let user;
-        console.log(req);
-        res.sendStatus(200);
+    app.get('/auth/oauth_handler', (req, res) => {
+        let referer = req.headers.referer;
+        if (referer === "https://discord.com") {
+            if (req.query.code) {
+                signUpWithDiscord(req.query.code);
+            }
+        }
+    });
+}
+function signUpWithDiscord(code) {
+    return __awaiter(this, void 0, void 0, function* () {
+        let res = yield fetch('https://discord.com/api/oauth2/token', {
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: new URLSearchParams({
+                'client_id': "882869275063386153",
+                'client_secret': "iRLt58vpsYscUVpePGAurWaWgnXNucfB",
+                'grant-type': 'authorization_code',
+                'code': code,
+                'redirect_uri': 'https://api.mccreations.net/auth/oauth_handler'
+            })
+        });
     });
 }
