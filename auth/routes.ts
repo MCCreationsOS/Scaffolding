@@ -1,8 +1,9 @@
 import { app } from "../index.js";
 import bcrypt from "bcrypt";
-import { User } from "./types.js";
+import { AuthError, Providers, User, UserTypes } from "./types.js";
 import { Database } from "../db/connect.js";
 import { Request } from "express";
+import { ObjectId } from "mongodb";
 const saltRounds = 10;
 
 export function initializeAuthRoutes() {
@@ -34,22 +35,26 @@ export function initializeAuthRoutes() {
         })
     })
 
-    app.get('/auth/oauth_handler', (req, res) => {
+    app.get('/auth/oauth_handler', async (req, res) => {
         let referer = req.headers.referer;
 
         console.log(req.headers)
 
-        // if(referer === "https://discord.com") {
+        if(referer === "https://discord.com/") {
             if(req.query.code) {
-                signInWithDiscord(req.query.code as string)
+                let result = await signInWithDiscord(req.query.code as string)
+                if(result instanceof ObjectId) {
+                    res.redirect('https://next.mccreations.net')
+                } else {
+                    res.sendStatus(500)
+                }
             }
 
-        // }
-        res.send(200);
+        }
     })
 }
 
-async function signInWithDiscord(code: string) {
+async function signInWithDiscord(code: string): Promise<ObjectId | AuthError> {
     let res = await fetch('https://discord.com/api/oauth2/token', {
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded'
@@ -65,9 +70,9 @@ async function signInWithDiscord(code: string) {
         method: 'POST'
     })
     let data = await res.json();
-    console.log(data)
     let access_token = data.access_token;
     let token_type = data.token_type
+    let refresh_token = data.refresh_token
 
     res = await fetch('https://discord.com/api/users/@me', {
         headers: {
@@ -76,5 +81,39 @@ async function signInWithDiscord(code: string) {
     })
     let discordUser = await res.json();
 
-    console.log(discordUser)
+    const database = new Database("content", "creators")
+
+    let existingUser = await database.collection.findOne<User>({ "providers.id": discordUser.id})
+    if(existingUser) {
+        existingUser.providers?.forEach(provider => {
+            if(provider.provider === Providers.Discord) {
+                provider.token = access_token,
+                provider.refreshToken = refresh_token
+            }
+        })
+        return existingUser._id!
+    } else {
+        existingUser = await database.collection.findOne<User>({email: discordUser.email})
+        if(existingUser) {
+            return {message: "User already exists but is using a different provider"}
+        } else {
+            let user: User = {
+                username: discordUser.global_name,
+                email: discordUser.email,
+                type: UserTypes.Account,
+                iconURL: `https://cdn.discordapp.com/avatars/${discordUser.id}/${discordUser.avatar}`,
+                bannerURL: `https://cdn.discordapp.com/banners/${discordUser.id}/${discordUser.banner}`,
+                providers: [
+                    {
+                        provider: Providers.Discord,
+                        token: access_token,
+                        refreshToken: refresh_token,
+                        id: discordUser.id
+                    }
+                ]
+            }
+
+            return (await database.collection.insertOne(user)).insertedId
+        }
+    }
 }

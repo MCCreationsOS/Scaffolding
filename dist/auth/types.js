@@ -7,3 +7,8 @@ export var Providers;
     Providers[Providers["Steam"] = 4] = "Steam";
     Providers[Providers["Apple"] = 5] = "Apple";
 })(Providers || (Providers = {}));
+export var UserTypes;
+(function (UserTypes) {
+    UserTypes[UserTypes["Account"] = 0] = "Account";
+    UserTypes[UserTypes["Creator"] = 1] = "Creator";
+})(UserTypes || (UserTypes = {}));

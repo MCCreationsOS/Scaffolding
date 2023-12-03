@@ -9,7 +9,9 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 import { app } from "../index.js";
 import bcrypt from "bcrypt";
+import { Providers, UserTypes } from "./types.js";
 import { Database } from "../db/connect.js";
+import { ObjectId } from "mongodb";
 const saltRounds = 10;
 export function initializeAuthRoutes() {
     app.get('/auth/user/:email', (req, res) => {
@@ -33,18 +35,24 @@ export function initializeAuthRoutes() {
             database.collection.insertOne(user);
         });
     });
-    app.get('/auth/oauth_handler', (req, res) => {
+    app.get('/auth/oauth_handler', (req, res) => __awaiter(this, void 0, void 0, function* () {
         let referer = req.headers.referer;
         console.log(req.headers);
-        // if(referer === "https://discord.com") {
-        if (req.query.code) {
-            signInWithDiscord(req.query.code);
+        if (referer === "https://discord.com/") {
+            if (req.query.code) {
+                let result = yield signInWithDiscord(req.query.code);
+                if (result instanceof ObjectId) {
+                    res.redirect('https://next.mccreations.net');
+                }
+                else {
+                    res.sendStatus(500);
+                }
+            }
         }
-        // }
-        res.send(200);
-    });
+    }));
 }
 function signInWithDiscord(code) {
+    var _a;
     return __awaiter(this, void 0, void 0, function* () {
         let res = yield fetch('https://discord.com/api/oauth2/token', {
             headers: {
@@ -61,15 +69,49 @@ function signInWithDiscord(code) {
             method: 'POST'
         });
         let data = yield res.json();
-        console.log(data);
         let access_token = data.access_token;
         let token_type = data.token_type;
+        let refresh_token = data.refresh_token;
         res = yield fetch('https://discord.com/api/users/@me', {
             headers: {
                 authorization: `${token_type} ${access_token}`
             }
         });
         let discordUser = yield res.json();
-        console.log(discordUser);
+        const database = new Database("content", "creators");
+        let existingUser = yield database.collection.findOne({ "providers.id": discordUser.id });
+        if (existingUser) {
+            (_a = existingUser.providers) === null || _a === void 0 ? void 0 : _a.forEach(provider => {
+                if (provider.provider === Providers.Discord) {
+                    provider.token = access_token,
+                        provider.refreshToken = refresh_token;
+                }
+            });
+            return existingUser._id;
+        }
+        else {
+            existingUser = yield database.collection.findOne({ email: discordUser.email });
+            if (existingUser) {
+                return { message: "User already exists but is using a different provider" };
+            }
+            else {
+                let user = {
+                    username: discordUser.global_name,
+                    email: discordUser.email,
+                    type: UserTypes.Account,
+                    iconURL: `https://cdn.discordapp.com/avatars/${discordUser.id}/${discordUser.avatar}`,
+                    bannerURL: `https://cdn.discordapp.com/banners/${discordUser.id}/${discordUser.banner}`,
+                    providers: [
+                        {
+                            provider: Providers.Discord,
+                            token: access_token,
+                            refreshToken: refresh_token,
+                            id: discordUser.id
+                        }
+                    ]
+                };
+                return (yield database.collection.insertOne(user)).insertedId;
+            }
+        }
     });
 }
