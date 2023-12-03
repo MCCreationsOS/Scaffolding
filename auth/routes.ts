@@ -95,7 +95,7 @@ async function signInWithDiscord(code: string): Promise<ObjectId | AuthError> {
     let token_type = data.token_type
     let refresh_token = data.refresh_token
 
-    if(!access_token) return {message: "Access token was not received"}
+    if(!access_token) return {message: "Access token was not received " + data.toString()}
 
     res = await fetch('https://discord.com/api/users/@me', {
         headers: {
