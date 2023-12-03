@@ -14,8 +14,10 @@ export function initializeAuthRoutes() {
             try {
                 let token = jwt.verify(req.headers.authorization, JWTKey) as any
                 if(token && token._id) {
+                    let _id = new ObjectId(token._id)
                     let database = new Database("content", "creators")
-                    let user = await database.collection.findOne<User>({_id: token._id})
+                    console.log(_id)
+                    let user = await database.collection.findOne<User>({_id: _id})
                     if(user) {
                         console.log(user)
                         res.send({user: user})
