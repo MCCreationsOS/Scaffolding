@@ -117,7 +117,7 @@ export function initializeAuthRoutes() {
         else {
             console.log(result);
             res.send(result);
-            res.sendStatus(500);
+            // res.sendStatus(500)
         }
     }));
 }
@@ -198,9 +198,9 @@ function signInWithGithub(code) {
             body: new URLSearchParams({
                 'client_id': "d8fb2f8d7b4f8f88c320",
                 'client_secret': "5b24a7011c4db6ba6b5feec392e5f21103ea8225",
-                code,
+                'code': code,
                 'redirect_uri': 'http://localhost:3000/auth/oauth_handler?provider=github',
-                'scope': 'user'
+                'scope': 'user:email,read:user'
             }).toString(),
             method: 'POST'
         });
