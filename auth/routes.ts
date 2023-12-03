@@ -1,7 +1,7 @@
 import { app } from "../index.js";
 import bcrypt from "bcrypt";
 import { AuthError, Providers, User, UserTypes } from "./types.js";
-import { Database } from "../db/connect.js";
+import { Database, DatabaseQueryBuilder } from "../db/connect.js";
 import { Request } from "express";
 import { ObjectId } from "mongodb";
 import jwt from 'jsonwebtoken'
@@ -9,17 +9,35 @@ const saltRounds = 10;
 const JWTKey = "literally1984"
 
 export function initializeAuthRoutes() {
-    app.get('/auth/user', (req, res) => {
+    app.get('/auth/user', async (req, res) => {
         if(req.headers.authorization) {
             try {
-                let token = jwt.verify(req.headers.authorization, JWTKey)
-                console.log(token);
-                res.sendStatus(200);
+                let token = jwt.verify(req.headers.authorization, JWTKey) as any
+                if(token && token._id) {
+                    let database = new Database("content", "creators")
+                    let query = new DatabaseQueryBuilder()
+                    query.buildQuery("_id", token._id)
+                    query.setProjection({
+                        password: 0,
+                        providers: 0
+                    })
+                    let user = await database.executeQuery(query)
+                    if(user) {
+                        res.send({user: user})
+                    } else {
+                        console.log("User not found")
+                        res.sendStatus(404)
+                    }
+                }
+                console.log("Token not in JWT")
+                res.sendStatus(403)
             } catch(err) {
-
+                console.log("JWT not verified")
+                res.sendStatus(403)
             }
             
         } else {
+            console.log("authorization not sent")
             res.sendStatus(403)
         }
 
@@ -52,7 +70,7 @@ export function initializeAuthRoutes() {
     app.post('/auth/signInWithDiscord', async (req, res) => {
         let result = await signInWithDiscord(req.query.code as string)
         if(result instanceof ObjectId) {
-            res.send({token: jwt.sign({_id: result}, JWTKey)})
+            res.send({token: jwt.sign({_id: result}, JWTKey, {expiresIn: '31d'})})
         } else {
             res.sendStatus(500)
         }
@@ -79,12 +97,15 @@ async function signInWithDiscord(code: string): Promise<ObjectId | AuthError> {
     let token_type = data.token_type
     let refresh_token = data.refresh_token
 
+    if(!access_token) return {message: "Access token was not received"}
+
     res = await fetch('https://discord.com/api/users/@me', {
         headers: {
             authorization: `${token_type} ${access_token}`
         }
     })
     let discordUser = await res.json();
+    if(!discordUser) return {message: "Discord user could not be fetched"}
 
     const database = new Database("content", "creators")
 
