@@ -23,6 +23,7 @@ export function initializeAuthRoutes() {
                     })
                     let user = await database.executeQuery(query)
                     if(user) {
+                        console.log(user)
                         res.send({user: user})
                     } else {
                         console.log("User not found")
