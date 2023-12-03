@@ -100,7 +100,7 @@ function signInWithDiscord(code) {
         let token_type = data.token_type;
         let refresh_token = data.refresh_token;
         if (!access_token)
-            return { message: "Access token was not received" };
+            return { message: "Access token was not received " + data.toString() };
         res = yield fetch('https://discord.com/api/users/@me', {
             headers: {
                 authorization: `${token_type} ${access_token}`
