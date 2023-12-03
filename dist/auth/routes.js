@@ -27,5 +27,6 @@ export function initializeAuthRoutes() {
     app.get('/auth/signUpWithProvider', (req, res) => {
         let user;
         console.log(req);
+        res.sendStatus(200);
     });
 }
