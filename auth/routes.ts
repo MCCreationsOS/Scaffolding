@@ -69,7 +69,7 @@ async function signInWithDiscord(code: string): Promise<ObjectId | AuthError> {
             'client_secret': "iRLt58vpsYscUVpePGAurWaWgnXNucfB",
             code,
             'grant_type': 'authorization_code',
-            'redirect_uri': 'https://next.mccreations.net/auth/oauth_handler',
+            'redirect_uri': 'http://localhost:3000/auth/oauth_handler',
             'scope': 'identify+email'
         }).toString(),
         method: 'POST'
