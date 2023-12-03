@@ -28,9 +28,10 @@ export function initializeAuthRoutes() {
                         console.log("User not found")
                         res.sendStatus(404)
                     }
+                } else {
+                    console.log("Token not in JWT")
+                    res.sendStatus(403)
                 }
-                console.log("Token not in JWT")
-                res.sendStatus(403)
             } catch(err) {
                 console.log("JWT not verified")
                 res.sendStatus(403)
