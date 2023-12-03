@@ -10,26 +10,46 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 import { app } from "../index.js";
 import bcrypt from "bcrypt";
 import { Providers, UserTypes } from "./types.js";
-import { Database } from "../db/connect.js";
+import { Database, DatabaseQueryBuilder } from "../db/connect.js";
 import { ObjectId } from "mongodb";
 import jwt from 'jsonwebtoken';
 const saltRounds = 10;
 const JWTKey = "literally1984";
 export function initializeAuthRoutes() {
-    app.get('/auth/user', (req, res) => {
+    app.get('/auth/user', (req, res) => __awaiter(this, void 0, void 0, function* () {
         if (req.headers.authorization) {
             try {
                 let token = jwt.verify(req.headers.authorization, JWTKey);
-                console.log(token);
-                res.sendStatus(200);
+                if (token && token._id) {
+                    let database = new Database("content", "creators");
+                    let query = new DatabaseQueryBuilder();
+                    query.buildQuery("_id", token._id);
+                    query.setProjection({
+                        password: 0,
+                        providers: 0
+                    });
+                    let user = yield database.executeQuery(query);
+                    if (user) {
+                        res.send({ user: user });
+                    }
+                    else {
+                        console.log("User not found");
+                        res.sendStatus(404);
+                    }
+                }
+                console.log("Token not in JWT");
+                res.sendStatus(403);
             }
             catch (err) {
+                console.log("JWT not verified");
+                res.sendStatus(403);
             }
         }
         else {
+            console.log("authorization not sent");
             res.sendStatus(403);
         }
-    });
+    }));
     app.post('/auth/signUpWithEmail', (req, res) => {
         let user = req.body.user;
         let database = new Database("content", "creators");
@@ -52,7 +72,7 @@ export function initializeAuthRoutes() {
     app.post('/auth/signInWithDiscord', (req, res) => __awaiter(this, void 0, void 0, function* () {
         let result = yield signInWithDiscord(req.query.code);
         if (result instanceof ObjectId) {
-            res.send({ token: jwt.sign({ _id: result }, JWTKey) });
+            res.send({ token: jwt.sign({ _id: result }, JWTKey, { expiresIn: '31d' }) });
         }
         else {
             res.sendStatus(500);
@@ -80,12 +100,16 @@ function signInWithDiscord(code) {
         let access_token = data.access_token;
         let token_type = data.token_type;
         let refresh_token = data.refresh_token;
+        if (!access_token)
+            return { message: "Access token was not received" };
         res = yield fetch('https://discord.com/api/users/@me', {
             headers: {
                 authorization: `${token_type} ${access_token}`
             }
         });
         let discordUser = yield res.json();
+        if (!discordUser)
+            return { message: "Discord user could not be fetched" };
         const database = new Database("content", "creators");
         let existingUser = yield database.collection.findOne({ "providers.id": discordUser.id });
         if (existingUser) {
