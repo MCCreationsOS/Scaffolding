@@ -16,10 +16,15 @@ export function initializeAuthRoutes() {
                 if(token && token._id) {
                     let _id = new ObjectId(token._id)
                     let database = new Database("content", "creators")
-                    console.log(_id)
-                    let user = await database.collection.findOne<User>({_id: _id})
+                    let query = new DatabaseQueryBuilder()
+                    query.buildQuery("_id", _id);
+                    query.setProjection({
+                        password: 0,
+                        providers: 0
+                    })
+                    let cursor = await database.executeQuery(query);
+                    let user = await cursor.next();
                     if(user) {
-                        console.log(user)
                         res.send({user: user})
                     } else {
                         console.log("User not found")
@@ -41,20 +46,24 @@ export function initializeAuthRoutes() {
 
     })
 
-    app.post('/auth/signUpWithEmail', (req, res) => {
+    app.post('/auth/signUpWithEmail', async (req, res) => {
         let user = req.body.user as User
         let database = new Database("content", "creators")
 
         if(!user.password) {
-            res.send({message: "No password provided"}); 
-            res.sendStatus(403); 
+            res.send({message: "No password provided"});
+            return;
+        }
+
+        let existingUser = await database.collection.findOne({email: user.email})
+        if(existingUser) {
+            res.send({message: "User already exists"})
             return;
         }
 
         bcrypt.hash(user.password, saltRounds, (err, hash) => {
             if(err) {
                 res.send({message: "Hashing Error!"})
-                res.sendStatus(500)
                 return;
             }
 
@@ -65,8 +74,45 @@ export function initializeAuthRoutes() {
         })
     })
 
+    app.post('/auth/signInWithEmail', async (req, res) => {
+        let user = req.body.user as User
+        let database = new Database("content", "creators")
+
+        if(!user.password) {
+            res.send({message: "No password provided"});
+            return;
+        }
+
+        let existingUser = await database.collection.findOne({email: user.email})
+        if(!existingUser) {
+            res.send({message: "User does not exist"})
+            return;
+        }
+
+        if(!existingUser.password) {
+            res.send({message: "User does not have a password set"})
+            return;
+        }
+        bcrypt.compare(user.password, existingUser.password, (err, same) => {
+            if(same) {
+                res.send({token: jwt.sign({_id: existingUser!._id}, JWTKey, {expiresIn: '31d'})})
+            }
+        })
+    })
+
     app.post('/auth/signInWithDiscord', async (req, res) => {
         let result = await signInWithDiscord(req.query.code as string)
+        if(result instanceof ObjectId) {
+            res.send({token: jwt.sign({_id: result}, JWTKey, {expiresIn: '31d'})})
+        } else {
+            console.log(result)
+            res.send(result)
+            res.sendStatus(500)
+        }
+    })
+
+    app.post('/auth/signInWithGithub', async (req, res) => {
+        let result = await signInWithGithub(req.query.code as string)
         if(result instanceof ObjectId) {
             res.send({token: jwt.sign({_id: result}, JWTKey, {expiresIn: '31d'})})
         } else {
@@ -142,4 +188,38 @@ async function signInWithDiscord(code: string): Promise<ObjectId | AuthError> {
             return (await database.collection.insertOne(user)).insertedId
         }
     }
+}
+
+async function signInWithGithub(code: string)  {
+    let res = await fetch('https://github.com/login/oauth/access_token', {
+        headers: {
+            'Accept': 'application/json'
+        },
+        body: new URLSearchParams({
+            'client_id': "d8fb2f8d7b4f8f88c320",
+            'client_secret': "5b24a7011c4db6ba6b5feec392e5f21103ea8225",
+            code,
+            'redirect_uri': 'http://localhost:3000/auth/oauth_handler?provider=github',
+            'scope': 'user'
+        }).toString(),
+        method: 'POST'
+    })
+
+    let data = await res.json();
+    let access_token = data.access_token;
+    let token_type = data.token_type
+
+    if(!access_token) return {message: "Access token was not received " + data.toString()}
+
+    res = await fetch('https://api.github.com/user', {
+        headers: {
+            authorization: `${token_type} ${access_token}`
+        }
+    })
+    let githubUser = await res.json();
+    if(!githubUser) return {message: "Github user could not be fetched"}
+
+    const database = new Database("content", "creators")
+
+    console.log(githubUser)   
 }

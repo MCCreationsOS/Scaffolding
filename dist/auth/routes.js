@@ -10,7 +10,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 import { app } from "../index.js";
 import bcrypt from "bcrypt";
 import { Providers, UserTypes } from "./types.js";
-import { Database } from "../db/connect.js";
+import { Database, DatabaseQueryBuilder } from "../db/connect.js";
 import { ObjectId } from "mongodb";
 import jwt from 'jsonwebtoken';
 const saltRounds = 10;
@@ -23,10 +23,15 @@ export function initializeAuthRoutes() {
                 if (token && token._id) {
                     let _id = new ObjectId(token._id);
                     let database = new Database("content", "creators");
-                    console.log(_id);
-                    let user = yield database.collection.findOne({ _id: _id });
+                    let query = new DatabaseQueryBuilder();
+                    query.buildQuery("_id", _id);
+                    query.setProjection({
+                        password: 0,
+                        providers: 0
+                    });
+                    let cursor = yield database.executeQuery(query);
+                    let user = yield cursor.next();
                     if (user) {
-                        console.log(user);
                         res.send({ user: user });
                     }
                     else {
@@ -49,27 +54,63 @@ export function initializeAuthRoutes() {
             res.sendStatus(403);
         }
     }));
-    app.post('/auth/signUpWithEmail', (req, res) => {
+    app.post('/auth/signUpWithEmail', (req, res) => __awaiter(this, void 0, void 0, function* () {
         let user = req.body.user;
         let database = new Database("content", "creators");
         if (!user.password) {
             res.send({ message: "No password provided" });
-            res.sendStatus(403);
+            return;
+        }
+        let existingUser = yield database.collection.findOne({ email: user.email });
+        if (existingUser) {
+            res.send({ message: "User already exists" });
             return;
         }
         bcrypt.hash(user.password, saltRounds, (err, hash) => {
             if (err) {
                 res.send({ message: "Hashing Error!" });
-                res.sendStatus(500);
                 return;
             }
             user.password = undefined;
             user.password = hash;
             database.collection.insertOne(user);
         });
-    });
+    }));
+    app.post('/auth/signInWithEmail', (req, res) => __awaiter(this, void 0, void 0, function* () {
+        let user = req.body.user;
+        let database = new Database("content", "creators");
+        if (!user.password) {
+            res.send({ message: "No password provided" });
+            return;
+        }
+        let existingUser = yield database.collection.findOne({ email: user.email });
+        if (!existingUser) {
+            res.send({ message: "User does not exist" });
+            return;
+        }
+        if (!existingUser.password) {
+            res.send({ message: "User does not have a password set" });
+            return;
+        }
+        bcrypt.compare(user.password, existingUser.password, (err, same) => {
+            if (same) {
+                res.send({ token: jwt.sign({ _id: existingUser._id }, JWTKey, { expiresIn: '31d' }) });
+            }
+        });
+    }));
     app.post('/auth/signInWithDiscord', (req, res) => __awaiter(this, void 0, void 0, function* () {
         let result = yield signInWithDiscord(req.query.code);
+        if (result instanceof ObjectId) {
+            res.send({ token: jwt.sign({ _id: result }, JWTKey, { expiresIn: '31d' }) });
+        }
+        else {
+            console.log(result);
+            res.send(result);
+            res.sendStatus(500);
+        }
+    }));
+    app.post('/auth/signInWithGithub', (req, res) => __awaiter(this, void 0, void 0, function* () {
+        let result = yield signInWithGithub(req.query.code);
         if (result instanceof ObjectId) {
             res.send({ token: jwt.sign({ _id: result }, JWTKey, { expiresIn: '31d' }) });
         }
@@ -146,5 +187,37 @@ function signInWithDiscord(code) {
                 return (yield database.collection.insertOne(user)).insertedId;
             }
         }
+    });
+}
+function signInWithGithub(code) {
+    return __awaiter(this, void 0, void 0, function* () {
+        let res = yield fetch('https://github.com/login/oauth/access_token', {
+            headers: {
+                'Accept': 'application/json'
+            },
+            body: new URLSearchParams({
+                'client_id': "d8fb2f8d7b4f8f88c320",
+                'client_secret': "5b24a7011c4db6ba6b5feec392e5f21103ea8225",
+                code,
+                'redirect_uri': 'http://localhost:3000/auth/oauth_handler?provider=github',
+                'scope': 'user'
+            }).toString(),
+            method: 'POST'
+        });
+        let data = yield res.json();
+        let access_token = data.access_token;
+        let token_type = data.token_type;
+        if (!access_token)
+            return { message: "Access token was not received " + data.toString() };
+        res = yield fetch('https://api.github.com/user', {
+            headers: {
+                authorization: `${token_type} ${access_token}`
+            }
+        });
+        let githubUser = yield res.json();
+        if (!githubUser)
+            return { message: "Github user could not be fetched" };
+        const database = new Database("content", "creators");
+        console.log(githubUser);
     });
 }
