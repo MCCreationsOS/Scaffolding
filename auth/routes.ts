@@ -22,7 +22,7 @@ export function initializeAuthRoutes() {
                         providers: 0
                     })
                     let cursor = await database.executeQuery(query)
-                    let user = cursor.next()
+                    let user = await cursor.next()
                     if(user) {
                         console.log(user)
                         res.send({user: user})

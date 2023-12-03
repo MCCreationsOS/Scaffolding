@@ -29,7 +29,7 @@ export function initializeAuthRoutes() {
                         providers: 0
                     });
                     let cursor = yield database.executeQuery(query);
-                    let user = cursor.next();
+                    let user = yield cursor.next();
                     if (user) {
                         console.log(user);
                         res.send({ user: user });
