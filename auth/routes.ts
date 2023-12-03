@@ -43,6 +43,7 @@ export function initializeAuthRoutes() {
             }
 
         }
+        res.send(200);
     })
 }
 
