@@ -33,7 +33,7 @@ export function initializeAuthRoutes() {
         })
     })
 
-    app.post('auth/signUpWithProvider', (req, res) => {
+    app.get('auth/signUpWithProvider', (req, res) => {
         let user: User;
 
         console.log(req)
