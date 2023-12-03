@@ -14,8 +14,21 @@ import { Database } from "../db/connect.js";
 import { ObjectId } from "mongodb";
 import jwt from 'jsonwebtoken';
 const saltRounds = 10;
+const JWTKey = "literally1984";
 export function initializeAuthRoutes() {
-    app.get('/auth/user/:email', (req, res) => {
+    app.get('/auth/user', (req, res) => {
+        if (req.headers.authorization) {
+            try {
+                let token = jwt.verify(req.headers.authorization, JWTKey);
+                console.log(token);
+                res.sendStatus(200);
+            }
+            catch (err) {
+            }
+        }
+        else {
+            res.sendStatus(403);
+        }
     });
     app.post('/auth/signUpWithEmail', (req, res) => {
         let user = req.body.user;
@@ -39,7 +52,7 @@ export function initializeAuthRoutes() {
     app.post('/auth/signInWithDiscord', (req, res) => __awaiter(this, void 0, void 0, function* () {
         let result = yield signInWithDiscord(req.query.code);
         if (result instanceof ObjectId) {
-            res.send({ token: jwt.sign({ _id: result }, "literally1984") });
+            res.send({ token: jwt.sign({ _id: result }, JWTKey) });
         }
         else {
             res.sendStatus(500);
