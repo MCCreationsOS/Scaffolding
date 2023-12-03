@@ -54,7 +54,7 @@ function signInWithDiscord(code) {
                 'client_id': "882869275063386153",
                 'client_secret': "iRLt58vpsYscUVpePGAurWaWgnXNucfB",
                 code,
-                'grant-type': 'authorization_code',
+                'grant_type': 'authorization_code',
                 'redirect_uri': 'https://api.mccreations.net/auth/oauth_handler',
                 'scope': 'identify+email'
             }).toString(),
