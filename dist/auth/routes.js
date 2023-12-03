@@ -37,12 +37,12 @@ export function initializeAuthRoutes() {
         let referer = req.headers.referer;
         if (referer === "https://discord.com") {
             if (req.query.code) {
-                signUpWithDiscord(req.query.code);
+                signInWithDiscord(req.query.code);
             }
         }
     });
 }
-function signUpWithDiscord(code) {
+function signInWithDiscord(code) {
     return __awaiter(this, void 0, void 0, function* () {
         let res = yield fetch('https://discord.com/api/oauth2/token', {
             headers: {
@@ -54,7 +54,18 @@ function signUpWithDiscord(code) {
                 'grant-type': 'authorization_code',
                 'code': code,
                 'redirect_uri': 'https://api.mccreations.net/auth/oauth_handler'
-            })
+            }).toString(),
+            method: 'POST'
         });
+        let data = yield res.json();
+        let access_token = data.access_token;
+        let token_type = data.token_type;
+        res = yield fetch('https://discord.com/api/users/@me', {
+            headers: {
+                authorization: `${token_type} ${access_token}`
+            }
+        });
+        let discordUser = yield res.json();
+        console.log(discordUser);
     });
 }
