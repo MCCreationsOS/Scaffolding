@@ -30,6 +30,7 @@ export function initializeAuthRoutes() {
                     });
                     let user = yield database.executeQuery(query);
                     if (user) {
+                        console.log(user);
                         res.send({ user: user });
                     }
                     else {
