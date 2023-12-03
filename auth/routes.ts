@@ -191,17 +191,10 @@ async function signInWithDiscord(code: string): Promise<ObjectId | AuthError> {
 }
 
 async function signInWithGithub(code: string)  {
-    let res = await fetch('https://github.com/login/oauth/access_token', {
+    let res = await fetch(`https://github.com/login/oauth/access_token?client_id=d8fb2f8d7b4f8f88c320&client_secret=5b24a7011c4db6ba6b5feec392e5f21103ea8225&code=${code}&scope=user:email,read:user`, {
         headers: {
             'Accept': 'application/json'
         },
-        body: new URLSearchParams({
-            'client_id': "d8fb2f8d7b4f8f88c320",
-            'client_secret': "5b24a7011c4db6ba6b5feec392e5f21103ea8225",
-            'code': code,
-            'redirect_uri': 'http://localhost:3000/auth/oauth_handler?provider=github',
-            'scope': 'user:email,read:user'
-        }).toString(),
         method: 'POST'
     })
 
