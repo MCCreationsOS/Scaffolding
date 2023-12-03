@@ -12,6 +12,7 @@ import bcrypt from "bcrypt";
 import { Providers, UserTypes } from "./types.js";
 import { Database } from "../db/connect.js";
 import { ObjectId } from "mongodb";
+import jwt from 'jsonwebtoken';
 const saltRounds = 10;
 export function initializeAuthRoutes() {
     app.get('/auth/user/:email', (req, res) => {
@@ -35,19 +36,13 @@ export function initializeAuthRoutes() {
             database.collection.insertOne(user);
         });
     });
-    app.get('/auth/oauth_handler', (req, res) => __awaiter(this, void 0, void 0, function* () {
-        let referer = req.headers.referer;
-        console.log(req.headers);
-        if (referer === "https://discord.com/") {
-            if (req.query.code) {
-                let result = yield signInWithDiscord(req.query.code);
-                if (result instanceof ObjectId) {
-                    res.redirect('https://next.mccreations.net');
-                }
-                else {
-                    res.sendStatus(500);
-                }
-            }
+    app.post('/auth/signInWithDiscord', (req, res) => __awaiter(this, void 0, void 0, function* () {
+        let result = yield signInWithDiscord(req.query.code);
+        if (result instanceof ObjectId) {
+            res.send({ token: jwt.sign({ _id: result }, "literally1984") });
+        }
+        else {
+            res.sendStatus(500);
         }
     }));
 }
@@ -63,7 +58,7 @@ function signInWithDiscord(code) {
                 'client_secret': "iRLt58vpsYscUVpePGAurWaWgnXNucfB",
                 code,
                 'grant_type': 'authorization_code',
-                'redirect_uri': 'https://api.mccreations.net/auth/oauth_handler',
+                'redirect_uri': 'https://next.mccreations.net/auth/oauth_handler',
                 'scope': 'identify+email'
             }).toString(),
             method: 'POST'
