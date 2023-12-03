@@ -68,6 +68,8 @@ export function initializeAuthRoutes() {
         if(result instanceof ObjectId) {
             res.send({token: jwt.sign({_id: result}, JWTKey, {expiresIn: '31d'})})
         } else {
+            console.log(result)
+            res.send(result)
             res.sendStatus(500)
         }
     })
