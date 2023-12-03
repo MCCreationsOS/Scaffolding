@@ -8,23 +8,45 @@ export interface IDatabaseQuery {
     projection: IDatabaseProjection
 }
 
-export interface MapDoc extends Document {
+export interface ContentDocument extends Document {
     comments: [{username?: string, comment?: string}],
     creators: [{username: string}],
+    slug: string,
+    rating: number,
+    ratings?: number[],
+    createdDate: Date,
+    updatedDate: Date
+}
+
+export interface MapDoc extends ContentDocument {
     description: string,
     files: [{type: string, worldUrl: URL, resourceUrl?: URL, dataUrl?: URL, minecraftVersion: string, contentVersion?: string}]
     images: URL[],
     shortDescription: string,
-    slug: string,
     status: number,
     title: string,
     videoUrl?: URL,
     downloads: number,
     views: number,
-    rating: number,
-    ratings?: number[]
-    createdDate: Date,
-    updatedDate: Date
+}
+
+export interface CreatorDocument extends Document {
+    type: "account" | "creator",
+    uid: string
+}
+
+export interface AccountDocument extends CreatorDocument {
+    type: "account",
+    creators: string[]
+}
+
+export interface TypeCreatorDocument extends CreatorDocument {
+    type: "creator",
+    displayName: string,
+    photoUrl: URL,
+    about: string,
+    bannerUrl: URL,
+    socialLinks: URL[]
 }
 
 export interface IDatabaseProjection {

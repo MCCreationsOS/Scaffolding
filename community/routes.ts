@@ -1,33 +1,16 @@
 import { app } from "../index.js";
 import { Database } from "../db/connect.js";
+import { rateContent } from "./rate.js";
 
 export function initializeCommunityRoutes() {
-    app.post('/maps/rate/:slug', async (req, res, next) => {
-        let database = new Database();
-        let map = req.body.map
-        
-        // Calculate new rating
-        let rating = 0;
-        let ratings = map.ratings;
-        let rates = 1;
-        if(ratings) {
-            rates = map.ratings.length + 1;
-            ratings.push(Number.parseFloat(req.body.rating))
-        } else {
-            ratings = [Number.parseFloat(req.body.rating)]
-        }
-    
-        for(let i = 0; i < rates; i++) {
-            rating += ratings[i];
-        }
-        rating = rating/(rates + 0.0);
-    
-        database.collection.updateOne({slug: map.slug}, {$push: {ratings: Number.parseFloat(req.body.rating)}, $set : {rating: rating}}).then(() => {
-            res.send({rating: rating})
-        }).catch((error: any) => {
-            console.error(error)
-            res.sendStatus(500);
-        })
+    app.post('/rate', async (req, res) => {
+        let rating = await rateContent(Number.parseFloat(req.body.rating), req.body.map)
+        res.send({rating: rating})
+    })
+
+    app.post('/maps/rate', async (req, res) => {
+        let rating = await rateContent(Number.parseFloat(req.body.rating), req.body.map)
+        res.send({message: "This route is out of date, please use /rate.", rating: rating})
     })
     
     app.post('/maps/comment/:slug', async (req, res) => {
