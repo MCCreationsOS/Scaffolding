@@ -40,6 +40,7 @@ export function initializeAuthRoutes() {
                 signInWithDiscord(req.query.code);
             }
         }
+        res.send(200);
     });
 }
 function signInWithDiscord(code) {
