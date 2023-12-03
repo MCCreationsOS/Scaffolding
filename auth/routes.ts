@@ -85,7 +85,7 @@ async function signInWithDiscord(code: string): Promise<ObjectId | AuthError> {
             'client_secret': "iRLt58vpsYscUVpePGAurWaWgnXNucfB",
             code,
             'grant_type': 'authorization_code',
-            'redirect_uri': 'http://localhost:3000/auth/oauth_handler',
+            'redirect_uri': 'http://localhost:3000/auth/oauth_handler?provider=discord',
             'scope': 'identify+email'
         }).toString(),
         method: 'POST'
