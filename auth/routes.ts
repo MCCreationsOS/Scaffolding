@@ -37,5 +37,6 @@ export function initializeAuthRoutes() {
         let user: User;
 
         console.log(req)
+        res.sendStatus(200)
     })
 }
