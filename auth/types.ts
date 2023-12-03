@@ -12,7 +12,13 @@ export interface User {
         link: string,
         name: string
     },
-    providers?: Providers[]
+    providers?: Provider[]
+}
+
+export interface Provider {
+    provider: Providers,
+    token: string,
+    refreshToken: string
 }
 
 export enum Providers {
