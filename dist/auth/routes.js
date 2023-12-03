@@ -28,7 +28,8 @@ export function initializeAuthRoutes() {
                         password: 0,
                         providers: 0
                     });
-                    let user = yield database.executeQuery(query);
+                    let cursor = yield database.executeQuery(query);
+                    let user = cursor.next();
                     if (user) {
                         console.log(user);
                         res.send({ user: user });
