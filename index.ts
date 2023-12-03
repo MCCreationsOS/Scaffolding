@@ -8,6 +8,7 @@ import { createServer as createHttpServer } from 'http';
 import { createServer as createHttpsServer } from 'https';
 import { initializeCommunityRoutes } from './community/routes.js';
 import { initializeMapRoutes } from './maps/routes.js';
+import { initializeAuthRoutes } from './auth/routes.js';
 
 var privateKey = fs.readFileSync('/etc/letsencrypt/live/api.mccreations.net/privkey.pem', 'utf8');
 var certificate = fs.readFileSync('/etc/letsencrypt/live/api.mccreations.net/fullchain.pem', 'utf8');
@@ -21,6 +22,7 @@ app.use(morgan('combined'));
 
 initializeCommunityRoutes();
 initializeMapRoutes();
+initializeAuthRoutes();
 
 var httpServer = createHttpServer(app);
 var httpsServer = createHttpsServer(credentials, app);
