@@ -10,7 +10,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 import { app } from "../index.js";
 import bcrypt from "bcrypt";
 import { Providers, UserTypes } from "./types.js";
-import { Database, DatabaseQueryBuilder } from "../db/connect.js";
+import { Database } from "../db/connect.js";
 import { ObjectId } from "mongodb";
 import jwt from 'jsonwebtoken';
 const saltRounds = 10;
@@ -22,14 +22,7 @@ export function initializeAuthRoutes() {
                 let token = jwt.verify(req.headers.authorization, JWTKey);
                 if (token && token._id) {
                     let database = new Database("content", "creators");
-                    let query = new DatabaseQueryBuilder();
-                    query.buildQuery("_id", token._id);
-                    query.setProjection({
-                        password: 0,
-                        providers: 0
-                    });
-                    let cursor = yield database.executeQuery(query);
-                    let user = yield cursor.next();
+                    let user = yield database.collection.findOne({ _id: token._id });
                     if (user) {
                         console.log(user);
                         res.send({ user: user });
