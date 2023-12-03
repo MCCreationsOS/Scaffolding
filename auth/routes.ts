@@ -107,7 +107,7 @@ export function initializeAuthRoutes() {
         } else {
             console.log(result)
             res.send(result)
-            res.sendStatus(500)
+            // res.sendStatus(500)
         }
     })
 
@@ -215,5 +215,35 @@ async function signInWithGithub(code: string)  {
 
     const database = new Database("content", "creators")
 
-    console.log(githubUser)   
+    let existingUser = await database.collection.findOne<User>({ "providers.id": githubUser.id})
+    if(existingUser) {
+        existingUser.providers?.forEach(provider => {
+            if(provider.provider === Providers.Github) {
+                provider.token = access_token
+            }
+        })
+        return existingUser._id!
+    } else {
+        existingUser = await database.collection.findOne<User>({email: githubUser.email})
+        if(existingUser && githubUser.email) {
+            return {message: "User already exists but is using a different provider"}
+        } else {
+            let user: User = {
+                username: githubUser.login,
+                email: githubUser.email,
+                type: UserTypes.Account,
+                iconURL: githubUser.avatar_url,
+                providers: [
+                    {
+                        provider: Providers.Github,
+                        token: access_token,
+                        refreshToken: "",
+                        id: githubUser.id
+                    }
+                ]
+            }
+
+            return (await database.collection.insertOne(user)).insertedId
+        }
+    }
 }

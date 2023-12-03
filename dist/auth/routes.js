@@ -106,7 +106,7 @@ export function initializeAuthRoutes() {
         else {
             console.log(result);
             res.send(result);
-            res.sendStatus(500);
+            // res.sendStatus(500)
         }
     }));
     app.post('/auth/signInWithGithub', (req, res) => __awaiter(this, void 0, void 0, function* () {
@@ -190,6 +190,7 @@ function signInWithDiscord(code) {
     });
 }
 function signInWithGithub(code) {
+    var _a;
     return __awaiter(this, void 0, void 0, function* () {
         let res = yield fetch(`https://github.com/login/oauth/access_token?client_id=d8fb2f8d7b4f8f88c320&client_secret=5b24a7011c4db6ba6b5feec392e5f21103ea8225&code=${code}&scope=user:email,read:user`, {
             headers: {
@@ -212,6 +213,37 @@ function signInWithGithub(code) {
         if (!githubUser)
             return { message: "Github user could not be fetched" };
         const database = new Database("content", "creators");
-        console.log(githubUser);
+        let existingUser = yield database.collection.findOne({ "providers.id": githubUser.id });
+        if (existingUser) {
+            (_a = existingUser.providers) === null || _a === void 0 ? void 0 : _a.forEach(provider => {
+                if (provider.provider === Providers.Github) {
+                    provider.token = access_token;
+                }
+            });
+            return existingUser._id;
+        }
+        else {
+            existingUser = yield database.collection.findOne({ email: githubUser.email });
+            if (existingUser && githubUser.email) {
+                return { message: "User already exists but is using a different provider" };
+            }
+            else {
+                let user = {
+                    username: githubUser.login,
+                    email: githubUser.email,
+                    type: UserTypes.Account,
+                    iconURL: githubUser.avatar_url,
+                    providers: [
+                        {
+                            provider: Providers.Github,
+                            token: access_token,
+                            refreshToken: "",
+                            id: githubUser.id
+                        }
+                    ]
+                };
+                return (yield database.collection.insertOne(user)).insertedId;
+            }
+        }
     });
 }
