@@ -57,13 +57,15 @@ async function signInWithDiscord(code: string) {
         body: new URLSearchParams({
             'client_id': "882869275063386153",
             'client_secret': "iRLt58vpsYscUVpePGAurWaWgnXNucfB",
+            code,
             'grant-type': 'authorization_code',
-            'code': code,
-            'redirect_uri': 'https://api.mccreations.net/auth/oauth_handler'
+            'redirect_uri': 'https://api.mccreations.net/auth/oauth_handler',
+            'scope': 'identify+email'
         }).toString(),
         method: 'POST'
     })
     let data = await res.json();
+    console.log(data)
     let access_token = data.access_token;
     let token_type = data.token_type
 
