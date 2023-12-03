@@ -24,7 +24,7 @@ export function initializeAuthRoutes() {
             database.collection.insertOne(user);
         });
     });
-    app.get('auth/signUpWithProvider', (req, res) => {
+    app.get('/auth/signUpWithProvider', (req, res) => {
         let user;
         console.log(req);
     });
