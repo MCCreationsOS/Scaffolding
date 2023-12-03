@@ -4,6 +4,7 @@ import { AuthError, Providers, User, UserTypes } from "./types.js";
 import { Database } from "../db/connect.js";
 import { Request } from "express";
 import { ObjectId } from "mongodb";
+import jwt from 'jsonwebtoken'
 const saltRounds = 10;
 
 export function initializeAuthRoutes() {
@@ -35,21 +36,12 @@ export function initializeAuthRoutes() {
         })
     })
 
-    app.get('/auth/oauth_handler', async (req, res) => {
-        let referer = req.headers.referer;
-
-        console.log(req.headers)
-
-        if(referer === "https://discord.com/") {
-            if(req.query.code) {
-                let result = await signInWithDiscord(req.query.code as string)
-                if(result instanceof ObjectId) {
-                    res.redirect('https://next.mccreations.net')
-                } else {
-                    res.sendStatus(500)
-                }
-            }
-
+    app.post('/auth/signInWithDiscord', async (req, res) => {
+        let result = await signInWithDiscord(req.query.code as string)
+        if(result instanceof ObjectId) {
+            res.send({token: jwt.sign({_id: result}, "literally1984")})
+        } else {
+            res.sendStatus(500)
         }
     })
 }
@@ -64,7 +56,7 @@ async function signInWithDiscord(code: string): Promise<ObjectId | AuthError> {
             'client_secret': "***REMOVED***",
             code,
             'grant_type': 'authorization_code',
-            'redirect_uri': 'https://api.mccreations.net/auth/oauth_handler',
+            'redirect_uri': 'https://next.mccreations.net/auth/oauth_handler',
             'scope': 'identify+email'
         }).toString(),
         method: 'POST'
