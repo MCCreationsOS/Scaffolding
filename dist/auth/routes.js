@@ -21,8 +21,10 @@ export function initializeAuthRoutes() {
             try {
                 let token = jwt.verify(req.headers.authorization, JWTKey);
                 if (token && token._id) {
+                    let _id = new ObjectId(token._id);
                     let database = new Database("content", "creators");
-                    let user = yield database.collection.findOne({ _id: token._id });
+                    console.log(_id);
+                    let user = yield database.collection.findOne({ _id: _id });
                     if (user) {
                         console.log(user);
                         res.send({ user: user });
