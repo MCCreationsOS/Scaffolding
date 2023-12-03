@@ -37,12 +37,14 @@ export function initializeAuthRoutes() {
     app.get('/auth/oauth_handler', (req, res) => {
         let referer = req.headers.referer;
 
-        if(referer === "https://discord.com") {
+        console.log(req.headers)
+
+        // if(referer === "https://discord.com") {
             if(req.query.code) {
                 signInWithDiscord(req.query.code as string)
             }
 
-        }
+        // }
         res.send(200);
     })
 }
