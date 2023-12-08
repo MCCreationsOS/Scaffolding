@@ -192,7 +192,13 @@ function signInWithDiscord(code) {
 function signInWithGithub(code) {
     var _a;
     return __awaiter(this, void 0, void 0, function* () {
-        let res = yield fetch(`https://github.com/login/oauth/access_token?client_id=d8fb2f8d7b4f8f88c320&client_secret=5b24a7011c4db6ba6b5feec392e5f21103ea8225&code=${code}&scope=user:email,read:user`, {
+        let githubParams = new URLSearchParams({
+            client_id: "d8fb2f8d7b4f8f88c320",
+            client_secret: "5b24a7011c4db6ba6b5feec392e5f21103ea8225",
+            code: code,
+            scope: "user:email,read:user"
+        });
+        let res = yield fetch(`https://github.com/login/oauth/access_token?${githubParams.toString()}`, {
             headers: {
                 'Accept': 'application/json'
             },
