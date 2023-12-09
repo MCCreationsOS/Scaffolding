@@ -121,6 +121,16 @@ export function initializeAuthRoutes() {
             // res.sendStatus(500)
         }
     })
+
+    app.post('/auth/signInWithGoogle', async (req, res) => {
+        let result = await signInWithGoogle(req.query.access_token as string);
+        if(result instanceof ObjectId) {
+            res.send({token: jwt.sign({_id: result}, JWTKey, {expiresIn: '31d'})})
+        } else {
+            console.log(result)
+            res.send(result)
+        }
+    })
 }
 
 async function signInWithDiscord(code: string): Promise<ObjectId | AuthError> {
@@ -206,6 +216,7 @@ async function signInWithGithub(code: string)  {
 
     let data = await res.json();
     console.log(data)
+    // console.log(data.access_token)
     let access_token = data.access_token;
     let token_type = data.token_type
 
@@ -245,6 +256,49 @@ async function signInWithGithub(code: string)  {
                         token: access_token,
                         refreshToken: "",
                         id: githubUser.id
+                    }
+                ]
+            }
+
+            return (await database.collection.insertOne(user)).insertedId
+        }
+    }
+}
+
+async function signInWithGoogle(access_token: string) {
+    let res = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
+        headers: {
+            authorization: "Bearer " + access_token
+        }
+    })
+    let data = await res.json();
+    
+    const database = new Database("content", "creators")
+
+    let existingUser = await database.collection.findOne<User>({ "providers.id": data.id})
+    if(existingUser) {
+        existingUser.providers?.forEach(provider => {
+            if(provider.provider === Providers.Github) {
+                provider.token = access_token
+            }
+        })
+        return existingUser._id!
+    } else {
+        existingUser = await database.collection.findOne<User>({email: data.email})
+        if(existingUser && data.email) {
+            return {message: "User already exists but is using a different provider"}
+        } else {
+            let user: User = {
+                username: data.name,
+                email: data.email,
+                type: UserTypes.Account,
+                iconURL: data.picture,
+                providers: [
+                    {
+                        provider: Providers.Google,
+                        token: access_token,
+                        refreshToken: "",
+                        id: data.id
                     }
                 ]
             }

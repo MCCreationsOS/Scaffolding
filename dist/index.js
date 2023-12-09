@@ -9,9 +9,14 @@ import { createServer as createHttpsServer } from 'https';
 import { initializeCommunityRoutes } from './community/routes.js';
 import { initializeMapRoutes } from './maps/routes.js';
 import { initializeAuthRoutes } from './auth/routes.js';
-var privateKey = fs.readFileSync('/etc/letsencrypt/live/api.mccreations.net/privkey.pem', 'utf8');
-var certificate = fs.readFileSync('/etc/letsencrypt/live/api.mccreations.net/fullchain.pem', 'utf8');
-var credentials = { key: privateKey, cert: certificate };
+let credentials;
+try {
+    var privateKey = fs.readFileSync('/etc/letsencrypt/live/api.mccreations.net/privkey.pem', 'utf8');
+    var certificate = fs.readFileSync('/etc/letsencrypt/live/api.mccreations.net/fullchain.pem', 'utf8');
+    credentials = { key: privateKey, cert: certificate };
+}
+catch (e) {
+}
 export const app = express();
 app.use(helmet());
 app.use(bodyParser.json());
@@ -21,6 +26,8 @@ initializeCommunityRoutes();
 initializeMapRoutes();
 initializeAuthRoutes();
 var httpServer = createHttpServer(app);
-var httpsServer = createHttpsServer(credentials, app);
 httpServer.listen(80);
-httpsServer.listen(443);
+if (credentials) {
+    var httpsServer = createHttpsServer(credentials, app);
+    httpsServer.listen(443);
+}
