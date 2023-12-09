@@ -120,6 +120,16 @@ export function initializeAuthRoutes() {
             // res.sendStatus(500)
         }
     }));
+    app.post('/auth/signInWithGoogle', (req, res) => __awaiter(this, void 0, void 0, function* () {
+        let result = yield signInWithGoogle(req.query.access_token);
+        if (result instanceof ObjectId) {
+            res.send({ token: jwt.sign({ _id: result }, JWTKey, { expiresIn: '31d' }) });
+        }
+        else {
+            console.log(result);
+            res.send(result);
+        }
+    }));
 }
 function signInWithDiscord(code) {
     var _a;
@@ -206,6 +216,7 @@ function signInWithGithub(code) {
         });
         let data = yield res.json();
         console.log(data);
+        // console.log(data.access_token)
         let access_token = data.access_token;
         let token_type = data.token_type;
         if (!access_token)
@@ -245,6 +256,50 @@ function signInWithGithub(code) {
                             token: access_token,
                             refreshToken: "",
                             id: githubUser.id
+                        }
+                    ]
+                };
+                return (yield database.collection.insertOne(user)).insertedId;
+            }
+        }
+    });
+}
+function signInWithGoogle(access_token) {
+    var _a;
+    return __awaiter(this, void 0, void 0, function* () {
+        let res = yield fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
+            headers: {
+                authorization: "Bearer " + access_token
+            }
+        });
+        let data = yield res.json();
+        const database = new Database("content", "creators");
+        let existingUser = yield database.collection.findOne({ "providers.id": data.id });
+        if (existingUser) {
+            (_a = existingUser.providers) === null || _a === void 0 ? void 0 : _a.forEach(provider => {
+                if (provider.provider === Providers.Github) {
+                    provider.token = access_token;
+                }
+            });
+            return existingUser._id;
+        }
+        else {
+            existingUser = yield database.collection.findOne({ email: data.email });
+            if (existingUser && data.email) {
+                return { message: "User already exists but is using a different provider" };
+            }
+            else {
+                let user = {
+                    username: data.name,
+                    email: data.email,
+                    type: UserTypes.Account,
+                    iconURL: data.picture,
+                    providers: [
+                        {
+                            provider: Providers.Google,
+                            token: access_token,
+                            refreshToken: "",
+                            id: data.id
                         }
                     ]
                 };
