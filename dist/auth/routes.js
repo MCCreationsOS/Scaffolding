@@ -54,8 +54,80 @@ export function initializeAuthRoutes() {
             res.sendStatus(403);
         }
     }));
+    app.post('/auth/user/updateHandle', (req, res) => __awaiter(this, void 0, void 0, function* () {
+        if (req.headers.authorization) {
+            try {
+                let token = jwt.verify(req.headers.authorization, JWTKey);
+                if (token && token._id) {
+                    let _id = new ObjectId(token._id);
+                    let database = new Database("content", "creators");
+                    database.collection.updateOne({ _id: _id }, { $set: { handle: req.body.handle } });
+                }
+                else {
+                    console.log("Token not in JWT");
+                    res.sendStatus(403);
+                }
+            }
+            catch (err) {
+                console.log("JWT not verified");
+                res.sendStatus(403);
+            }
+        }
+        else {
+            console.log("authorization not sent");
+            res.sendStatus(403);
+        }
+    }));
+    app.post('/auth/user/updateEmail', (req, res) => __awaiter(this, void 0, void 0, function* () {
+        if (req.headers.authorization) {
+            try {
+                let token = jwt.verify(req.headers.authorization, JWTKey);
+                if (token && token._id) {
+                    let _id = new ObjectId(token._id);
+                    let database = new Database("content", "creators");
+                    database.collection.updateOne({ _id: _id }, { $set: { email: req.body.email } });
+                }
+                else {
+                    console.log("Token not in JWT");
+                    res.sendStatus(403);
+                }
+            }
+            catch (err) {
+                console.log("JWT not verified");
+                res.sendStatus(403);
+            }
+        }
+        else {
+            console.log("authorization not sent");
+            res.sendStatus(403);
+        }
+    }));
+    app.post('/auth/user/updatePassword', (req, res) => __awaiter(this, void 0, void 0, function* () {
+        if (req.headers.authorization) {
+            try {
+                let token = jwt.verify(req.headers.authorization, JWTKey);
+                if (token && token._id) {
+                    let _id = new ObjectId(token._id);
+                    let database = new Database("content", "creators");
+                    database.collection.updateOne({ _id: _id }, { $set: { password: req.body.password } });
+                }
+                else {
+                    console.log("Token not in JWT");
+                    res.sendStatus(403);
+                }
+            }
+            catch (err) {
+                console.log("JWT not verified");
+                res.sendStatus(403);
+            }
+        }
+        else {
+            console.log("authorization not sent");
+            res.sendStatus(403);
+        }
+    }));
     app.post('/auth/signUpWithEmail', (req, res) => __awaiter(this, void 0, void 0, function* () {
-        let user = req.body.user;
+        let user = req.body;
         let database = new Database("content", "creators");
         if (!user.password) {
             res.send({ message: "No password provided" });
@@ -66,18 +138,26 @@ export function initializeAuthRoutes() {
             res.send({ message: "User already exists" });
             return;
         }
-        bcrypt.hash(user.password, saltRounds, (err, hash) => {
+        bcrypt.hash(user.password, saltRounds, (err, hash) => __awaiter(this, void 0, void 0, function* () {
             if (err) {
                 res.send({ message: "Hashing Error!" });
                 return;
             }
             user.password = undefined;
             user.password = hash;
+            user.type = UserTypes.Account,
+                existingUser = yield database.collection.findOne({ handle: user.username });
+            if (existingUser) {
+                user.handle = user.username + Math.floor(Math.random() * 10000);
+            }
+            else {
+                user.handle = user.username;
+            }
             database.collection.insertOne(user);
-        });
+        }));
     }));
     app.post('/auth/signInWithEmail', (req, res) => __awaiter(this, void 0, void 0, function* () {
-        let user = req.body.user;
+        let user = req.body;
         let database = new Database("content", "creators");
         if (!user.password) {
             res.send({ message: "No password provided" });
@@ -94,6 +174,7 @@ export function initializeAuthRoutes() {
         }
         bcrypt.compare(user.password, existingUser.password, (err, same) => {
             if (same) {
+                console.log("user login successful");
                 res.send({ token: jwt.sign({ _id: existingUser._id }, JWTKey, { expiresIn: '31d' }) });
             }
         });
@@ -122,6 +203,16 @@ export function initializeAuthRoutes() {
     }));
     app.post('/auth/signInWithGoogle', (req, res) => __awaiter(this, void 0, void 0, function* () {
         let result = yield signInWithGoogle(req.query.access_token);
+        if (result instanceof ObjectId) {
+            res.send({ token: jwt.sign({ _id: result }, JWTKey, { expiresIn: '31d' }) });
+        }
+        else {
+            console.log(result);
+            res.send(result);
+        }
+    }));
+    app.post('/auth/signInWithMicrosoft', (req, res) => __awaiter(this, void 0, void 0, function* () {
+        let result = yield signInWithMicrosoft(req.query.code);
         if (result instanceof ObjectId) {
             res.send({ token: jwt.sign({ _id: result }, JWTKey, { expiresIn: '31d' }) });
         }
@@ -194,6 +285,13 @@ function signInWithDiscord(code) {
                         }
                     ]
                 };
+                existingUser = yield database.collection.findOne({ handle: user.username });
+                if (existingUser) {
+                    user.handle = user.username + Math.floor(Math.random() * 10000);
+                }
+                else {
+                    user.handle = user.username;
+                }
                 return (yield database.collection.insertOne(user)).insertedId;
             }
         }
@@ -259,6 +357,13 @@ function signInWithGithub(code) {
                         }
                     ]
                 };
+                existingUser = yield database.collection.findOne({ handle: user.username });
+                if (existingUser) {
+                    user.handle = user.username + Math.floor(Math.random() * 10000);
+                }
+                else {
+                    user.handle = user.username;
+                }
                 return (yield database.collection.insertOne(user)).insertedId;
             }
         }
@@ -303,6 +408,82 @@ function signInWithGoogle(access_token) {
                         }
                     ]
                 };
+                existingUser = yield database.collection.findOne({ handle: user.username });
+                if (existingUser) {
+                    user.handle = user.username + Math.floor(Math.random() * 10000);
+                }
+                else {
+                    user.handle = user.username;
+                }
+                return (yield database.collection.insertOne(user)).insertedId;
+            }
+        }
+    });
+}
+function signInWithMicrosoft(code) {
+    var _a;
+    return __awaiter(this, void 0, void 0, function* () {
+        let res = yield fetch('https://login.microsoftonline.com/common/oauth2/v2.0/token', {
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: new URLSearchParams({
+                'client_id': "f4c0f386-febc-4e8e-b0d5-20a99b4d0667",
+                'client_secret': "Rao8Q~FVIUeFC7PbsB0MqEhbReoKbUtcrCJnqdos",
+                'code': code,
+                'grant_type': 'authorization_code',
+                'redirect_uri': 'http://localhost:3000/auth/oauth_handler',
+                'scope': 'openid email profile'
+            }).toString(),
+            method: 'POST'
+        });
+        let data = yield res.json();
+        let access_token = data.access_token;
+        let token_type = data.token_type;
+        res = yield fetch('https://graph.microsoft.com/oidc/userinfo', {
+            headers: {
+                authorization: `${token_type} ${access_token}`
+            }
+        });
+        let microsoftUser = yield res.json();
+        if (!microsoftUser)
+            return { message: "Github user could not be fetched" };
+        const database = new Database("content", "creators");
+        let existingUser = yield database.collection.findOne({ "providers.id": microsoftUser.sub });
+        if (existingUser) {
+            (_a = existingUser.providers) === null || _a === void 0 ? void 0 : _a.forEach(provider => {
+                if (provider.provider === Providers.Github) {
+                    provider.token = access_token;
+                }
+            });
+            return existingUser._id;
+        }
+        else {
+            existingUser = yield database.collection.findOne({ email: microsoftUser.email });
+            if (existingUser && microsoftUser.email) {
+                return { message: "User already exists but is using a different provider" };
+            }
+            else {
+                let user = {
+                    username: microsoftUser.name,
+                    email: microsoftUser.email,
+                    type: UserTypes.Account,
+                    providers: [
+                        {
+                            provider: Providers.Microsoft,
+                            token: access_token,
+                            refreshToken: "",
+                            id: microsoftUser.sub
+                        }
+                    ]
+                };
+                existingUser = yield database.collection.findOne({ handle: user.username });
+                if (existingUser) {
+                    user.handle = user.username + Math.floor(Math.random() * 10000);
+                }
+                else {
+                    user.handle = user.username;
+                }
                 return (yield database.collection.insertOne(user)).insertedId;
             }
         }

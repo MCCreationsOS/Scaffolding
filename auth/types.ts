@@ -6,7 +6,8 @@ export interface User {
     username: string,
     email: string,
     password?: string,
-    iconURL?: string | "https://next.mccreations.net/mcc_no_scaffold.png",
+    handle?: string,
+    iconURL?: string
     about?: string,
     bannerURL?: string,
     socialLinks?: {
