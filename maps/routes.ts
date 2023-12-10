@@ -4,7 +4,7 @@ import { Database, DatabaseQueryBuilder } from '../db/connect.js';
 
 export function initializeMapRoutes() {
     app.get('/maps', async (req, res) => {
-        let result = await findMaps(req.query);
+        let result = await findMaps(req.query, true);
 
         if(req.query.sendCount && req.query.sendCount === "true") {
             res.send({count: result.totalCount})
@@ -13,13 +13,13 @@ export function initializeMapRoutes() {
         }
     })
     app.get('/maps/:slug', async (req, res) => {
-        let result = await findMaps({limit: 1, slug: req.params.slug})
+        let result = await findMaps({limit: 1, slug: req.params.slug}, false)
 
         res.send(result.documents[0])
     })
 }
 
-async function findMaps(requestQuery: any) {
+async function findMaps(requestQuery: any, useProjection: boolean) {
     let database = new Database();
     let query = new DatabaseQueryBuilder();
 
@@ -100,7 +100,8 @@ async function findMaps(requestQuery: any) {
 		slug: 1
 	};
 
-    query.setProjection(projection);
+	if(useProjection)
+    	query.setProjection(projection);
 
 	let count = await database.collection.countDocuments(query.query)
 
