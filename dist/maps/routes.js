@@ -18,7 +18,7 @@ import { app } from '../index.js';
 import { Database, DatabaseQueryBuilder } from '../db/connect.js';
 export function initializeMapRoutes() {
     app.get('/maps', (req, res) => __awaiter(this, void 0, void 0, function* () {
-        let result = yield findMaps(req.query);
+        let result = yield findMaps(req.query, true);
         if (req.query.sendCount && req.query.sendCount === "true") {
             res.send({ count: result.totalCount });
         }
@@ -27,11 +27,11 @@ export function initializeMapRoutes() {
         }
     }));
     app.get('/maps/:slug', (req, res) => __awaiter(this, void 0, void 0, function* () {
-        let result = yield findMaps({ limit: 1, slug: req.params.slug });
+        let result = yield findMaps({ limit: 1, slug: req.params.slug }, false);
         res.send(result.documents[0]);
     }));
 }
-function findMaps(requestQuery) {
+function findMaps(requestQuery, useProjection) {
     var _a, e_1, _b, _c;
     return __awaiter(this, void 0, void 0, function* () {
         let database = new Database();
@@ -107,7 +107,8 @@ function findMaps(requestQuery) {
             images: 1,
             slug: 1
         };
-        query.setProjection(projection);
+        if (useProjection)
+            query.setProjection(projection);
         let count = yield database.collection.countDocuments(query.query);
         let cursor = database.executeQuery(query);
         let documents = [];

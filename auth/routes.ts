@@ -46,8 +46,77 @@ export function initializeAuthRoutes() {
 
     })
 
+    app.post('/auth/user/updateHandle', async (req, res) => {
+        if(req.headers.authorization) {
+            try {
+                let token = jwt.verify(req.headers.authorization, JWTKey) as any
+                if(token && token._id) {
+                    let _id = new ObjectId(token._id)
+                    let database = new Database("content", "creators")
+                    database.collection.updateOne({_id: _id}, {$set: {handle: req.body.handle}})
+                } else {
+                    console.log("Token not in JWT")
+                    res.sendStatus(403)
+                }
+            } catch(err) {
+                console.log("JWT not verified")
+                res.sendStatus(403)
+            }
+            
+        } else {
+            console.log("authorization not sent")
+            res.sendStatus(403)
+        }
+    })
+
+    app.post('/auth/user/updateEmail', async (req, res) => {
+        if(req.headers.authorization) {
+            try {
+                let token = jwt.verify(req.headers.authorization, JWTKey) as any
+                if(token && token._id) {
+                    let _id = new ObjectId(token._id)
+                    let database = new Database("content", "creators")
+                    database.collection.updateOne({_id: _id}, {$set: {email: req.body.email}})
+                } else {
+                    console.log("Token not in JWT")
+                    res.sendStatus(403)
+                }
+            } catch(err) {
+                console.log("JWT not verified")
+                res.sendStatus(403)
+            }
+            
+        } else {
+            console.log("authorization not sent")
+            res.sendStatus(403)
+        }
+    })
+
+    app.post('/auth/user/updatePassword', async (req, res) => {
+        if(req.headers.authorization) {
+            try {
+                let token = jwt.verify(req.headers.authorization, JWTKey) as any
+                if(token && token._id) {
+                    let _id = new ObjectId(token._id)
+                    let database = new Database("content", "creators")
+                    database.collection.updateOne({_id: _id}, {$set: {password: req.body.password}})
+                } else {
+                    console.log("Token not in JWT")
+                    res.sendStatus(403)
+                }
+            } catch(err) {
+                console.log("JWT not verified")
+                res.sendStatus(403)
+            }
+            
+        } else {
+            console.log("authorization not sent")
+            res.sendStatus(403)
+        }
+    })
+
     app.post('/auth/signUpWithEmail', async (req, res) => {
-        let user = req.body.user as User
+        let user = req.body as User
         let database = new Database("content", "creators")
 
         if(!user.password) {
@@ -61,7 +130,7 @@ export function initializeAuthRoutes() {
             return;
         }
 
-        bcrypt.hash(user.password, saltRounds, (err, hash) => {
+        bcrypt.hash(user.password, saltRounds, async (err, hash) => {
             if(err) {
                 res.send({message: "Hashing Error!"})
                 return;
@@ -69,13 +138,22 @@ export function initializeAuthRoutes() {
 
             user.password = undefined;
             user.password = hash;
+            user.type = UserTypes.Account,
+
+            existingUser = await database.collection.findOne({handle: user.username})
+            if(existingUser) {
+                user.handle = user.username + Math.floor(Math.random() * 10000)
+            }
+            else {
+                user.handle = user.username;
+            }
 
             database.collection.insertOne(user)
         })
     })
 
     app.post('/auth/signInWithEmail', async (req, res) => {
-        let user = req.body.user as User
+        let user = req.body as User
         let database = new Database("content", "creators")
 
         if(!user.password) {
@@ -95,6 +173,7 @@ export function initializeAuthRoutes() {
         }
         bcrypt.compare(user.password, existingUser.password, (err, same) => {
             if(same) {
+                console.log("user login successful")
                 res.send({token: jwt.sign({_id: existingUser!._id}, JWTKey, {expiresIn: '31d'})})
             }
         })
@@ -124,6 +203,16 @@ export function initializeAuthRoutes() {
 
     app.post('/auth/signInWithGoogle', async (req, res) => {
         let result = await signInWithGoogle(req.query.access_token as string);
+        if(result instanceof ObjectId) {
+            res.send({token: jwt.sign({_id: result}, JWTKey, {expiresIn: '31d'})})
+        } else {
+            console.log(result)
+            res.send(result)
+        }
+    })
+
+    app.post('/auth/signInWithMicrosoft', async (req, res) => {
+        let result = await signInWithMicrosoft(req.query.code as string);
         if(result instanceof ObjectId) {
             res.send({token: jwt.sign({_id: result}, JWTKey, {expiresIn: '31d'})})
         } else {
@@ -195,6 +284,14 @@ async function signInWithDiscord(code: string): Promise<ObjectId | AuthError> {
                 ]
             }
 
+            existingUser = await database.collection.findOne<User>({handle: user.username})
+            if(existingUser) {
+                user.handle = user.username + Math.floor(Math.random() * 10000)
+            }
+            else {
+                user.handle = user.username;
+            }
+
             return (await database.collection.insertOne(user)).insertedId
         }
     }
@@ -260,6 +357,14 @@ async function signInWithGithub(code: string)  {
                 ]
             }
 
+            existingUser = await database.collection.findOne<User>({handle: user.username})
+            if(existingUser) {
+                user.handle = user.username + Math.floor(Math.random() * 10000)
+            }
+            else {
+                user.handle = user.username;
+            }
+
             return (await database.collection.insertOne(user)).insertedId
         }
     }
@@ -301,6 +406,83 @@ async function signInWithGoogle(access_token: string) {
                         id: data.id
                     }
                 ]
+            }
+
+            existingUser = await database.collection.findOne<User>({handle: user.username})
+            if(existingUser) {
+                user.handle = user.username + Math.floor(Math.random() * 10000)
+            }
+            else {
+                user.handle = user.username;
+            }
+
+            return (await database.collection.insertOne(user)).insertedId
+        }
+    }
+}
+
+async function signInWithMicrosoft(code: string) {
+    let res = await fetch('https://login.microsoftonline.com/common/oauth2/v2.0/token', {
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: new URLSearchParams({
+            'client_id': "f4c0f386-febc-4e8e-b0d5-20a99b4d0667",
+            'client_secret': "Rao8Q~FVIUeFC7PbsB0MqEhbReoKbUtcrCJnqdos",
+            'code': code,
+            'grant_type': 'authorization_code',
+            'redirect_uri': 'http://localhost:3000/auth/oauth_handler',
+            'scope': 'openid email profile'
+        }).toString(),
+        method: 'POST'
+    })
+    let data = await res.json();
+    let access_token = data.access_token;
+    let token_type = data.token_type
+
+    res = await fetch('https://graph.microsoft.com/oidc/userinfo', {
+        headers: {
+            authorization: `${token_type} ${access_token}`
+        }
+    })
+    let microsoftUser = await res.json();
+    if(!microsoftUser) return {message: "Github user could not be fetched"}
+
+    const database = new Database("content", "creators")
+
+    let existingUser = await database.collection.findOne<User>({ "providers.id": microsoftUser.sub})
+    if(existingUser) {
+        existingUser.providers?.forEach(provider => {
+            if(provider.provider === Providers.Github) {
+                provider.token = access_token
+            }
+        })
+        return existingUser._id!
+    } else {
+        existingUser = await database.collection.findOne<User>({email: microsoftUser.email})
+        if(existingUser && microsoftUser.email) {
+            return {message: "User already exists but is using a different provider"}
+        } else {
+            let user: User = {
+                username: microsoftUser.name,
+                email: microsoftUser.email,
+                type: UserTypes.Account,
+                providers: [
+                    {
+                        provider: Providers.Microsoft,
+                        token: access_token,
+                        refreshToken: "",
+                        id: microsoftUser.sub
+                    }
+                ]
+            }
+
+            existingUser = await database.collection.findOne<User>({handle: user.username})
+            if(existingUser) {
+                user.handle = user.username + Math.floor(Math.random() * 10000)
+            }
+            else {
+                user.handle = user.username;
             }
 
             return (await database.collection.insertOne(user)).insertedId
