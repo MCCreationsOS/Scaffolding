@@ -54,6 +54,43 @@ export function initializeAuthRoutes() {
             res.sendStatus(403);
         }
     }));
+    app.post('/auth/user/updateProfile', (req, res) => __awaiter(this, void 0, void 0, function* () {
+        if (req.headers.authorization) {
+            try {
+                let token = jwt.verify(req.headers.authorization, JWTKey);
+                if (token && token._id) {
+                    let _id = new ObjectId(token._id);
+                    let database = new Database("content", "creators");
+                    console.log(req.body);
+                    if (req.body.banner && req.body.banner.length > 1) {
+                        database.collection.updateOne({ _id: _id }, { $set: { bannerURL: req.body.banner } });
+                    }
+                    if (req.body.icon && req.body.icon.length > 1) {
+                        database.collection.updateOne({ _id: _id }, { $set: { iconURL: req.body.icon } });
+                    }
+                    if (req.body.username && req.body.username.length > 1) {
+                        database.collection.updateOne({ _id: _id }, { $set: { username: req.body.username } });
+                    }
+                    if (req.body.about && req.body.about.length > 1) {
+                        database.collection.updateOne({ _id: _id }, { $set: { about: req.body.about } });
+                    }
+                    res.sendStatus(200);
+                }
+                else {
+                    console.log("Token not in JWT");
+                    res.sendStatus(403);
+                }
+            }
+            catch (err) {
+                console.log("JWT not verified");
+                res.sendStatus(403);
+            }
+        }
+        else {
+            console.log("authorization not sent");
+            res.sendStatus(403);
+        }
+    }));
     app.post('/auth/user/updateHandle', (req, res) => __awaiter(this, void 0, void 0, function* () {
         if (req.headers.authorization) {
             try {

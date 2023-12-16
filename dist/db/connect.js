@@ -1,24 +1,23 @@
-// const { MongoClient, ServerApiVersion } = require('mongodb');
-import { MongoClient } from 'mongodb';
-const uri = "***REMOVED***";
+import { client } from "../index.js";
+const connectionsPool = [];
 export class Database {
     constructor(databaseName, collectionName) {
-        this.client = new MongoClient(uri);
-        this.client.connect();
         if (databaseName) {
-            this.database = this.client.db(databaseName);
+            this.database = client.db(databaseName);
             this.collection = this.database.collection(collectionName || "");
         }
         else {
-            this.database = this.client.db('content');
+            this.database = client.db('content');
             this.collection = this.database.collection('Maps');
         }
+        this.createSearchIndex();
     }
     createSearchIndex() {
         this.collection.createIndex({ title: "text", "creators.username": "text", shortDescription: "text" });
     }
     executeQuery(query) {
-        return this.collection.find(query.query).limit(query.limit).sort(query.sort).project(query.projection).skip(query.skip);
+        let c = this.collection.find(query.query).limit(query.limit).sort(query.sort).project(query.projection).skip(query.skip);
+        return c;
     }
 }
 export class DatabaseQueryBuilder {

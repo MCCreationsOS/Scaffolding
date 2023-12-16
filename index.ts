@@ -9,6 +9,7 @@ import { createServer as createHttpsServer } from 'https';
 import { initializeCommunityRoutes } from './community/routes.js';
 import { initializeMapRoutes } from './maps/routes.js';
 import { initializeAuthRoutes } from './auth/routes.js';
+import { MongoClient, ServerApiVersion } from 'mongodb';
 
 let credentials;
 
@@ -25,6 +26,9 @@ app.use(helmet());
 app.use(bodyParser.json())
 app.use(cors());
 app.use(morgan('combined'));
+
+const uri = "***REMOVED***";
+export const client = new MongoClient(uri);
 
 initializeCommunityRoutes();
 initializeMapRoutes();
