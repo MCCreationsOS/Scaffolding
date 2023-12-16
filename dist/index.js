@@ -9,6 +9,7 @@ import { createServer as createHttpsServer } from 'https';
 import { initializeCommunityRoutes } from './community/routes.js';
 import { initializeMapRoutes } from './maps/routes.js';
 import { initializeAuthRoutes } from './auth/routes.js';
+import { MongoClient } from 'mongodb';
 let credentials;
 try {
     var privateKey = fs.readFileSync('/etc/letsencrypt/live/api.mccreations.net/privkey.pem', 'utf8');
@@ -22,6 +23,8 @@ app.use(helmet());
 app.use(bodyParser.json());
 app.use(cors());
 app.use(morgan('combined'));
+const uri = "***REMOVED***";
+export const client = new MongoClient(uri);
 initializeCommunityRoutes();
 initializeMapRoutes();
 initializeAuthRoutes();
