@@ -1,24 +1,25 @@
+import { client } from "../index.js";
 import { IDatabaseQuery, MapDoc } from "./types.js";
 
 // const { MongoClient, ServerApiVersion } = require('mongodb');
 import { Collection, Filter, MongoClient, ServerApiVersion, Sort, SortDirection, Document, FilterOperators } from 'mongodb';
 
-const uri = "***REMOVED***";
+
+const connectionsPool: {client: MongoClient, inUse: boolean}[] = [];
 
 export class Database {
-    client = new MongoClient(uri);
     database
     collection
 
     constructor(databaseName?: string, collectionName?: string) {
-        this.client.connect();
         if(databaseName) {
-            this.database = this.client.db(databaseName);
+            this.database = client.db(databaseName);
             this.collection = this.database.collection(collectionName || "");
         } else {
-            this.database = this.client.db('content');
+            this.database = client.db('content');
             this.collection = this.database.collection('Maps');
         }
+        this.createSearchIndex();
 
     }
 
@@ -27,7 +28,8 @@ export class Database {
     }
 
     executeQuery(query: IDatabaseQuery) {
-        return this.collection.find(query.query).limit(query.limit).sort(query.sort).project(query.projection).skip(query.skip);
+        let c = this.collection.find(query.query).limit(query.limit).sort(query.sort).project(query.projection).skip(query.skip);
+        return c
     }
 }
 
