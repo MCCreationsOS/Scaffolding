@@ -11,7 +11,9 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "aws-sdk": "^2.1490.0",
+    "@aws-sdk/client-ses": "^3.474.0",
+    "@aws-sdk/credential-providers": "^3.474.0",
+    "aws-sdk": "^2.1520.0",
     "bcrypt": "^5.1.1",
     "body-parser": "^1.20.2",
     "cors": "^2.8.5",
@@ -19,6 +21,7 @@
     "firebase-admin": "^11.11.1",
     "helmet": "^7.0.0",
     "jsonwebtoken": "^9.0.2",
+    "mailgun.js": "^9.4.0",
     "mongodb": "^6.3.0",
     "morgan": "^1.10.0",
     "papaparse": "^5.4.1"
