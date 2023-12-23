@@ -253,6 +253,7 @@ export function initializeAuthRoutes() {
             user.password = undefined;
             user.password = hash;
             user.type = UserTypes.Account,
+            user.iconURL = "https://next.mccreations.net/mcc_no_scaffold.png"
 
             existingUser = await database.collection.findOne({handle: user.username})
             if(existingUser) {
