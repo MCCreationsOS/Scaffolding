@@ -6,6 +6,7 @@ import { Request } from "express";
 import { ObjectId } from "mongodb";
 import jwt from 'jsonwebtoken'
 import { upload } from "../s3/upload.js";
+import { forgotPasswordEmail } from "../email/email.js";
 const saltRounds = 10;
 const JWTKey = "literally1984"
 
@@ -159,6 +160,48 @@ export function initializeAuthRoutes() {
         }
     })
 
+    app.post('/auth/resetPassword', async (req, res) => {
+        if(req.headers.authorization) {
+            try {
+                let token = jwt.verify(req.headers.authorization, JWTKey) as any
+                if(token && token.email) {
+                    let database = new Database("content", "creators")
+                    let user = await database.collection.findOne({email: token.email})
+                    if(user && req.body.password) { 
+                        bcrypt.hash(user.password, saltRounds, async (err, hash) => {
+                            if(err) {
+                                res.send({message: "Hashing Error!"})
+                                return;
+                            }
+
+                            database.collection.updateOne( {_id: user?._id}, {"$set": { password: hash } } )
+                        })
+                    } else {
+                        res.sendStatus(404);
+                    }
+                } else {
+                    console.log("Token not in JWT")
+                    res.sendStatus(403)
+                }
+            } catch(e) {
+                console.log("JWT not verified")
+                res.sendStatus(403)
+            }
+        } else {
+            console.log("authorization not sent")
+            res.sendStatus(403)
+        }
+    })
+
+    app.post('/auth/forgotPassword', async (req, res) => {
+        if(req.body.email) {
+            forgotPasswordEmail(req.body.email, jwt.sign({email: req.body.email}, JWTKey, { expiresIn: "30min"}))
+            res.sendStatus(200)
+        } else {
+            res.sendStatus(300)
+        }
+    })
+
     app.post('/auth/signUpWithEmail', async (req, res) => {
         let user = req.body as User
         let database = new Database("content", "creators")
@@ -186,10 +229,10 @@ export function initializeAuthRoutes() {
 
             existingUser = await database.collection.findOne({handle: user.username})
             if(existingUser) {
-                user.handle = user.username + Math.floor(Math.random() * 10000)
+                user.handle = user.username.toLowerCase().replace(" ", "-") + Math.floor(Math.random() * 10000)
             }
             else {
-                user.handle = user.username;
+                user.handle = user.username.toLowerCase().replace(" ", "-");
             }
 
             database.collection.insertOne(user)
@@ -276,7 +319,7 @@ async function signInWithDiscord(code: string): Promise<ObjectId | AuthError> {
             'client_secret': "iRLt58vpsYscUVpePGAurWaWgnXNucfB",
             code,
             'grant_type': 'authorization_code',
-            'redirect_uri': 'http://localhost:3000/auth/oauth_handler?provider=discord',
+            'redirect_uri': 'https://next.mccreations.net/auth/oauth_handler?provider=discord',
             'scope': 'identify+email'
         }).toString(),
         method: 'POST'
@@ -330,10 +373,10 @@ async function signInWithDiscord(code: string): Promise<ObjectId | AuthError> {
 
             existingUser = await database.collection.findOne<User>({handle: user.username})
             if(existingUser) {
-                user.handle = user.username + Math.floor(Math.random() * 10000)
+                user.handle = user.username.toLowerCase().replace(" ", "-") + Math.floor(Math.random() * 10000)
             }
             else {
-                user.handle = user.username;
+                user.handle = user.username.toLowerCase().replace(" ", "-");
             }
 
             return (await database.collection.insertOne(user)).insertedId
@@ -403,10 +446,10 @@ async function signInWithGithub(code: string)  {
 
             existingUser = await database.collection.findOne<User>({handle: user.username})
             if(existingUser) {
-                user.handle = user.username + Math.floor(Math.random() * 10000)
+                user.handle = user.username.toLowerCase().replace(" ", "-") + Math.floor(Math.random() * 10000)
             }
             else {
-                user.handle = user.username;
+                user.handle = user.username.toLowerCase().replace(" ", "-");
             }
 
             return (await database.collection.insertOne(user)).insertedId
@@ -454,10 +497,10 @@ async function signInWithGoogle(access_token: string) {
 
             existingUser = await database.collection.findOne<User>({handle: user.username})
             if(existingUser) {
-                user.handle = user.username + Math.floor(Math.random() * 10000)
+                user.handle = user.username.toLowerCase().replace(" ", "-") + Math.floor(Math.random() * 10000)
             }
             else {
-                user.handle = user.username;
+                user.handle = user.username.toLowerCase().replace(" ", "-");
             }
 
             return (await database.collection.insertOne(user)).insertedId
@@ -475,7 +518,7 @@ async function signInWithMicrosoft(code: string) {
             'client_secret': "Rao8Q~FVIUeFC7PbsB0MqEhbReoKbUtcrCJnqdos",
             'code': code,
             'grant_type': 'authorization_code',
-            'redirect_uri': 'http://localhost:3000/auth/oauth_handler',
+            'redirect_uri': 'https://next.mccreations.net/auth/oauth_handler',
             'scope': 'openid email profile'
         }).toString(),
         method: 'POST'
@@ -523,10 +566,10 @@ async function signInWithMicrosoft(code: string) {
 
             existingUser = await database.collection.findOne<User>({handle: user.username})
             if(existingUser) {
-                user.handle = user.username + Math.floor(Math.random() * 10000)
+                user.handle = (user.username.toLowerCase() + Math.floor(Math.random() * 10000)).replace(" ", "-")
             }
             else {
-                user.handle = user.username;
+                user.handle = user.username.toLowerCase().replace(" ", "-");
             }
 
             return (await database.collection.insertOne(user)).insertedId
