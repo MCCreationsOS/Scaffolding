@@ -39,5 +39,5 @@ export enum UserTypes {
 }
 
 export interface AuthError {
-    message: string
+    error: string
 }
