@@ -257,7 +257,8 @@ export function initializeAuthRoutes() {
             user.password = undefined;
             user.password = hash;
             user.type = UserTypes.Account,
-                existingUser = yield database.collection.findOne({ handle: user.username });
+                user.iconURL = "https://next.mccreations.net/mcc_no_scaffold.png";
+            existingUser = yield database.collection.findOne({ handle: user.username });
             if (existingUser) {
                 user.handle = user.username.toLowerCase().replace(" ", "-") + Math.floor(Math.random() * 10000);
             }
