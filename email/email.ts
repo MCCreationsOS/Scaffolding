@@ -21,12 +21,18 @@ function sendEmailTemplate(to: string, template: string, variables: any) {
         template: template,
         "t:email": to,
         't:variables': JSON.stringify(variables)
+    }).catch(e => {
+        throw e;
     })
 }
 
 export function forgotPasswordEmail(to: string, resetToken: string) {
-    sendEmailTemplate(to, "forgot_password", {
-            email: to,
-            resetLink: "https://next.mccreations.net/reset_password?token=" + resetToken
-        })
+    try {
+        sendEmailTemplate(to, "forgot_password", {
+                email: to,
+                resetLink: "https://next.mccreations.net/reset_password?token=" + resetToken
+            })
+    } catch (e) {
+        throw e;
+    }
 }

@@ -30,22 +30,45 @@ export function initializeAuthRoutes() {
                         res.send({user: user})
                     } else {
                         console.log("User not found")
-                        res.sendStatus(404)
+                        res.send({error: "Session expired, please sign in and try again"})
                     }
                 } else {
                     console.log("Token not in JWT")
-                    res.sendStatus(403)
+                    res.send({error: "Session expired, please sign in and try again"})
                 }
             } catch(err) {
                 console.log("JWT not verified")
-                res.sendStatus(403)
+                res.send({error: "Session expired, please sign in and try again"})
             }
             
         } else {
             console.log("authorization not sent")
-            res.sendStatus(403)
+            res.send({error: "You are not allowed to access this resource"})
         }
 
+    })
+
+    app.delete('/auth/user', async (req, res) => {
+        if(req.headers.authorization) {
+            try {
+                let token = jwt.verify(req.headers.authorization, JWTKey) as any
+                if(token && token._id) {
+                    let _id = new ObjectId(token._id)
+                    let database = new Database("content", "creators")
+                    database.collection.deleteOne({_id: _id})
+                } else {
+                    console.log("Token not in JWT")
+                    res.send({error: "Session expired, please sign in and try again"})
+                }
+            } catch(err) {
+                console.log("JWT not verified")
+                res.send({error: "Session expired, please sign in and try again"})
+            }
+            
+        } else {
+            console.log("authorization not sent")
+            res.send({error: "You are not allowed to access this resource"})
+        }
     })
 
     app.post('/auth/user/updateProfile', async (req, res) => {
@@ -78,16 +101,16 @@ export function initializeAuthRoutes() {
 
                 } else {
                     console.log("Token not in JWT")
-                    res.sendStatus(403)
+                    res.send({error: "Session expired, please sign in and try again"})
                 }
             } catch(err) {
                 console.log("JWT not verified")
-                res.sendStatus(403)
+                res.send({error: "Session expired, please sign in and try again"})
             }
             
         } else {
             console.log("authorization not sent")
-            res.sendStatus(403)
+            res.send({error: "You are not allowed to access this resource"})
         }
     })
 
@@ -101,16 +124,16 @@ export function initializeAuthRoutes() {
                     database.collection.updateOne({_id: _id}, {$set: {handle: req.body.handle}})
                 } else {
                     console.log("Token not in JWT")
-                    res.sendStatus(403)
+                    res.send({error: "Session expired, please sign in and try again"})
                 }
             } catch(err) {
                 console.log("JWT not verified")
-                res.sendStatus(403)
+                res.send({error: "Session expired, please sign in and try again"})
             }
             
         } else {
             console.log("authorization not sent")
-            res.sendStatus(403)
+            res.send({error: "You are not allowed to access this resource"})
         }
     })
 
@@ -124,16 +147,16 @@ export function initializeAuthRoutes() {
                     database.collection.updateOne({_id: _id}, {$set: {email: req.body.email}})
                 } else {
                     console.log("Token not in JWT")
-                    res.sendStatus(403)
+                    res.send({error: "Session expired, please sign in and try again"})
                 }
             } catch(err) {
                 console.log("JWT not verified")
-                res.sendStatus(403)
+                res.send({error: "Session expired, please sign in and try again"})
             }
             
         } else {
             console.log("authorization not sent")
-            res.sendStatus(403)
+            res.send({error: "You are not allowed to access this resource"})
         }
     })
 
@@ -147,16 +170,16 @@ export function initializeAuthRoutes() {
                     database.collection.updateOne({_id: _id}, {$set: {password: req.body.password}})
                 } else {
                     console.log("Token not in JWT")
-                    res.sendStatus(403)
+                    res.send({error: "Session expired, please sign in and try again"})
                 }
             } catch(err) {
                 console.log("JWT not verified")
-                res.sendStatus(403)
+                res.send({error: "Session expired, please sign in and try again"})
             }
             
         } else {
             console.log("authorization not sent")
-            res.sendStatus(403)
+            res.send({error: "You are not allowed to access this resource"})
         }
     })
 
@@ -170,35 +193,39 @@ export function initializeAuthRoutes() {
                     if(user && req.body.password) { 
                         bcrypt.hash(user.password, saltRounds, async (err, hash) => {
                             if(err) {
-                                res.send({message: "Hashing Error!"})
+                                res.send({error: "There was an error resetting your password"})
                                 return;
                             }
 
                             database.collection.updateOne( {_id: user?._id}, {"$set": { password: hash } } )
                         })
                     } else {
-                        res.sendStatus(404);
+                        res.send({error: "User not found; Please request a new reset email"})
                     }
                 } else {
                     console.log("Token not in JWT")
-                    res.sendStatus(403)
+                    res.send({error: "Token expired; Please request a new reset email"})
                 }
             } catch(e) {
                 console.log("JWT not verified")
-                res.sendStatus(403)
+                res.send({error: "Token expired; Please request a new reset email"})
             }
         } else {
             console.log("authorization not sent")
-            res.sendStatus(403)
+            res.send({error: "You are not allowed to access this resource"})
         }
     })
 
     app.post('/auth/forgotPassword', async (req, res) => {
         if(req.body.email) {
-            forgotPasswordEmail(req.body.email, jwt.sign({email: req.body.email}, JWTKey, { expiresIn: "30min"}))
-            res.sendStatus(200)
+            try {
+                forgotPasswordEmail(req.body.email, jwt.sign({email: req.body.email}, JWTKey, { expiresIn: "30min"}))
+                res.sendStatus(200)
+            } catch(e) {
+                res.send({error: "There was an error sending the reset email. Try again"})
+            }
         } else {
-            res.sendStatus(300)
+            res.send({error: "Email address not provided"})
         }
     })
 
@@ -207,19 +234,19 @@ export function initializeAuthRoutes() {
         let database = new Database("content", "creators")
 
         if(!user.password) {
-            res.send({message: "No password provided"});
+            res.send({error: "No password provided"});
             return;
         }
 
         let existingUser = await database.collection.findOne({email: user.email})
         if(existingUser) {
-            res.send({message: "User already exists"})
+            res.send({error: "Email already in use"})
             return;
         }
 
         bcrypt.hash(user.password, saltRounds, async (err, hash) => {
             if(err) {
-                res.send({message: "Hashing Error!"})
+                res.send({error: "There was an error creating your account, please try again"})
                 return;
             }
 
@@ -244,24 +271,26 @@ export function initializeAuthRoutes() {
         let database = new Database("content", "creators")
 
         if(!user.password) {
-            res.send({message: "No password provided"});
+            res.send({error: "No password provided"});
             return;
         }
 
         let existingUser = await database.collection.findOne({email: user.email})
         if(!existingUser) {
-            res.send({message: "User does not exist"})
+            res.send({error: "Incorrect email address or password"})
             return;
         }
 
         if(!existingUser.password) {
-            res.send({message: "User does not have a password set"})
+            res.send({error: "Incorrect email address or password"})
             return;
         }
         bcrypt.compare(user.password, existingUser.password, (err, same) => {
             if(same) {
                 console.log("user login successful")
                 res.send({token: jwt.sign({_id: existingUser!._id}, JWTKey, {expiresIn: '31d'})})
+            } else {
+                res.send({error: "Incorrect email address or password"})
             }
         })
     })
@@ -329,7 +358,7 @@ async function signInWithDiscord(code: string): Promise<ObjectId | AuthError> {
     let token_type = data.token_type
     let refresh_token = data.refresh_token
 
-    if(!access_token) return {message: "Access token was not received " + data.toString()}
+    if(!access_token) return {error: "Access token was not received "}
 
     res = await fetch('https://discord.com/api/users/@me', {
         headers: {
@@ -337,7 +366,7 @@ async function signInWithDiscord(code: string): Promise<ObjectId | AuthError> {
         }
     })
     let discordUser = await res.json();
-    if(!discordUser) return {message: "Discord user could not be fetched"}
+    if(!discordUser) return {error: "Discord user could not be fetched"}
 
     const database = new Database("content", "creators")
 
@@ -353,7 +382,7 @@ async function signInWithDiscord(code: string): Promise<ObjectId | AuthError> {
     } else {
         existingUser = await database.collection.findOne<User>({email: discordUser.email})
         if(existingUser) {
-            return {message: "User already exists but is using a different provider"}
+            return {error: "User already exists but is using a different provider"}
         } else {
             let user: User = {
                 username: discordUser.global_name,
@@ -384,7 +413,7 @@ async function signInWithDiscord(code: string): Promise<ObjectId | AuthError> {
     }
 }
 
-async function signInWithGithub(code: string)  {
+async function signInWithGithub(code: string): Promise<ObjectId | AuthError>  {
     let githubParams = new URLSearchParams({
         client_id: "***REMOVED***",
         client_secret: "***REMOVED***",
@@ -404,7 +433,7 @@ async function signInWithGithub(code: string)  {
     let access_token = data.access_token;
     let token_type = data.token_type
 
-    if(!access_token) return {message: "Access token was not received "}
+    if(!access_token) return {error: "Access token was not received "}
 
     res = await fetch('https://api.github.com/user', {
         headers: {
@@ -412,7 +441,7 @@ async function signInWithGithub(code: string)  {
         }
     })
     let githubUser = await res.json();
-    if(!githubUser) return {message: "Github user could not be fetched"}
+    if(!githubUser) return {error: "Github user could not be fetched"}
 
     const database = new Database("content", "creators")
 
@@ -427,7 +456,7 @@ async function signInWithGithub(code: string)  {
     } else {
         existingUser = await database.collection.findOne<User>({email: githubUser.email})
         if(existingUser && githubUser.email) {
-            return {message: "User already exists but is using a different provider"}
+            return {error: "User already exists but is using a different provider"}
         } else {
             let user: User = {
                 username: githubUser.login,
@@ -457,7 +486,7 @@ async function signInWithGithub(code: string)  {
     }
 }
 
-async function signInWithGoogle(access_token: string) {
+async function signInWithGoogle(access_token: string): Promise<ObjectId | AuthError> {
     let res = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
         headers: {
             authorization: "Bearer " + access_token
@@ -478,7 +507,7 @@ async function signInWithGoogle(access_token: string) {
     } else {
         existingUser = await database.collection.findOne<User>({email: data.email})
         if(existingUser && data.email) {
-            return {message: "User already exists but is using a different provider"}
+            return {error: "User already exists but is using a different provider"}
         } else {
             let user: User = {
                 username: data.name,
@@ -508,7 +537,7 @@ async function signInWithGoogle(access_token: string) {
     }
 }
 
-async function signInWithMicrosoft(code: string) {
+async function signInWithMicrosoft(code: string): Promise<ObjectId | AuthError> {
     let res = await fetch('https://login.microsoftonline.com/common/oauth2/v2.0/token', {
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded'
@@ -533,7 +562,7 @@ async function signInWithMicrosoft(code: string) {
         }
     })
     let microsoftUser = await res.json();
-    if(!microsoftUser) return {message: "Github user could not be fetched"}
+    if(!microsoftUser) return {error: "Github user could not be fetched"}
 
     const database = new Database("content", "creators")
 
@@ -548,7 +577,7 @@ async function signInWithMicrosoft(code: string) {
     } else {
         existingUser = await database.collection.findOne<User>({email: microsoftUser.email})
         if(existingUser && microsoftUser.email) {
-            return {message: "User already exists but is using a different provider"}
+            return {error: "User already exists but is using a different provider"}
         } else {
             let user: User = {
                 username: microsoftUser.name,
