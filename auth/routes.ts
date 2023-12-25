@@ -61,7 +61,7 @@ export function initializeAuthRoutes() {
                     res.send({error: "Session expired, please sign in and try again"})
                 }
             } catch(err) {
-                console.log("JWT not verified")
+                console.log("JWT not verified " + err)
                 res.send({error: "Session expired, please sign in and try again"})
             }
             

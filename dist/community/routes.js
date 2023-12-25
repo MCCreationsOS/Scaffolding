@@ -57,7 +57,8 @@ export function initializeCommunityRoutes() {
         query.buildQuery("handle", req.params.handle);
         query.setProjection({
             password: 0,
-            providers: 0
+            providers: 0,
+            email: 0
         });
         let cursor = yield database.executeQuery(query);
         res.send(yield cursor.next());

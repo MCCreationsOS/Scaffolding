@@ -35,7 +35,8 @@ export function initializeCommunityRoutes() {
 
         query.setProjection({
             password: 0,
-            providers: 0
+            providers: 0,
+            email: 0
         })
 
         let cursor = await database.executeQuery(query)
