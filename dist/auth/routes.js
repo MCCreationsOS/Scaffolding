@@ -123,7 +123,9 @@ export function initializeAuthRoutes() {
                 if (token && token._id) {
                     let _id = new ObjectId(token._id);
                     let database = new Database("content", "creators");
+                    console.log(req.body);
                     database.collection.updateOne({ _id: _id }, { $set: { handle: req.body.handle } });
+                    res.sendStatus(200);
                 }
                 else {
                     console.log("Token not in JWT");
