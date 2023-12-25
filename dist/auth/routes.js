@@ -123,7 +123,11 @@ export function initializeAuthRoutes() {
                 if (token && token._id) {
                     let _id = new ObjectId(token._id);
                     let database = new Database("content", "creators");
-                    console.log(req.body);
+                    let existingUser = yield database.collection.findOne({ email: req.body.handle });
+                    if (existingUser) {
+                        res.send({ error: "Another account is already using that handle" });
+                        return;
+                    }
                     database.collection.updateOne({ _id: _id }, { $set: { handle: req.body.handle } });
                     res.sendStatus(200);
                 }
@@ -149,7 +153,13 @@ export function initializeAuthRoutes() {
                 if (token && token._id) {
                     let _id = new ObjectId(token._id);
                     let database = new Database("content", "creators");
+                    let existingUser = yield database.collection.findOne({ email: req.body.email });
+                    if (existingUser) {
+                        res.send({ error: "Another account is already using that email" });
+                        return;
+                    }
                     database.collection.updateOne({ _id: _id }, { $set: { email: req.body.email } });
+                    res.sendStatus(200);
                 }
                 else {
                     console.log("Token not in JWT");
@@ -173,7 +183,14 @@ export function initializeAuthRoutes() {
                 if (token && token._id) {
                     let _id = new ObjectId(token._id);
                     let database = new Database("content", "creators");
-                    database.collection.updateOne({ _id: _id }, { $set: { password: req.body.password } });
+                    bcrypt.hash(req.body.password, saltRounds, (err, hash) => __awaiter(this, void 0, void 0, function* () {
+                        if (err) {
+                            res.send({ error: "There was an error resetting your password" });
+                            return;
+                        }
+                        database.collection.updateOne({ _id: _id }, { $set: { password: hash } });
+                        res.sendStatus(200);
+                    }));
                 }
                 else {
                     console.log("Token not in JWT");
@@ -204,6 +221,7 @@ export function initializeAuthRoutes() {
                                 return;
                             }
                             database.collection.updateOne({ _id: user === null || user === void 0 ? void 0 : user._id }, { "$set": { password: hash } });
+                            res.sendStatus(200);
                         }));
                     }
                     else {
