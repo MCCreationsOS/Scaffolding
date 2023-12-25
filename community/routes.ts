@@ -56,7 +56,7 @@ export function initializeCommunityRoutes() {
     app.post('/maps/comment/:slug', async (req, res) => {
         let database = new Database();
     
-        database.collection.updateOne({slug: req.params.slug}, {$push: {comments: {username: req.body.username, comment: req.body.comment, date: Date.now(), likes: 0, comments: {}}}})
+        database.collection.updateOne({slug: req.params.slug}, {$push: {comments: {username: req.body.username, comment: req.body.comment, date: Date.now(), likes: 0, comments: {}, handle: req.body.handle}}})
         res.sendStatus(200)
     })
 }
