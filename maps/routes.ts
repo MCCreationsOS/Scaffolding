@@ -1,6 +1,8 @@
 import QueryString from 'qs';
 import { app } from '../index.js'
 import { Database, DatabaseQueryBuilder } from '../db/connect.js';
+import { getUserFromJWT } from '../auth/routes.js';
+import { MapDoc } from '../db/types.js';
 
 export function initializeMapRoutes() {
     app.get('/maps', async (req, res) => {
@@ -15,6 +17,26 @@ export function initializeMapRoutes() {
     app.get('/maps/:slug', async (req, res) => {
         let result = await findMaps({limit: 1, slug: req.params.slug}, false)
 
+		if(result.documents[0].status < 1) {
+			let filter = true;
+			if(req.headers.authorization) {
+				let uObj = await getUserFromJWT(req.headers.authorization)
+				if(uObj.user && result.documents[0].creators) {
+					for(const creator of result.documents[0].creators) {
+						if(creator.handle === uObj.user.handle) filter = false;
+					}
+				}
+			}
+			if(filter) {
+				res.send({error: "Map does not exist, or you do not have permission to view it"})
+				return;
+			}
+		}
+
+		if(result.documents.length !== 1) {
+			res.send({error: "Map does not exist, or you do not have permission to view it"})
+			return;
+		}
         res.send(result.documents[0])
     })
 }
@@ -60,8 +82,6 @@ async function findMaps(requestQuery: any, useProjection: boolean) {
 
 	if(requestQuery.status) {
         query.buildQueryWithOperation("status", Number.parseInt(requestQuery.status), "$gte")
-	} else {
-		query.buildQueryWithOperation("status", 2, "$gte")
 	}
 
 	if(requestQuery.version) {
@@ -111,9 +131,9 @@ async function findMaps(requestQuery: any, useProjection: boolean) {
 	for await (const doc of cursor) {
 		documents.push(doc);
 	}
-	let result = {
+	let result: {totalCount: number, documents: MapDoc[]} = {
 		totalCount: count,
-		documents: documents
+		documents: documents as MapDoc[]
 	}
 	return result;
 }
