@@ -10,9 +10,9 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 import { Database } from "../db/connect.js";
 import { app } from "../index.js";
 export function initializeCreatorRoutes() {
-    app.get('/creator/:uid', (req, res) => __awaiter(this, void 0, void 0, function* () {
+    app.get('/creator/:handle', (req, res) => __awaiter(this, void 0, void 0, function* () {
         let database = new Database("content", "creators");
-        let creator = yield database.collection.findOne({ uid: req.params.uid });
+        let creator = yield database.collection.findOne({ handle: req.params.handle });
         res.send(creator);
     }));
     app.post('/creator', (req, res) => __awaiter(this, void 0, void 0, function* () {
