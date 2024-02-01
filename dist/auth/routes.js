@@ -19,36 +19,7 @@ const JWTKey = "literally1984";
 export function initializeAuthRoutes() {
     app.get('/auth/user', (req, res) => __awaiter(this, void 0, void 0, function* () {
         if (req.headers.authorization) {
-            try {
-                let token = jwt.verify(req.headers.authorization, JWTKey);
-                if (token && token._id) {
-                    let _id = new ObjectId(token._id);
-                    let database = new Database("content", "creators");
-                    let query = new DatabaseQueryBuilder();
-                    query.buildQuery("_id", _id);
-                    query.setProjection({
-                        password: 0,
-                        providers: 0
-                    });
-                    let cursor = yield database.executeQuery(query);
-                    let user = yield cursor.next();
-                    if (user) {
-                        res.send({ user: user });
-                    }
-                    else {
-                        console.log("User not found");
-                        res.send({ error: "Session expired, please sign in and try again" });
-                    }
-                }
-                else {
-                    console.log("Token not in JWT");
-                    res.send({ error: "Session expired, please sign in and try again" });
-                }
-            }
-            catch (err) {
-                console.log("JWT not verified");
-                res.send({ error: "Session expired, please sign in and try again" });
-            }
+            res.send(yield getUserFromJWT(req.headers.authorization));
         }
         else {
             console.log("authorization not sent");
@@ -307,7 +278,7 @@ export function initializeAuthRoutes() {
         bcrypt.compare(user.password, existingUser.password, (err, same) => {
             if (same) {
                 console.log("user login successful");
-                res.send({ token: jwt.sign({ _id: existingUser._id }, JWTKey, { expiresIn: '31d' }) });
+                res.send({ token: jwt.sign({ _id: existingUser._id }, JWTKey, { expiresIn: '31d' }), creator: { username: existingUser.username, handle: existingUser.handle } });
             }
             else {
                 res.send({ error: "Incorrect email address or password" });
@@ -316,8 +287,9 @@ export function initializeAuthRoutes() {
     }));
     app.post('/auth/signInWithDiscord', (req, res) => __awaiter(this, void 0, void 0, function* () {
         let result = yield signInWithDiscord(req.query.code);
-        if (result instanceof ObjectId) {
-            res.send({ token: jwt.sign({ _id: result }, JWTKey, { expiresIn: '31d' }) });
+        if (instanceOfUser(result)) {
+            result = result;
+            res.send({ token: jwt.sign({ _id: result._id }, JWTKey, { expiresIn: '31d' }), creator: { username: result.username } });
         }
         else {
             console.log(result);
@@ -327,8 +299,9 @@ export function initializeAuthRoutes() {
     }));
     app.post('/auth/signInWithGithub', (req, res) => __awaiter(this, void 0, void 0, function* () {
         let result = yield signInWithGithub(req.query.code);
-        if (result instanceof ObjectId) {
-            res.send({ token: jwt.sign({ _id: result }, JWTKey, { expiresIn: '31d' }) });
+        if (instanceOfUser(result)) {
+            result = result;
+            res.send({ token: jwt.sign({ _id: result._id }, JWTKey, { expiresIn: '31d' }), creator: { username: result.username, handle: result.handle } });
         }
         else {
             console.log(result);
@@ -338,8 +311,9 @@ export function initializeAuthRoutes() {
     }));
     app.post('/auth/signInWithGoogle', (req, res) => __awaiter(this, void 0, void 0, function* () {
         let result = yield signInWithGoogle(req.query.access_token);
-        if (result instanceof ObjectId) {
-            res.send({ token: jwt.sign({ _id: result }, JWTKey, { expiresIn: '31d' }) });
+        if (instanceOfUser(result)) {
+            result = result;
+            res.send({ token: jwt.sign({ _id: result._id }, JWTKey, { expiresIn: '31d' }), creator: { username: result.username, handle: result.handle } });
         }
         else {
             console.log(result);
@@ -348,8 +322,9 @@ export function initializeAuthRoutes() {
     }));
     app.post('/auth/signInWithMicrosoft', (req, res) => __awaiter(this, void 0, void 0, function* () {
         let result = yield signInWithMicrosoft(req.query.code);
-        if (result instanceof ObjectId) {
-            res.send({ token: jwt.sign({ _id: result }, JWTKey, { expiresIn: '31d' }) });
+        if (instanceOfUser(result)) {
+            result = result;
+            res.send({ token: jwt.sign({ _id: result._id }, JWTKey, { expiresIn: '31d' }), creator: { username: result.username, handle: result.handle } });
         }
         else {
             console.log(result);
@@ -397,7 +372,7 @@ function signInWithDiscord(code) {
                         provider.refreshToken = refresh_token;
                 }
             });
-            return existingUser._id;
+            return existingUser;
         }
         else {
             existingUser = yield database.collection.findOne({ email: discordUser.email });
@@ -427,7 +402,8 @@ function signInWithDiscord(code) {
                 else {
                     user.handle = user.username.toLowerCase().replace(" ", "-");
                 }
-                return (yield database.collection.insertOne(user)).insertedId;
+                yield database.collection.insertOne(user);
+                return user;
             }
         }
     });
@@ -470,7 +446,7 @@ function signInWithGithub(code) {
                     provider.token = access_token;
                 }
             });
-            return existingUser._id;
+            return existingUser;
         }
         else {
             existingUser = yield database.collection.findOne({ email: githubUser.email });
@@ -499,7 +475,8 @@ function signInWithGithub(code) {
                 else {
                     user.handle = user.username.toLowerCase().replace(" ", "-");
                 }
-                return (yield database.collection.insertOne(user)).insertedId;
+                yield database.collection.insertOne(user);
+                return user;
             }
         }
     });
@@ -521,7 +498,7 @@ function signInWithGoogle(access_token) {
                     provider.token = access_token;
                 }
             });
-            return existingUser._id;
+            return existingUser;
         }
         else {
             existingUser = yield database.collection.findOne({ email: data.email });
@@ -550,7 +527,8 @@ function signInWithGoogle(access_token) {
                 else {
                     user.handle = user.username.toLowerCase().replace(" ", "-");
                 }
-                return (yield database.collection.insertOne(user)).insertedId;
+                yield database.collection.insertOne(user);
+                return user;
             }
         }
     });
@@ -591,7 +569,7 @@ function signInWithMicrosoft(code) {
                     provider.token = access_token;
                 }
             });
-            return existingUser._id;
+            return existingUser;
         }
         else {
             existingUser = yield database.collection.findOne({ email: microsoftUser.email });
@@ -619,8 +597,46 @@ function signInWithMicrosoft(code) {
                 else {
                     user.handle = user.username.toLowerCase().replace(" ", "-");
                 }
-                return (yield database.collection.insertOne(user)).insertedId;
+                yield database.collection.insertOne(user);
+                return user;
             }
         }
     });
+}
+export function getUserFromJWT(jwtString) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            let token = jwt.verify(jwtString, JWTKey);
+            if (token && token._id) {
+                let _id = new ObjectId(token._id);
+                let database = new Database("content", "creators");
+                let query = new DatabaseQueryBuilder();
+                query.buildQuery("_id", _id);
+                query.setProjection({
+                    password: 0,
+                    providers: 0
+                });
+                let cursor = yield database.executeQuery(query);
+                let user = yield cursor.next();
+                if (user) {
+                    return { user: user };
+                }
+                else {
+                    console.log("User not found");
+                    return { error: "Session expired, please sign in and try again" };
+                }
+            }
+            else {
+                console.log("Token not in JWT");
+                return { error: "Session expired, please sign in and try again" };
+            }
+        }
+        catch (err) {
+            console.log("JWT not verified");
+            return { error: "Session expired, please sign in and try again" };
+        }
+    });
+}
+function instanceOfUser(object) {
+    return 'username' in object;
 }

@@ -16,6 +16,7 @@ var __asyncValues = (this && this.__asyncValues) || function (o) {
 };
 import { app } from '../index.js';
 import { Database, DatabaseQueryBuilder } from '../db/connect.js';
+import { getUserFromJWT } from '../auth/routes.js';
 export function initializeMapRoutes() {
     app.get('/maps', (req, res) => __awaiter(this, void 0, void 0, function* () {
         let result = yield findMaps(req.query, true);
@@ -28,6 +29,26 @@ export function initializeMapRoutes() {
     }));
     app.get('/maps/:slug', (req, res) => __awaiter(this, void 0, void 0, function* () {
         let result = yield findMaps({ limit: 1, slug: req.params.slug }, false);
+        if (result.documents[0].status < 1) {
+            let filter = true;
+            if (req.headers.authorization) {
+                let uObj = yield getUserFromJWT(req.headers.authorization);
+                if (uObj.user && result.documents[0].creators) {
+                    for (const creator of result.documents[0].creators) {
+                        if (creator.handle === uObj.user.handle)
+                            filter = false;
+                    }
+                }
+            }
+            if (filter) {
+                res.send({ error: "Map does not exist, or you do not have permission to view it" });
+                return;
+            }
+        }
+        if (result.documents.length !== 1) {
+            res.send({ error: "Map does not exist, or you do not have permission to view it" });
+            return;
+        }
         res.send(result.documents[0]);
     }));
 }
@@ -72,9 +93,6 @@ function findMaps(requestQuery, useProjection) {
         }
         if (requestQuery.status) {
             query.buildQueryWithOperation("status", Number.parseInt(requestQuery.status), "$gte");
-        }
-        else {
-            query.buildQueryWithOperation("status", 2, "$gte");
         }
         if (requestQuery.version) {
             requestQuery.version.replace(".0", "");
