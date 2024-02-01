@@ -13,34 +13,7 @@ const JWTKey = "literally1984"
 export function initializeAuthRoutes() {
     app.get('/auth/user', async (req, res) => {
         if(req.headers.authorization) {
-            try {
-                let token = jwt.verify(req.headers.authorization, JWTKey) as any
-                if(token && token._id) {
-                    let _id = new ObjectId(token._id)
-                    let database = new Database("content", "creators")
-                    let query = new DatabaseQueryBuilder()
-                    query.buildQuery("_id", _id);
-                    query.setProjection({
-                        password: 0,
-                        providers: 0
-                    })
-                    let cursor = await database.executeQuery(query);
-                    let user = await cursor.next();
-                    if(user) {
-                        res.send({user: user})
-                    } else {
-                        console.log("User not found")
-                        res.send({error: "Session expired, please sign in and try again"})
-                    }
-                } else {
-                    console.log("Token not in JWT")
-                    res.send({error: "Session expired, please sign in and try again"})
-                }
-            } catch(err) {
-                console.log("JWT not verified")
-                res.send({error: "Session expired, please sign in and try again"})
-            }
-            
+            res.send(await getUserFromJWT(req.headers.authorization));
         } else {
             console.log("authorization not sent")
             res.send({error: "You are not allowed to access this resource"})
@@ -309,7 +282,7 @@ export function initializeAuthRoutes() {
         bcrypt.compare(user.password, existingUser.password, (err, same) => {
             if(same) {
                 console.log("user login successful")
-                res.send({token: jwt.sign({_id: existingUser!._id}, JWTKey, {expiresIn: '31d'})})
+                res.send({token: jwt.sign({_id: existingUser!._id}, JWTKey, {expiresIn: '31d'}), creator: {username: existingUser!.username, handle: existingUser!.handle}})
             } else {
                 res.send({error: "Incorrect email address or password"})
             }
@@ -318,8 +291,9 @@ export function initializeAuthRoutes() {
 
     app.post('/auth/signInWithDiscord', async (req, res) => {
         let result = await signInWithDiscord(req.query.code as string)
-        if(result instanceof ObjectId) {
-            res.send({token: jwt.sign({_id: result}, JWTKey, {expiresIn: '31d'})})
+        if(instanceOfUser(result)) {
+            result = result as User;
+            res.send({token: jwt.sign({_id: result._id}, JWTKey, {expiresIn: '31d'}), creator: {username: result.username}})
         } else {
             console.log(result)
             res.send(result)
@@ -329,8 +303,9 @@ export function initializeAuthRoutes() {
 
     app.post('/auth/signInWithGithub', async (req, res) => {
         let result = await signInWithGithub(req.query.code as string)
-        if(result instanceof ObjectId) {
-            res.send({token: jwt.sign({_id: result}, JWTKey, {expiresIn: '31d'})})
+        if(instanceOfUser(result)) {
+            result = result as User
+            res.send({token: jwt.sign({_id: result._id}, JWTKey, {expiresIn: '31d'}), creator: {username: result.username, handle: result.handle}})
         } else {
             console.log(result)
             res.send(result)
@@ -340,8 +315,9 @@ export function initializeAuthRoutes() {
 
     app.post('/auth/signInWithGoogle', async (req, res) => {
         let result = await signInWithGoogle(req.query.access_token as string);
-        if(result instanceof ObjectId) {
-            res.send({token: jwt.sign({_id: result}, JWTKey, {expiresIn: '31d'})})
+        if(instanceOfUser(result)) {
+            result = result as User
+            res.send({token: jwt.sign({_id: result._id}, JWTKey, {expiresIn: '31d'}), creator: {username: result.username, handle: result.handle}})
         } else {
             console.log(result)
             res.send(result)
@@ -350,8 +326,9 @@ export function initializeAuthRoutes() {
 
     app.post('/auth/signInWithMicrosoft', async (req, res) => {
         let result = await signInWithMicrosoft(req.query.code as string);
-        if(result instanceof ObjectId) {
-            res.send({token: jwt.sign({_id: result}, JWTKey, {expiresIn: '31d'})})
+        if(instanceOfUser(result)) {
+            result = result as User
+            res.send({token: jwt.sign({_id: result._id}, JWTKey, {expiresIn: '31d'}), creator: {username: result.username, handle: result.handle}})
         } else {
             console.log(result)
             res.send(result)
@@ -359,7 +336,7 @@ export function initializeAuthRoutes() {
     })
 }
 
-async function signInWithDiscord(code: string): Promise<ObjectId | AuthError> {
+async function signInWithDiscord(code: string): Promise<User | AuthError> {
     let res = await fetch('https://discord.com/api/oauth2/token', {
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded'
@@ -399,7 +376,7 @@ async function signInWithDiscord(code: string): Promise<ObjectId | AuthError> {
                 provider.refreshToken = refresh_token
             }
         })
-        return existingUser._id!
+        return existingUser
     } else {
         existingUser = await database.collection.findOne<User>({email: discordUser.email})
         if(existingUser) {
@@ -428,13 +405,13 @@ async function signInWithDiscord(code: string): Promise<ObjectId | AuthError> {
             else {
                 user.handle = user.username.toLowerCase().replace(" ", "-");
             }
-
-            return (await database.collection.insertOne(user)).insertedId
+            await database.collection.insertOne(user)
+            return user
         }
     }
 }
 
-async function signInWithGithub(code: string): Promise<ObjectId | AuthError>  {
+async function signInWithGithub(code: string): Promise<User | AuthError>  {
     let githubParams = new URLSearchParams({
         client_id: "***REMOVED***",
         client_secret: "***REMOVED***",
@@ -473,7 +450,7 @@ async function signInWithGithub(code: string): Promise<ObjectId | AuthError>  {
                 provider.token = access_token
             }
         })
-        return existingUser._id!
+        return existingUser
     } else {
         existingUser = await database.collection.findOne<User>({email: githubUser.email})
         if(existingUser && githubUser.email) {
@@ -501,13 +478,13 @@ async function signInWithGithub(code: string): Promise<ObjectId | AuthError>  {
             else {
                 user.handle = user.username.toLowerCase().replace(" ", "-");
             }
-
-            return (await database.collection.insertOne(user)).insertedId
+            await database.collection.insertOne(user)
+            return user
         }
     }
 }
 
-async function signInWithGoogle(access_token: string): Promise<ObjectId | AuthError> {
+async function signInWithGoogle(access_token: string): Promise<User | AuthError> {
     let res = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
         headers: {
             authorization: "Bearer " + access_token
@@ -524,7 +501,7 @@ async function signInWithGoogle(access_token: string): Promise<ObjectId | AuthEr
                 provider.token = access_token
             }
         })
-        return existingUser._id!
+        return existingUser
     } else {
         existingUser = await database.collection.findOne<User>({email: data.email})
         if(existingUser && data.email) {
@@ -553,12 +530,14 @@ async function signInWithGoogle(access_token: string): Promise<ObjectId | AuthEr
                 user.handle = user.username.toLowerCase().replace(" ", "-");
             }
 
-            return (await database.collection.insertOne(user)).insertedId
+            await database.collection.insertOne(user)
+
+            return user
         }
     }
 }
 
-async function signInWithMicrosoft(code: string): Promise<ObjectId | AuthError> {
+async function signInWithMicrosoft(code: string): Promise<User | AuthError> {
     let res = await fetch('https://login.microsoftonline.com/common/oauth2/v2.0/token', {
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded'
@@ -594,7 +573,7 @@ async function signInWithMicrosoft(code: string): Promise<ObjectId | AuthError> 
                 provider.token = access_token
             }
         })
-        return existingUser._id!
+        return existingUser
     } else {
         existingUser = await database.collection.findOne<User>({email: microsoftUser.email})
         if(existingUser && microsoftUser.email) {
@@ -622,7 +601,43 @@ async function signInWithMicrosoft(code: string): Promise<ObjectId | AuthError> 
                 user.handle = user.username.toLowerCase().replace(" ", "-");
             }
 
-            return (await database.collection.insertOne(user)).insertedId
+            await database.collection.insertOne(user)
+
+            return user
         }
     }
+}
+
+export async function getUserFromJWT(jwtString: string) {
+    try {
+        let token = jwt.verify(jwtString, JWTKey) as any
+        if(token && token._id) {
+            let _id = new ObjectId(token._id)
+            let database = new Database("content", "creators")
+            let query = new DatabaseQueryBuilder()
+            query.buildQuery("_id", _id);
+            query.setProjection({
+                password: 0,
+                providers: 0
+            })
+            let cursor = await database.executeQuery(query);
+            let user = await cursor.next() as User;
+            if(user) {
+                return {user: user} 
+            } else {
+                console.log("User not found")
+                return {error: "Session expired, please sign in and try again"}
+            }
+        } else {
+            console.log("Token not in JWT")
+            return {error: "Session expired, please sign in and try again"} 
+        }
+    } catch(err) {
+        console.log("JWT not verified")
+        return {error: "Session expired, please sign in and try again"} 
+    }
+}
+
+function instanceOfUser(object: any) {
+    return 'username' in object
 }
