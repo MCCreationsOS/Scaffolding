@@ -1,4 +1,4 @@
-import { Document, Filter, Sort } from "mongodb"
+import { Document, Filter, ObjectId, Sort } from "mongodb"
 
 export interface IDatabaseQuery {
     query: Filter<Document>,
@@ -15,7 +15,8 @@ export interface ContentDocument extends Document {
     rating: number,
     ratings?: number[],
     createdDate: Date,
-    updatedDate?: Date
+    updatedDate?: Date,
+    _id?: ObjectId,
 }
 
 export interface MapDoc extends ContentDocument {
