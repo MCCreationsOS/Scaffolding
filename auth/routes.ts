@@ -8,7 +8,7 @@ import jwt from 'jsonwebtoken'
 import { upload } from "../s3/upload.js";
 import { forgotPasswordEmail } from "../email/email.js";
 const saltRounds = 10;
-const JWTKey = "literally1984"
+export const JWTKey = "literally1984"
 
 export function initializeAuthRoutes() {
     app.get('/auth/user', async (req, res) => {
@@ -19,6 +19,24 @@ export function initializeAuthRoutes() {
             res.send({error: "You are not allowed to access this resource"})
         }
 
+    })
+
+    app.get('/auth/user/creators', async (req, res) => {
+        if(req.headers.authorization) {
+            let user = await getUserFromJWT(req.headers.authorization)
+            if('user' in user && user.user) {
+                let creators = [user.user]
+                let database = new Database('content', 'creators')
+                let cursor = await database.collection.find<User>({'owners': user.user.handle})
+                creators = [...creators, ...await cursor.toArray()]
+                res.send({creators: creators})
+            } else {
+                res.send({error: "You are not allowed to access this resource"})
+            }
+        } else {
+            console.log("authorization not sent")
+            res.send({error: "You are not allowed to access this resource"})
+        }
     })
 
     app.delete('/auth/user', async (req, res) => {
@@ -635,6 +653,19 @@ export async function getUserFromJWT(jwtString: string) {
     } catch(err) {
         console.log("JWT not verified")
         return {error: "Session expired, please sign in and try again"} 
+    }
+}
+
+export function getIdFromJWT(jwtString: string) {
+    console.log(jwtString)
+    try {
+        let token = jwt.verify(jwtString, JWTKey) as any
+        if(token && token._id) {
+            return new ObjectId(token._id)
+        }
+    } catch(e) {
+        console.log('JWT Error: ' + e);
+        return {error: "Session expired, please sign in and try again"}
     }
 }
 
