@@ -10,6 +10,7 @@ import { initializeCommunityRoutes } from './community/routes.js';
 import { initializeMapRoutes } from './maps/routes.js';
 import { initializeAuthRoutes } from './auth/routes.js';
 import { MongoClient } from 'mongodb';
+import { initializeContentRoutes } from './content/routes.js';
 let credentials;
 try {
     var privateKey = fs.readFileSync('/etc/letsencrypt/live/api.mccreations.net/privkey.pem', 'utf8');
@@ -28,6 +29,7 @@ export const client = new MongoClient(uri);
 initializeCommunityRoutes();
 initializeMapRoutes();
 initializeAuthRoutes();
+initializeContentRoutes();
 var httpServer = createHttpServer(app);
 httpServer.listen(80);
 if (credentials) {
