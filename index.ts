@@ -10,6 +10,7 @@ import { initializeCommunityRoutes } from './community/routes.js';
 import { initializeMapRoutes } from './maps/routes.js';
 import { initializeAuthRoutes } from './auth/routes.js';
 import { MongoClient, ServerApiVersion } from 'mongodb';
+import { initializeContentRoutes } from './content/routes.js';
 
 let credentials;
 
@@ -33,6 +34,7 @@ export const client = new MongoClient(uri);
 initializeCommunityRoutes();
 initializeMapRoutes();
 initializeAuthRoutes();
+initializeContentRoutes();
 
 var httpServer = createHttpServer(app);
 httpServer.listen(80);
