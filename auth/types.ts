@@ -14,7 +14,8 @@ export interface User {
         link: string,
         name: string
     },
-    providers?: Provider[]
+    providers?: Provider[],
+    owners?: string[]
 }
 
 export interface Provider {

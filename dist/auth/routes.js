@@ -15,11 +15,30 @@ import { ObjectId } from "mongodb";
 import jwt from 'jsonwebtoken';
 import { forgotPasswordEmail } from "../email/email.js";
 const saltRounds = 10;
-const JWTKey = "literally1984";
+export const JWTKey = "literally1984";
 export function initializeAuthRoutes() {
     app.get('/auth/user', (req, res) => __awaiter(this, void 0, void 0, function* () {
         if (req.headers.authorization) {
             res.send(yield getUserFromJWT(req.headers.authorization));
+        }
+        else {
+            console.log("authorization not sent");
+            res.send({ error: "You are not allowed to access this resource" });
+        }
+    }));
+    app.get('/auth/user/creators', (req, res) => __awaiter(this, void 0, void 0, function* () {
+        if (req.headers.authorization) {
+            let user = yield getUserFromJWT(req.headers.authorization);
+            if ('user' in user && user.user) {
+                let creators = [user.user];
+                let database = new Database('content', 'creators');
+                let cursor = yield database.collection.find({ 'owners': user.user.handle });
+                creators = [...creators, ...yield cursor.toArray()];
+                res.send({ creators: creators });
+            }
+            else {
+                res.send({ error: "You are not allowed to access this resource" });
+            }
         }
         else {
             console.log("authorization not sent");
@@ -636,6 +655,19 @@ export function getUserFromJWT(jwtString) {
             return { error: "Session expired, please sign in and try again" };
         }
     });
+}
+export function getIdFromJWT(jwtString) {
+    console.log(jwtString);
+    try {
+        let token = jwt.verify(jwtString, JWTKey);
+        if (token && token._id) {
+            return new ObjectId(token._id);
+        }
+    }
+    catch (e) {
+        console.log('JWT Error: ' + e);
+        return { error: "Session expired, please sign in and try again" };
+    }
 }
 function instanceOfUser(object) {
     return 'username' in object;
