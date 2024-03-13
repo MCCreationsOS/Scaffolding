@@ -1,8 +1,9 @@
 import QueryString from 'qs';
 import { app } from '../index.js'
 import { Database, DatabaseQueryBuilder } from '../db/connect.js';
-import { getUserFromJWT } from '../auth/routes.js';
+import { getIdFromJWT, getUserFromJWT } from '../auth/routes.js';
 import { MapDoc } from '../db/types.js';
+import { ObjectId } from 'mongodb';
 
 export function initializeMapRoutes() {
     app.get('/maps', async (req, res) => {
@@ -17,13 +18,18 @@ export function initializeMapRoutes() {
     app.get('/maps/:slug', async (req, res) => {
         let result = await findMaps({limit: 1, slug: req.params.slug}, false)
 
-		if(result.documents[0].status < 1) {
+		if(result.documents[0] && result.documents[0].status < 1) {
 			let filter = true;
 			if(req.headers.authorization) {
 				let uObj = await getUserFromJWT(req.headers.authorization)
 				if(uObj.user && result.documents[0].creators) {
 					for(const creator of result.documents[0].creators) {
 						if(creator.handle === uObj.user.handle) filter = false;
+					}
+				} else {
+					let id = getIdFromJWT(req.headers.authorization) as ObjectId
+					if(id && id instanceof ObjectId && id.equals(result.documents[0]._id)) {
+						filter = false;
 					}
 				}
 			}
@@ -39,9 +45,42 @@ export function initializeMapRoutes() {
 		}
         res.send(result.documents[0])
     })
+
+	app.post('/maps/:slug/download', async (req, res) => {
+        let result = await findMaps({limit: 1, slug: req.params.slug}, false)
+
+        if(result.documents[0]) {
+            let map = result.documents[0]
+
+            let database = new Database();
+            database.collection.updateOne({_id: map._id}, {$inc: {downloads: 1}})
+        }
+    })
+
+	app.get('/maps/:slug/comments', async (req, res) => {
+		let result = await findMaps({limit: 1, slug: req.params.slug}, false)
+
+        if(result.documents[0]) {
+            let map = result.documents[0]
+			res.send({comments: map.comments})
+			return;
+		}
+		res.sendStatus(404)
+	})
+
+	app.get('/maps/:slug/stats', async (req, res) => {
+		let result = await findMaps({limit: 1, slug: req.params.slug}, false)
+
+        if(result.documents[0]) {
+            let map = result.documents[0]
+			res.send({downloads: map.downloads, ratings: map.ratings, rating: map.rating, views: map.views})
+			return;
+		}
+		res.sendStatus(404)
+	})
 }
 
-async function findMaps(requestQuery: any, useProjection: boolean) {
+export async function findMaps(requestQuery: any, useProjection: boolean) {
     let database = new Database();
     let query = new DatabaseQueryBuilder();
 

@@ -16,7 +16,8 @@ var __asyncValues = (this && this.__asyncValues) || function (o) {
 };
 import { app } from '../index.js';
 import { Database, DatabaseQueryBuilder } from '../db/connect.js';
-import { getUserFromJWT } from '../auth/routes.js';
+import { getIdFromJWT, getUserFromJWT } from '../auth/routes.js';
+import { ObjectId } from 'mongodb';
 export function initializeMapRoutes() {
     app.get('/maps', (req, res) => __awaiter(this, void 0, void 0, function* () {
         let result = yield findMaps(req.query, true);
@@ -29,7 +30,7 @@ export function initializeMapRoutes() {
     }));
     app.get('/maps/:slug', (req, res) => __awaiter(this, void 0, void 0, function* () {
         let result = yield findMaps({ limit: 1, slug: req.params.slug }, false);
-        if (result.documents[0].status < 1) {
+        if (result.documents[0] && result.documents[0].status < 1) {
             let filter = true;
             if (req.headers.authorization) {
                 let uObj = yield getUserFromJWT(req.headers.authorization);
@@ -37,6 +38,12 @@ export function initializeMapRoutes() {
                     for (const creator of result.documents[0].creators) {
                         if (creator.handle === uObj.user.handle)
                             filter = false;
+                    }
+                }
+                else {
+                    let id = getIdFromJWT(req.headers.authorization);
+                    if (id && id instanceof ObjectId && id.equals(result.documents[0]._id)) {
+                        filter = false;
                     }
                 }
             }
@@ -51,8 +58,34 @@ export function initializeMapRoutes() {
         }
         res.send(result.documents[0]);
     }));
+    app.post('/maps/:slug/download', (req, res) => __awaiter(this, void 0, void 0, function* () {
+        let result = yield findMaps({ limit: 1, slug: req.params.slug }, false);
+        if (result.documents[0]) {
+            let map = result.documents[0];
+            let database = new Database();
+            database.collection.updateOne({ _id: map._id }, { $inc: { downloads: 1 } });
+        }
+    }));
+    app.get('/maps/:slug/comments', (req, res) => __awaiter(this, void 0, void 0, function* () {
+        let result = yield findMaps({ limit: 1, slug: req.params.slug }, false);
+        if (result.documents[0]) {
+            let map = result.documents[0];
+            res.send({ comments: map.comments });
+            return;
+        }
+        res.sendStatus(404);
+    }));
+    app.get('/maps/:slug/stats', (req, res) => __awaiter(this, void 0, void 0, function* () {
+        let result = yield findMaps({ limit: 1, slug: req.params.slug }, false);
+        if (result.documents[0]) {
+            let map = result.documents[0];
+            res.send({ downloads: map.downloads, ratings: map.ratings, rating: map.rating, views: map.views });
+            return;
+        }
+        res.sendStatus(404);
+    }));
 }
-function findMaps(requestQuery, useProjection) {
+export function findMaps(requestQuery, useProjection) {
     var _a, e_1, _b, _c;
     return __awaiter(this, void 0, void 0, function* () {
         let database = new Database();
