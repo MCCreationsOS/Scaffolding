@@ -8,6 +8,24 @@ import { ObjectId } from 'mongodb';
 export function initializeMapRoutes() {
     app.get('/maps', async (req, res) => {
         let result = await findMaps(req.query, true);
+		let user = await getUserFromJWT(req.headers.authorization + "")
+
+		result.documents = result.documents.filter((map: MapDoc) => {
+			if(map.status < 2) {
+				if(user.user && map.creators) {
+					for(const creator of map.creators) {
+						if(creator.handle === user.user.handle) return true;
+					}
+				} else {
+					let id = getIdFromJWT(req.headers.authorization + "") as ObjectId
+					if(id && id instanceof ObjectId && id.equals(map._id)) {
+						return true;
+					}
+				}
+				return false;
+			}
+			return true;
+		})
 
         if(req.query.sendCount && req.query.sendCount === "true") {
             res.send({count: result.totalCount})
@@ -119,8 +137,11 @@ export async function findMaps(requestQuery: any, useProjection: boolean) {
 			query.buildSort("createdDate", -1)
 	}
 
-	if(requestQuery.status) {
+	if(requestQuery.status && (!requestQuery.exclusiveStatus || requestQuery.exclusiveStatus === "false")) {
+		console.log(requestQuery.status)
         query.buildQueryWithOperation("status", Number.parseInt(requestQuery.status), "$gte")
+	} else if (requestQuery.status) {
+		query.buildQuery("status", Number.parseInt(requestQuery.status))
 	}
 
 	if(requestQuery.version) {
@@ -147,16 +168,18 @@ export async function findMaps(requestQuery: any, useProjection: boolean) {
 	}
 
 	const projection = {
-		_id: 0,
 		title: 1,
 		// score: { $meta: "textScore" },
 		"files.minecraftVersion": 1,
 		shortDescription: 1,
 		downloads: 1,
+		views: 1,
 		rating: 1,
-		"creators.username": 1,
+		creators: 1,
 		images: 1,
-		slug: 1
+		slug: 1,
+		createdDate: 1,
+		status: 1
 	};
 
 	if(useProjection)

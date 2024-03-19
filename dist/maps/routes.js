@@ -21,6 +21,25 @@ import { ObjectId } from 'mongodb';
 export function initializeMapRoutes() {
     app.get('/maps', (req, res) => __awaiter(this, void 0, void 0, function* () {
         let result = yield findMaps(req.query, true);
+        let user = yield getUserFromJWT(req.headers.authorization + "");
+        result.documents = result.documents.filter((map) => {
+            if (map.status < 2) {
+                if (user.user && map.creators) {
+                    for (const creator of map.creators) {
+                        if (creator.handle === user.user.handle)
+                            return true;
+                    }
+                }
+                else {
+                    let id = getIdFromJWT(req.headers.authorization + "");
+                    if (id && id instanceof ObjectId && id.equals(map._id)) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+            return true;
+        });
         if (req.query.sendCount && req.query.sendCount === "true") {
             res.send({ count: result.totalCount });
         }
@@ -124,8 +143,12 @@ export function findMaps(requestQuery, useProjection) {
             default:
                 query.buildSort("createdDate", -1);
         }
-        if (requestQuery.status) {
+        if (requestQuery.status && (!requestQuery.exclusiveStatus || requestQuery.exclusiveStatus === "false")) {
+            console.log(requestQuery.status);
             query.buildQueryWithOperation("status", Number.parseInt(requestQuery.status), "$gte");
+        }
+        else if (requestQuery.status) {
+            query.buildQuery("status", Number.parseInt(requestQuery.status));
         }
         if (requestQuery.version) {
             requestQuery.version.replace(".0", "");
@@ -147,16 +170,18 @@ export function findMaps(requestQuery, useProjection) {
             query.setSkip(Number.parseInt(requestQuery.skip));
         }
         const projection = {
-            _id: 0,
             title: 1,
             // score: { $meta: "textScore" },
             "files.minecraftVersion": 1,
             shortDescription: 1,
             downloads: 1,
+            views: 1,
             rating: 1,
-            "creators.username": 1,
+            creators: 1,
             images: 1,
-            slug: 1
+            slug: 1,
+            createdDate: 1,
+            status: 1
         };
         if (useProjection)
             query.setProjection(projection);
