@@ -55,7 +55,7 @@ export class DatabaseQueryBuilder {
     buildQueryWithOperation(field: string, value: any, operation: any) {
         let operator: FilterOperators<typeof value> = {}
         operator[operation] = value;
-        this.query = {[field]: operator}
+        this.query = {...this.query, [field]: operator}
     }
 
     setQuery(query: any) {
