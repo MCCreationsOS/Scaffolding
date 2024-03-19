@@ -9,6 +9,7 @@ import s3 from "aws-sdk";
 import { Readable } from "stream";
 import { ObjectId } from "mongodb";
 import { findMaps } from "../maps/routes.js";
+import { approvedEmail, requestApprovalEmail } from "../email/email.js";
 const { S3 } = s3
 
 export function initializeContentRoutes() {
@@ -33,7 +34,7 @@ export function initializeContentRoutes() {
         if(req.body.content.type === "Map") {
             let map: MapDoc = {
                 title: req.body.content.title as string,
-                shortDescription: req.body.content.shortDescription as string,
+                shortDescription: req.body.content.summary as string,
                 description: "",
                 images: [],
                 status: 0,
@@ -99,12 +100,19 @@ export function initializeContentRoutes() {
 
     app.post('/content/update', async (req, res) => {
         let map = req.body.content as MapDoc
+        let database = new Database();
+        let user = await getUserFromJWT(req.headers.authorization + "")
+        let currentMap = await database.collection.findOne<MapDoc>({slug: req.body.slug})
+
+        if(!user.user || !currentMap || currentMap.creators?.filter(creator => creator.handle === user.user?.handle).length === 0) { 
+            return res.sendStatus(401);
+        }
 
         if(!map) {
             res.send({error: "Map not sent in request"})
             return;
         }
-        let database = new Database();
+
         let result = await database.collection.updateOne({_id: new ObjectId(map._id)}, {
             "$set": {
                 title: map.title,
@@ -120,6 +128,90 @@ export function initializeContentRoutes() {
             }
         })
         res.send({result: result})
+    })
+
+    app.post('/content/request_approval', async (req, res) => {
+        let link = "https://next.mccreations.net/maps/" + req.body.slug
+        let database = new Database();
+        let user = await getUserFromJWT(req.headers.authorization + "")
+        let map = await database.collection.findOne<MapDoc>({slug: req.body.slug})
+
+        if(!user.user || !map || map.creators?.filter(creator => creator.handle === user.user?.handle).length === 0) { 
+            return res.sendStatus(401);
+        }
+        requestApprovalEmail(link)
+
+        //https://discord.com/api/webhooks/1219390163105484860/pFfUP8gY7xP3OCkQpDSbcyPhZ5GbG485xl0Y3XrxRqpylSTiZ6S1PWVvXqjYEvzs3cFE
+    
+        await database.collection.updateOne({slug: req.body.slug}, {$set: {status: 1}})
+        res.sendStatus(200)
+
+        fetch('https://discord.com/api/webhooks/1219390163105484860/pFfUP8gY7xP3OCkQpDSbcyPhZ5GbG485xl0Y3XrxRqpylSTiZ6S1PWVvXqjYEvzs3cFE', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                content: "New Map Requesting Approval: " + link
+            })
+        
+        }).then(response => {
+            console.log(response)
+        })
+    })
+
+    app.get('/content/:slug/approve', async (req, res) => {
+        let database = new Database();
+        let user = await getUserFromJWT(req.headers.authorization + "")
+        if(!user.user || user.user.handle !== "crazycowmm") {
+            return res.sendStatus(401);
+        }
+        await database.collection.updateOne({slug: req.params.slug}, {$set: {status: 2}})
+        res.sendStatus(200)
+
+        let map = await database.collection.findOne<MapDoc>({slug: req.params.slug})
+        if(map) {
+            let creators = map.creators
+            creators?.forEach(async (creator) => {
+                let user = await database.collection.findOne({handle: creator.handle})
+                if(user && user.email) {
+                    approvedEmail(user.email, "https://next.mccreations.net/maps/" + req.params.slug, map?.title + "")
+                }
+            })
+
+            let discordMessage = {
+                content: "<@&883788946327347210>",
+                allowed_mentions:{
+                    roles: [
+                        "883788946327347210"
+                    ]
+                },
+                embeds: [
+                    {
+                        title: map.title,
+                        //   type: "rich",
+                        description: map.shortMapDescription + " https://mccreations.net/maps/" + map.slug,
+                        url: "https://mccreations.net/maps/" + map.slug,
+                        //   timestamp: Date.now(),
+                        //   color: 1,
+                        image: {
+                            url: map.images[0]
+                        },
+                        author: {
+                            name: map.creators?.map(creator => creator.username).join(", ")
+                        }
+                    }
+                ]
+            }
+
+            fetch("https://discord.com/api/webhooks/1020486876391559238/_efhzBaZTdt5IAHt3_YzBy2oOT5AYvoxg2Nr0lxMFaM3c6i8PYiuGXoOt_KZLHryZvLs", {
+                method: 'post',
+                headers: {
+                "Content-Type": "application/json"
+                },
+                body: JSON.stringify(discordMessage)
+            });
+        }
     })
 }
 

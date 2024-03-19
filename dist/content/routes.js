@@ -15,6 +15,7 @@ import jwt from 'jsonwebtoken';
 import { JWTKey, getUserFromJWT } from "../auth/routes.js";
 import s3 from "aws-sdk";
 import { ObjectId } from "mongodb";
+import { approvedEmail, requestApprovalEmail } from "../email/email.js";
 const { S3 } = s3;
 export function initializeContentRoutes() {
     app.post('/content', (req, res) => __awaiter(this, void 0, void 0, function* () {
@@ -38,7 +39,7 @@ export function initializeContentRoutes() {
         if (req.body.content.type === "Map") {
             let map = {
                 title: req.body.content.title,
-                shortDescription: req.body.content.shortDescription,
+                shortDescription: req.body.content.summary,
                 description: "",
                 images: [],
                 status: 0,
@@ -100,12 +101,18 @@ export function initializeContentRoutes() {
         }
     }));
     app.post('/content/update', (req, res) => __awaiter(this, void 0, void 0, function* () {
+        var _a;
         let map = req.body.content;
+        let database = new Database();
+        let user = yield getUserFromJWT(req.headers.authorization + "");
+        let currentMap = yield database.collection.findOne({ slug: req.body.slug });
+        if (!user.user || !currentMap || ((_a = currentMap.creators) === null || _a === void 0 ? void 0 : _a.filter(creator => { var _a; return creator.handle === ((_a = user.user) === null || _a === void 0 ? void 0 : _a.handle); }).length) === 0) {
+            return res.sendStatus(401);
+        }
         if (!map) {
             res.send({ error: "Map not sent in request" });
             return;
         }
-        let database = new Database();
         let result = yield database.collection.updateOne({ _id: new ObjectId(map._id) }, {
             "$set": {
                 title: map.title,
@@ -121,6 +128,82 @@ export function initializeContentRoutes() {
             }
         });
         res.send({ result: result });
+    }));
+    app.post('/content/request_approval', (req, res) => __awaiter(this, void 0, void 0, function* () {
+        var _b;
+        let link = "https://next.mccreations.net/maps/" + req.body.slug;
+        let database = new Database();
+        let user = yield getUserFromJWT(req.headers.authorization + "");
+        let map = yield database.collection.findOne({ slug: req.body.slug });
+        if (!user.user || !map || ((_b = map.creators) === null || _b === void 0 ? void 0 : _b.filter(creator => { var _a; return creator.handle === ((_a = user.user) === null || _a === void 0 ? void 0 : _a.handle); }).length) === 0) {
+            return res.sendStatus(401);
+        }
+        requestApprovalEmail(link);
+        //https://discord.com/api/webhooks/1219390163105484860/pFfUP8gY7xP3OCkQpDSbcyPhZ5GbG485xl0Y3XrxRqpylSTiZ6S1PWVvXqjYEvzs3cFE
+        yield database.collection.updateOne({ slug: req.body.slug }, { $set: { status: 1 } });
+        res.sendStatus(200);
+        fetch('https://discord.com/api/webhooks/1219390163105484860/pFfUP8gY7xP3OCkQpDSbcyPhZ5GbG485xl0Y3XrxRqpylSTiZ6S1PWVvXqjYEvzs3cFE', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                content: "New Map Requesting Approval: " + link
+            })
+        }).then(response => {
+            console.log(response);
+        });
+    }));
+    app.get('/content/:slug/approve', (req, res) => __awaiter(this, void 0, void 0, function* () {
+        var _c;
+        let database = new Database();
+        let user = yield getUserFromJWT(req.headers.authorization + "");
+        if (!user.user || user.user.handle !== "crazycowmm") {
+            return res.sendStatus(401);
+        }
+        yield database.collection.updateOne({ slug: req.params.slug }, { $set: { status: 2 } });
+        res.sendStatus(200);
+        let map = yield database.collection.findOne({ slug: req.params.slug });
+        if (map) {
+            let creators = map.creators;
+            creators === null || creators === void 0 ? void 0 : creators.forEach((creator) => __awaiter(this, void 0, void 0, function* () {
+                let user = yield database.collection.findOne({ handle: creator.handle });
+                if (user && user.email) {
+                    approvedEmail(user.email, "https://next.mccreations.net/maps/" + req.params.slug, (map === null || map === void 0 ? void 0 : map.title) + "");
+                }
+            }));
+            let discordMessage = {
+                content: "<@&883788946327347210>",
+                allowed_mentions: {
+                    roles: [
+                        "883788946327347210"
+                    ]
+                },
+                embeds: [
+                    {
+                        title: map.title,
+                        //   type: "rich",
+                        description: map.shortMapDescription + " https://mccreations.net/maps/" + map.slug,
+                        url: "https://mccreations.net/maps/" + map.slug,
+                        //   timestamp: Date.now(),
+                        //   color: 1,
+                        image: {
+                            url: map.images[0]
+                        },
+                        author: {
+                            name: (_c = map.creators) === null || _c === void 0 ? void 0 : _c.map(creator => creator.username).join(", ")
+                        }
+                    }
+                ]
+            };
+            fetch("https://discord.com/api/webhooks/1020486876391559238/_efhzBaZTdt5IAHt3_YzBy2oOT5AYvoxg2Nr0lxMFaM3c6i8PYiuGXoOt_KZLHryZvLs", {
+                method: 'post',
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(discordMessage)
+            });
+        }
     }));
 }
 const bucket = new S3({
