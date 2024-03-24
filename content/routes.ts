@@ -10,6 +10,7 @@ import { Readable } from "stream";
 import { ObjectId } from "mongodb";
 import { findMaps } from "../maps/routes.js";
 import { approvedEmail, requestApprovalEmail } from "../email/email.js";
+import puppeteer from "puppeteer";
 const { S3 } = s3
 
 export function initializeContentRoutes() {
@@ -102,9 +103,10 @@ export function initializeContentRoutes() {
         let map = req.body.content as MapDoc
         let database = new Database();
         let user = await getUserFromJWT(req.headers.authorization + "")
-        let currentMap = await database.collection.findOne<MapDoc>({slug: req.body.slug})
+        let currentMap = await database.collection.findOne<MapDoc>({_id: new ObjectId(map._id)})
 
         if(!user.user || !currentMap || currentMap.creators?.filter(creator => creator.handle === user.user?.handle).length === 0) { 
+            console.log("User not found or not creator")
             return res.sendStatus(401);
         }
 
@@ -124,7 +126,8 @@ export function initializeContentRoutes() {
                 slug: map.slug,
                 createdDate: new Date(map.createdDate),
                 updatedDate: new Date(),
-                creators: map.creators
+                creators: map.creators,
+                files: map.files
             }
         })
         res.send({result: result})
@@ -190,8 +193,8 @@ export function initializeContentRoutes() {
                     {
                         title: map.title,
                         //   type: "rich",
-                        description: map.shortMapDescription + " https://mccreations.net/maps/" + map.slug,
-                        url: "https://mccreations.net/maps/" + map.slug,
+                        description: map.shortDescription + " https://next.mccreations.net/maps/" + map.slug,
+                        url: "https://next.mccreations.net/maps/" + map.slug,
                         //   timestamp: Date.now(),
                         //   color: 1,
                         image: {
@@ -213,6 +216,31 @@ export function initializeContentRoutes() {
             });
         }
     })
+
+    app.post('/content/rate/:slug', async (req, res) => {
+        let database = new Database();
+        let map = req.body.map
+	
+        // Calculate new rating
+        let rating = 0;
+        let ratings = map.ratings;
+        let rates = 1;
+        if(ratings) {
+            rates = map.ratings.length + 1;
+            ratings.push(Number.parseFloat(req.body.rating))
+        } else {
+            ratings = [Number.parseFloat(req.body.rating)]
+        }
+
+        for(let i = 0; i < rates; i++) {
+            rating += ratings[i];
+        }
+        rating = rating/(rates + 0.0);
+
+        database.collection.updateOne({slug: req.params.slug}, {$set: {ratings: ratings, rating: rating}}).then(() => {
+            res.send({rating: rating})
+        })
+    })
 }
 
 const bucket = new S3({
@@ -221,7 +249,7 @@ const bucket = new S3({
     secretAccessKey: "***REMOVED***"
 });
 
-async function upload(file: string | Readable | Buffer | Uint8Array | Blob, name: string) {
+async function upload(file: string | Readable | Buffer | Uint8Array | Blob, name: string): Promise<string | any> {
     const params = {
         Bucket: 'mccreations',
         Key: name,
@@ -229,10 +257,9 @@ async function upload(file: string | Readable | Buffer | Uint8Array | Blob, name
     }
     try {
         const u = bucket.upload(params);
-        await u.promise().catch(error => {
-            console.error(error)
-        });
+        let data = await u.promise()
         console.log("Uploaded " + name);
+        return data.Location
     } catch (error) {
         return error;
     }
@@ -243,9 +270,9 @@ async function fetchFromPMC(url: string) {
     let html = new JSDOM(res.data).window.document
 
     
-    let title = html.querySelector('h1#resource-title-text')?.textContent?.trim();
+    let title = html.querySelector('div#resource-title-text h1')?.textContent?.trim();
     if(!title) return;
-    let slug = title.toLowerCase().replace(/\s/g, "_")
+    let slug = title.toLowerCase().replace(/\s/g, "_").replace(/[^a-zA-Z0-9_]/g, "")
     let description = html.querySelector('#r-text-block')?.innerHTML
     if(!description) return;
     let shortDescription = ''
@@ -254,7 +281,13 @@ async function fetchFromPMC(url: string) {
     let views = 0;
     let rating = 0;
     let createdDate = new Date();
-    let username = html.querySelectorAll('.pusername')[1].textContent + ""
+    let users = html.querySelectorAll('.pusername')
+    let username = ""
+    if(users.length === 1) {
+        username = html.querySelectorAll('.pusername')[0].textContent + ""
+    } else {
+        username = html.querySelectorAll('.pusername')[1].textContent + ""
+    }
 
     let map: MapDoc = {
         title: title,
@@ -267,7 +300,8 @@ async function fetchFromPMC(url: string) {
         rating: rating,
         createdDate: createdDate,
         images: [],
-        creators: [{username: username}]
+        creators: [{username: username}],
+        importedUrl: url
     }
 
     map.files = [{type: 'world', worldUrl: "https://www.planetminecraft.com" + html.querySelector('.branded-download')?.getAttribute('href'), minecraftVersion: ''}]
@@ -284,6 +318,7 @@ async function fetchFromPMC(url: string) {
         }
     })
 
+    await loadAndTransferImages(map)
     return map;
 }
 
@@ -303,8 +338,13 @@ async function fetchFromMCMaps(url: string) {
 
     let title = html.querySelector('h1')?.textContent?.trim();
     if(!title) return;
-    let slug = title.toLowerCase().replace(/\s/g, "_")
-    let description = descTable.substring(mapInfoStart + mapInfoLocator.length, pictureStart)
+    let slug = title.toLowerCase().replace(/\s/g, "_").replace(/[^a-zA-Z0-9_]/g, "")
+    let description = ""
+    if(descTable.includes(pictureLocator)) {
+        description = descTable.substring(mapInfoStart + mapInfoLocator.length, pictureStart)
+    } else {
+        description = descTable.substring(mapInfoStart + mapInfoLocator.length, changelogStart)
+    }
     description.replace(/\<table style="width: 98%;" border="0" cellspacing="0" cellpadding="0"\>\n\<tbody\>\n\<tr>\n\<td class="info_title"><center>/g, "")
     description.replace(/\<\/center\>\<\/td\>\n\<\/tr\>\n\<\/tbody\>\n\<\/table>/g, "")
     let shortDescription = ''
@@ -326,7 +366,8 @@ async function fetchFromMCMaps(url: string) {
         rating: rating,
         createdDate: createdDate,
         images: [],
-        creators: [{username: username}]
+        creators: [{username: username}],
+        importedUrl: url
     }
 
     map.files = [{
@@ -334,7 +375,8 @@ async function fetchFromMCMaps(url: string) {
         worldUrl: "https://minecraftmaps.com" + html.querySelector('.jdbutton')?.getAttribute('href'), 
         minecraftVersion: statsPanel?.querySelectorAll('tr')[3].querySelectorAll('span')[1].textContent + "", 
         contentVersion: statsPanel?.querySelectorAll('tr')[2].querySelectorAll('span')[1].textContent + ""}]
-    let images = html.querySelector('.jd-item-page')?.querySelectorAll('img')
+
+    let images = html.querySelector('table')?.querySelector('table')?.querySelector('td')?.querySelectorAll('img')
     if(images) {
         images.forEach(async (image, idx) => {
             let url = image.getAttribute('data-src')!
@@ -348,6 +390,72 @@ async function fetchFromMCMaps(url: string) {
             // }
         })
     }
-
+    await loadAndTransferImages(map)
     return map;
+}
+
+interface TransferredImage {
+    originalUrl: string,
+    transferredUrl: string
+}
+
+async function loadAndTransferImages(map: MapDoc) {
+    try {
+        puppeteer.launch().then(async browser => {
+            try {
+                let idx = 0;
+                let fileCounter = 0;
+                let uploaded_images: TransferredImage[] = []
+                let timeoutSeconds = 30;
+                const page = await browser.newPage();
+            
+                page.on('response', async (response) => {
+                    try {
+                        const matches = /.*\.(jpg|png|svg|gif|webp)$/.exec(response.url());
+                        if (matches && (matches.length === 2) && (response.url().startsWith('https://www.minecraftmaps.com/images/jdownloads/screenshots/') || response.url().startsWith("https://static.planetminecraft.com/files/image/minecraft/"))) {
+                            console.log(matches);
+                            const extension = matches[1];
+                            const buffer = await response.buffer();
+                            fileCounter += 1;
+                            let url = await upload(buffer, `${map.slug}_image_${fileCounter}.${extension}`)
+                            uploaded_images.push({transferredUrl: url, originalUrl: response.url()})
+                        }
+                    } catch(e) {
+                        console.log("Error uploading image: " + e)
+                    }
+                  });
+                
+                await page.goto(map.importedUrl!);
+                try {
+                    // page.mouse.wheel({deltaY: 2000})
+    
+                    while(uploaded_images.length < map.images.length && timeoutSeconds > 0) {
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                        timeoutSeconds--;
+                    }
+                    await browser.close();
+    
+                    if(timeoutSeconds <= 0) {
+                        return;
+                    }
+                    
+                    let database = new Database();
+                    for(let i = 0; i < map.images.length; i++) {
+                        let image = uploaded_images.find(img => img.originalUrl === map.images[i])
+                        if(image) {
+                            map.images[i] = image.transferredUrl
+                        }
+                    }
+                    await database.collection.updateOne({slug: map.slug}, {$set: {images: map.images}})
+                } catch(e) {
+                    console.log("Error loading page: " + e)
+                
+                }
+            } catch(e) {
+                console.log("Error fetching images using puppeteer: " + e)
+            }
+        })
+    } catch(e) {
+        console.log("Error launching puppeteer: " + e)
+    }
 }
