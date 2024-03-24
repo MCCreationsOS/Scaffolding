@@ -37,9 +37,9 @@ export function initializeContentRoutes() {
             uploader = yield getUserFromJWT(req.headers.authorization);
         }
         let slug = req.body.content.title.toLowerCase().replace(/\s/g, "_").replace(/[^a-zA-Z0-9_]/g, "");
-        let i = 1;
-        while (yield checkIfSlugUnique(slug + i)) {
-            i++;
+        let i = "";
+        while (!(yield checkIfSlugUnique(slug + i))) {
+            i += (Math.random() * 100).toFixed(0);
         }
         slug = slug + i;
         let database = new Database();
@@ -95,9 +95,9 @@ export function initializeContentRoutes() {
                     map.creators = [{ username: user.user.username, handle: user.user.handle }];
                 }
             }
-            let i = 1;
-            while (yield checkIfSlugUnique(map.slug + i)) {
-                i++;
+            let i = "";
+            while (!(yield checkIfSlugUnique(map.slug + i))) {
+                i += (Math.random() * 100).toFixed(0);
             }
             map.slug = map.slug + i;
             let database = new Database();
@@ -126,9 +126,9 @@ export function initializeContentRoutes() {
             res.send({ error: "Map not sent in request" });
             return;
         }
-        let i = 1;
-        while (yield checkIfSlugUnique(map.slug + i)) {
-            i++;
+        let i = "";
+        while (!(yield checkIfSlugUnique(map.slug + i))) {
+            i += (Math.random() * 100).toFixed(0);
         }
         map.slug = map.slug + i;
         let result = yield database.collection.updateOne({ _id: new ObjectId(map._id) }, {
@@ -329,7 +329,7 @@ function fetchFromPMC(url) {
     });
 }
 function fetchFromMCMaps(url) {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l;
     return __awaiter(this, void 0, void 0, function* () {
         const mapInfoLocator = 'Map Info</h2>\n</center></td>\n</tr>\n</tbody>\n</table>';
         const pictureLocator = '<table style="width: 100%;" border="0" cellspacing="0" cellpadding="0">\n<tbody>\n<tr>\n<td class="info_title"><center>\n<h2>Pictures</h2>\n</center></td>\n</tr>\n</tbody>\n</table>';
@@ -384,6 +384,7 @@ function fetchFromMCMaps(url) {
                 contentVersion: (statsPanel === null || statsPanel === void 0 ? void 0 : statsPanel.querySelectorAll('tr')[2].querySelectorAll('span')[1].textContent) + ""
             }];
         let images = (_k = (_j = (_h = html.querySelector('table')) === null || _h === void 0 ? void 0 : _h.querySelector('table')) === null || _j === void 0 ? void 0 : _j.querySelector('td')) === null || _k === void 0 ? void 0 : _k.querySelectorAll('img');
+        map.images.push((_l = html.querySelector('.map-images')) === null || _l === void 0 ? void 0 : _l.getAttribute('src'));
         if (images) {
             images.forEach((image, idx) => __awaiter(this, void 0, void 0, function* () {
                 let url = image.getAttribute('data-src');
