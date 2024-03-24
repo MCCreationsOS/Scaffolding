@@ -33,9 +33,9 @@ export function initializeContentRoutes() {
         }
 
         let slug = req.body.content.title.toLowerCase().replace(/\s/g, "_").replace(/[^a-zA-Z0-9_]/g, "")
-        let i = 1;
-        while(await checkIfSlugUnique(slug + i)) {
-            i++;
+        let i = "";
+        while(!await checkIfSlugUnique(slug + i)) {
+            i += (Math.random() * 100).toFixed(0);
         }
         slug = slug + i;
 
@@ -96,9 +96,9 @@ export function initializeContentRoutes() {
                 }
             }
 
-            let i = 1;
-            while(await checkIfSlugUnique(map.slug + i)) {
-                i++;
+            let i = "";
+            while(!await checkIfSlugUnique(map.slug + i)) {
+                i += (Math.random() * 100).toFixed(0);
             }
             map.slug = map.slug + i;
 
@@ -130,9 +130,9 @@ export function initializeContentRoutes() {
             return;
         }
 
-        let i = 1;
-        while(await checkIfSlugUnique(map.slug + i)) {
-            i++;
+        let i = "";
+        while(!(await checkIfSlugUnique(map.slug + i))) {
+            i += (Math.random() * 100).toFixed(0);
         }
         map.slug = map.slug + i;
 
@@ -398,6 +398,8 @@ async function fetchFromMCMaps(url: string) {
         contentVersion: statsPanel?.querySelectorAll('tr')[2].querySelectorAll('span')[1].textContent + ""}]
 
     let images = html.querySelector('table')?.querySelector('table')?.querySelector('td')?.querySelectorAll('img')
+
+    map.images.push(html.querySelector('.map-images')?.getAttribute('src')!)
     if(images) {
         images.forEach(async (image, idx) => {
             let url = image.getAttribute('data-src')!
