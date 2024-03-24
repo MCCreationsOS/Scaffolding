@@ -31,6 +31,14 @@ export function initializeContentRoutes() {
         if(req.headers.authorization) {
             uploader = await getUserFromJWT(req.headers.authorization);
         }
+
+        let slug = req.body.content.title.toLowerCase().replace(/\s/g, "_").replace(/[^a-zA-Z0-9_]/g, "")
+        let i = 1;
+        while(await checkIfSlugUnique(slug + i)) {
+            i++;
+        }
+        slug = slug + i;
+
         let database = new Database();
         if(req.body.content.type === "Map") {
             let map: MapDoc = {
@@ -41,7 +49,7 @@ export function initializeContentRoutes() {
                 status: 0,
                 downloads: 0,
                 views: 0,
-                slug: req.body.content.title.toLowerCase().replace(/\s/g, "_"),
+                slug: slug,
                 rating: 0,
                 createdDate: new Date(Date.now())
             }
@@ -87,6 +95,13 @@ export function initializeContentRoutes() {
                     map.creators = [{username: user.user.username, handle: user.user.handle}]
                 }
             }
+
+            let i = 1;
+            while(await checkIfSlugUnique(map.slug + i)) {
+                i++;
+            }
+            map.slug = map.slug + i;
+
             let database = new Database();
             let result = await database.collection.insertOne(map);
             let key
@@ -114,6 +129,12 @@ export function initializeContentRoutes() {
             res.send({error: "Map not sent in request"})
             return;
         }
+
+        let i = 1;
+        while(await checkIfSlugUnique(map.slug + i)) {
+            i++;
+        }
+        map.slug = map.slug + i;
 
         let result = await database.collection.updateOne({_id: new ObjectId(map._id)}, {
             "$set": {
@@ -458,4 +479,9 @@ async function loadAndTransferImages(map: MapDoc) {
     } catch(e) {
         console.log("Error launching puppeteer: " + e)
     }
+}
+
+export async function checkIfSlugUnique(slug: string) {
+    let database = new Database();
+    return (await database.collection.findOne({slug: slug})) !== null
 }
