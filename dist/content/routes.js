@@ -16,6 +16,7 @@ import { JWTKey, getUserFromJWT } from "../auth/routes.js";
 import s3 from "aws-sdk";
 import { ObjectId } from "mongodb";
 import { approvedEmail, requestApprovalEmail } from "../email/email.js";
+import puppeteer from "puppeteer";
 const { S3 } = s3;
 export function initializeContentRoutes() {
     app.post('/content', (req, res) => __awaiter(this, void 0, void 0, function* () {
@@ -105,8 +106,9 @@ export function initializeContentRoutes() {
         let map = req.body.content;
         let database = new Database();
         let user = yield getUserFromJWT(req.headers.authorization + "");
-        let currentMap = yield database.collection.findOne({ slug: req.body.slug });
+        let currentMap = yield database.collection.findOne({ _id: new ObjectId(map._id) });
         if (!user.user || !currentMap || ((_a = currentMap.creators) === null || _a === void 0 ? void 0 : _a.filter(creator => { var _a; return creator.handle === ((_a = user.user) === null || _a === void 0 ? void 0 : _a.handle); }).length) === 0) {
+            console.log("User not found or not creator");
             return res.sendStatus(401);
         }
         if (!map) {
@@ -124,7 +126,8 @@ export function initializeContentRoutes() {
                 slug: map.slug,
                 createdDate: new Date(map.createdDate),
                 updatedDate: new Date(),
-                creators: map.creators
+                creators: map.creators,
+                files: map.files
             }
         });
         res.send({ result: result });
@@ -183,8 +186,8 @@ export function initializeContentRoutes() {
                     {
                         title: map.title,
                         //   type: "rich",
-                        description: map.shortMapDescription + " https://mccreations.net/maps/" + map.slug,
-                        url: "https://mccreations.net/maps/" + map.slug,
+                        description: map.shortDescription + " https://next.mccreations.net/maps/" + map.slug,
+                        url: "https://next.mccreations.net/maps/" + map.slug,
                         //   timestamp: Date.now(),
                         //   color: 1,
                         image: {
@@ -205,6 +208,28 @@ export function initializeContentRoutes() {
             });
         }
     }));
+    app.post('/content/rate/:slug', (req, res) => __awaiter(this, void 0, void 0, function* () {
+        let database = new Database();
+        let map = req.body.map;
+        // Calculate new rating
+        let rating = 0;
+        let ratings = map.ratings;
+        let rates = 1;
+        if (ratings) {
+            rates = map.ratings.length + 1;
+            ratings.push(Number.parseFloat(req.body.rating));
+        }
+        else {
+            ratings = [Number.parseFloat(req.body.rating)];
+        }
+        for (let i = 0; i < rates; i++) {
+            rating += ratings[i];
+        }
+        rating = rating / (rates + 0.0);
+        database.collection.updateOne({ slug: req.params.slug }, { $set: { ratings: ratings, rating: rating } }).then(() => {
+            res.send({ rating: rating });
+        });
+    }));
 }
 const bucket = new S3({
     region: 'us-west-1',
@@ -220,10 +245,9 @@ function upload(file, name) {
         };
         try {
             const u = bucket.upload(params);
-            yield u.promise().catch(error => {
-                console.error(error);
-            });
+            let data = yield u.promise();
             console.log("Uploaded " + name);
+            return data.Location;
         }
         catch (error) {
             return error;
@@ -235,10 +259,10 @@ function fetchFromPMC(url) {
     return __awaiter(this, void 0, void 0, function* () {
         let res = yield axios.get(url);
         let html = new JSDOM(res.data).window.document;
-        let title = (_b = (_a = html.querySelector('h1#resource-title-text')) === null || _a === void 0 ? void 0 : _a.textContent) === null || _b === void 0 ? void 0 : _b.trim();
+        let title = (_b = (_a = html.querySelector('div#resource-title-text h1')) === null || _a === void 0 ? void 0 : _a.textContent) === null || _b === void 0 ? void 0 : _b.trim();
         if (!title)
             return;
-        let slug = title.toLowerCase().replace(/\s/g, "_");
+        let slug = title.toLowerCase().replace(/\s/g, "_").replace(/[^a-zA-Z0-9_]/g, "");
         let description = (_c = html.querySelector('#r-text-block')) === null || _c === void 0 ? void 0 : _c.innerHTML;
         if (!description)
             return;
@@ -248,7 +272,14 @@ function fetchFromPMC(url) {
         let views = 0;
         let rating = 0;
         let createdDate = new Date();
-        let username = html.querySelectorAll('.pusername')[1].textContent + "";
+        let users = html.querySelectorAll('.pusername');
+        let username = "";
+        if (users.length === 1) {
+            username = html.querySelectorAll('.pusername')[0].textContent + "";
+        }
+        else {
+            username = html.querySelectorAll('.pusername')[1].textContent + "";
+        }
         let map = {
             title: title,
             slug: slug,
@@ -260,7 +291,8 @@ function fetchFromPMC(url) {
             rating: rating,
             createdDate: createdDate,
             images: [],
-            creators: [{ username: username }]
+            creators: [{ username: username }],
+            importedUrl: url
         };
         map.files = [{ type: 'world', worldUrl: "https://www.planetminecraft.com" + ((_d = html.querySelector('.branded-download')) === null || _d === void 0 ? void 0 : _d.getAttribute('href')), minecraftVersion: '' }];
         let images = html.querySelectorAll('.rsImg');
@@ -276,11 +308,12 @@ function fetchFromPMC(url) {
                 map.images.push(url);
             }
         }));
+        yield loadAndTransferImages(map);
         return map;
     });
 }
 function fetchFromMCMaps(url) {
-    var _a, _b, _c, _d, _e, _f, _g, _h;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k;
     return __awaiter(this, void 0, void 0, function* () {
         const mapInfoLocator = 'Map Info</h2>\n</center></td>\n</tr>\n</tbody>\n</table>';
         const pictureLocator = '<table style="width: 100%;" border="0" cellspacing="0" cellpadding="0">\n<tbody>\n<tr>\n<td class="info_title"><center>\n<h2>Pictures</h2>\n</center></td>\n</tr>\n</tbody>\n</table>';
@@ -297,8 +330,14 @@ function fetchFromMCMaps(url) {
         let title = (_f = (_e = html.querySelector('h1')) === null || _e === void 0 ? void 0 : _e.textContent) === null || _f === void 0 ? void 0 : _f.trim();
         if (!title)
             return;
-        let slug = title.toLowerCase().replace(/\s/g, "_");
-        let description = descTable.substring(mapInfoStart + mapInfoLocator.length, pictureStart);
+        let slug = title.toLowerCase().replace(/\s/g, "_").replace(/[^a-zA-Z0-9_]/g, "");
+        let description = "";
+        if (descTable.includes(pictureLocator)) {
+            description = descTable.substring(mapInfoStart + mapInfoLocator.length, pictureStart);
+        }
+        else {
+            description = descTable.substring(mapInfoStart + mapInfoLocator.length, changelogStart);
+        }
         description.replace(/\<table style="width: 98%;" border="0" cellspacing="0" cellpadding="0"\>\n\<tbody\>\n\<tr>\n\<td class="info_title"><center>/g, "");
         description.replace(/\<\/center\>\<\/td\>\n\<\/tr\>\n\<\/tbody\>\n\<\/table>/g, "");
         let shortDescription = '';
@@ -319,7 +358,8 @@ function fetchFromMCMaps(url) {
             rating: rating,
             createdDate: createdDate,
             images: [],
-            creators: [{ username: username }]
+            creators: [{ username: username }],
+            importedUrl: url
         };
         map.files = [{
                 type: 'world',
@@ -327,7 +367,7 @@ function fetchFromMCMaps(url) {
                 minecraftVersion: (statsPanel === null || statsPanel === void 0 ? void 0 : statsPanel.querySelectorAll('tr')[3].querySelectorAll('span')[1].textContent) + "",
                 contentVersion: (statsPanel === null || statsPanel === void 0 ? void 0 : statsPanel.querySelectorAll('tr')[2].querySelectorAll('span')[1].textContent) + ""
             }];
-        let images = (_h = html.querySelector('.jd-item-page')) === null || _h === void 0 ? void 0 : _h.querySelectorAll('img');
+        let images = (_k = (_j = (_h = html.querySelector('table')) === null || _h === void 0 ? void 0 : _h.querySelector('table')) === null || _j === void 0 ? void 0 : _j.querySelector('td')) === null || _k === void 0 ? void 0 : _k.querySelectorAll('img');
         if (images) {
             images.forEach((image, idx) => __awaiter(this, void 0, void 0, function* () {
                 let url = image.getAttribute('data-src');
@@ -341,6 +381,67 @@ function fetchFromMCMaps(url) {
                 // }
             }));
         }
+        yield loadAndTransferImages(map);
         return map;
+    });
+}
+function loadAndTransferImages(map) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            puppeteer.launch().then((browser) => __awaiter(this, void 0, void 0, function* () {
+                try {
+                    let idx = 0;
+                    let fileCounter = 0;
+                    let uploaded_images = [];
+                    let timeoutSeconds = 30;
+                    const page = yield browser.newPage();
+                    page.on('response', (response) => __awaiter(this, void 0, void 0, function* () {
+                        try {
+                            const matches = /.*\.(jpg|png|svg|gif|webp)$/.exec(response.url());
+                            if (matches && (matches.length === 2) && (response.url().startsWith('https://www.minecraftmaps.com/images/jdownloads/screenshots/') || response.url().startsWith("https://static.planetminecraft.com/files/image/minecraft/"))) {
+                                console.log(matches);
+                                const extension = matches[1];
+                                const buffer = yield response.buffer();
+                                fileCounter += 1;
+                                let url = yield upload(buffer, `${map.slug}_image_${fileCounter}.${extension}`);
+                                uploaded_images.push({ transferredUrl: url, originalUrl: response.url() });
+                            }
+                        }
+                        catch (e) {
+                            console.log("Error uploading image: " + e);
+                        }
+                    }));
+                    yield page.goto(map.importedUrl);
+                    try {
+                        // page.mouse.wheel({deltaY: 2000})
+                        while (uploaded_images.length < map.images.length && timeoutSeconds > 0) {
+                            yield new Promise(resolve => setTimeout(resolve, 1000));
+                            timeoutSeconds--;
+                        }
+                        yield browser.close();
+                        if (timeoutSeconds <= 0) {
+                            return;
+                        }
+                        let database = new Database();
+                        for (let i = 0; i < map.images.length; i++) {
+                            let image = uploaded_images.find(img => img.originalUrl === map.images[i]);
+                            if (image) {
+                                map.images[i] = image.transferredUrl;
+                            }
+                        }
+                        yield database.collection.updateOne({ slug: map.slug }, { $set: { images: map.images } });
+                    }
+                    catch (e) {
+                        console.log("Error loading page: " + e);
+                    }
+                }
+                catch (e) {
+                    console.log("Error fetching images using puppeteer: " + e);
+                }
+            }));
+        }
+        catch (e) {
+            console.log("Error launching puppeteer: " + e);
+        }
     });
 }
