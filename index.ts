@@ -37,9 +37,9 @@ initializeAuthRoutes();
 initializeContentRoutes();
 
 var httpServer = createHttpServer(app);
-httpServer.listen(80);
+httpServer.listen(8080);
 
-if(credentials) {
-    var httpsServer = createHttpsServer(credentials, app);
-    httpsServer.listen(443);
-}
+// if(credentials) {
+//     var httpsServer = createHttpsServer(credentials, app);
+//     httpsServer.listen(443);
+// }

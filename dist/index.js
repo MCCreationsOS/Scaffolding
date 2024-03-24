@@ -5,7 +5,6 @@ import helmet from 'helmet';
 import cors from 'cors';
 import morgan from 'morgan';
 import { createServer as createHttpServer } from 'http';
-import { createServer as createHttpsServer } from 'https';
 import { initializeCommunityRoutes } from './community/routes.js';
 import { initializeMapRoutes } from './maps/routes.js';
 import { initializeAuthRoutes } from './auth/routes.js';
@@ -31,8 +30,8 @@ initializeMapRoutes();
 initializeAuthRoutes();
 initializeContentRoutes();
 var httpServer = createHttpServer(app);
-httpServer.listen(80);
-if (credentials) {
-    var httpsServer = createHttpsServer(credentials, app);
-    httpsServer.listen(443);
-}
+httpServer.listen(8080);
+// if(credentials) {
+//     var httpsServer = createHttpsServer(credentials, app);
+//     httpsServer.listen(443);
+// }
