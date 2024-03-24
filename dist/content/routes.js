@@ -36,6 +36,12 @@ export function initializeContentRoutes() {
         if (req.headers.authorization) {
             uploader = yield getUserFromJWT(req.headers.authorization);
         }
+        let slug = req.body.content.title.toLowerCase().replace(/\s/g, "_").replace(/[^a-zA-Z0-9_]/g, "");
+        let i = 1;
+        while (yield checkIfSlugUnique(slug + i)) {
+            i++;
+        }
+        slug = slug + i;
         let database = new Database();
         if (req.body.content.type === "Map") {
             let map = {
@@ -46,7 +52,7 @@ export function initializeContentRoutes() {
                 status: 0,
                 downloads: 0,
                 views: 0,
-                slug: req.body.content.title.toLowerCase().replace(/\s/g, "_"),
+                slug: slug,
                 rating: 0,
                 createdDate: new Date(Date.now())
             };
@@ -89,6 +95,11 @@ export function initializeContentRoutes() {
                     map.creators = [{ username: user.user.username, handle: user.user.handle }];
                 }
             }
+            let i = 1;
+            while (yield checkIfSlugUnique(map.slug + i)) {
+                i++;
+            }
+            map.slug = map.slug + i;
             let database = new Database();
             let result = yield database.collection.insertOne(map);
             let key;
@@ -115,6 +126,11 @@ export function initializeContentRoutes() {
             res.send({ error: "Map not sent in request" });
             return;
         }
+        let i = 1;
+        while (yield checkIfSlugUnique(map.slug + i)) {
+            i++;
+        }
+        map.slug = map.slug + i;
         let result = yield database.collection.updateOne({ _id: new ObjectId(map._id) }, {
             "$set": {
                 title: map.title,
@@ -443,5 +459,11 @@ function loadAndTransferImages(map) {
         catch (e) {
             console.log("Error launching puppeteer: " + e);
         }
+    });
+}
+export function checkIfSlugUnique(slug) {
+    return __awaiter(this, void 0, void 0, function* () {
+        let database = new Database();
+        return (yield database.collection.findOne({ slug: slug })) !== null;
     });
 }
