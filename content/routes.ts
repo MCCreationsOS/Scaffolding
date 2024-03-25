@@ -364,7 +364,7 @@ async function fetchFromPMC(url: string) {
         }
     })
 
-    // await loadAndTransferImages(map)
+    await loadAndTransferImages(map)
     return map;
 }
 
@@ -438,7 +438,7 @@ async function fetchFromMCMaps(url: string) {
             // }
         })
     }
-    // await loadAndTransferImages(map)
+    await loadAndTransferImages(map)
     return map;
 }
 
