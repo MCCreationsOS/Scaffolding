@@ -8,9 +8,15 @@ export interface IDatabaseQuery {
     projection: IDatabaseProjection
 }
 
+export interface IInlineCreator {
+    username: string,
+    handle?: string
+
+}
+
 export interface ContentDocument extends Document {
     comments?: [{username?: string, comment?: string}],
-    creators?: [{username: string, handle?: string}],
+    creators?: IInlineCreator[],
     slug: string,
     rating: number,
     ratings?: number[],
@@ -29,6 +35,7 @@ export interface MapDoc extends ContentDocument {
     videoUrl?: string,
     downloads: number,
     views: number,
+    importedUrl?: string,
 }
 
 export interface IDatabaseProjection {
