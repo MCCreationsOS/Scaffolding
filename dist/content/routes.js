@@ -160,6 +160,18 @@ export function initializeContentRoutes() {
         });
         res.send({ result: result });
     }));
+    app.delete('/content/:slug', (req, res) => __awaiter(this, void 0, void 0, function* () {
+        let creators = req.body.creators;
+        let database = new Database();
+        let user = yield getUserFromJWT(req.headers.authorization + "");
+        let currentMap = yield database.collection.findOne({ _id: new ObjectId(req.body.id) });
+        if (!user.user || !currentMap || (creators === null || creators === void 0 ? void 0 : creators.filter(creator => { var _a; return creator.handle === ((_a = user.user) === null || _a === void 0 ? void 0 : _a.handle); }).length) === 0) {
+            console.log("User not found or not creator");
+            return res.sendStatus(401);
+        }
+        let result = yield database.collection.deleteOne({ _id: new ObjectId(req.body.id) });
+        res.send({ result: result });
+    }));
     app.post('/content/request_approval', (req, res) => __awaiter(this, void 0, void 0, function* () {
         var _b;
         let link = "https://next.mccreations.net/maps/" + req.body.slug;
