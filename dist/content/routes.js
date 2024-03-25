@@ -137,7 +137,7 @@ export function initializeContentRoutes() {
             return;
         }
         let i = "";
-        let isSlugUnique = yield checkIfSlugUnique(map.slug);
+        let isSlugUnique = (yield checkIfSlugUnique(map.slug)) && map.slug !== currentMap.slug;
         while (!isSlugUnique) {
             i += (Math.random() * 100).toFixed(0);
             isSlugUnique = yield checkIfSlugUnique(map.slug + i);
