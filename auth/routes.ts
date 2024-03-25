@@ -275,6 +275,7 @@ export function initializeAuthRoutes() {
             }
 
             database.collection.insertOne(user)
+            res.send(200)
         })
     })
 
