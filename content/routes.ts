@@ -222,7 +222,8 @@ export function initializeContentRoutes() {
         if(map) {
             let creators = map.creators
             creators?.forEach(async (creator) => {
-                let user = await database.collection.findOne({handle: creator.handle})
+                let creators = new Database('content', 'creators')
+                let user = await creators.collection.findOne({handle: creator.handle})
                 if(user && user.email) {
                     approvedEmail(user.email, "https://next.mccreations.net/maps/" + req.params.slug, map?.title + "")
                 }

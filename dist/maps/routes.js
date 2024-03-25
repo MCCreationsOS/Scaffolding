@@ -83,7 +83,9 @@ export function initializeMapRoutes() {
             let map = result.documents[0];
             let database = new Database();
             database.collection.updateOne({ _id: map._id }, { $inc: { downloads: 1 } });
+            res.send(200);
         }
+        res.send(404);
     }));
     app.get('/maps/:slug/comments', (req, res) => __awaiter(this, void 0, void 0, function* () {
         let result = yield findMaps({ limit: 1, slug: req.params.slug }, false);
