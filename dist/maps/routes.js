@@ -77,7 +77,7 @@ export function initializeMapRoutes() {
         }
         res.send(result.documents[0]);
     }));
-    app.post('/maps/:slug/download', (req, res) => __awaiter(this, void 0, void 0, function* () {
+    app.get('/maps/:slug/download', (req, res) => __awaiter(this, void 0, void 0, function* () {
         let result = yield findMaps({ limit: 1, slug: req.params.slug }, false);
         if (result.documents[0]) {
             let map = result.documents[0];
