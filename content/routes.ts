@@ -140,7 +140,7 @@ export function initializeContentRoutes() {
         }
 
         let i = "";
-        let isSlugUnique = await checkIfSlugUnique(map.slug)
+        let isSlugUnique = (await checkIfSlugUnique(map.slug)) && map.slug !== currentMap.slug
         while(!isSlugUnique) {
             i += (Math.random() * 100).toFixed(0);
             isSlugUnique = await checkIfSlugUnique(map.slug + i)
