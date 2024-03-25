@@ -161,11 +161,11 @@ export function initializeContentRoutes() {
         res.send({ result: result });
     }));
     app.delete('/content', (req, res) => __awaiter(this, void 0, void 0, function* () {
-        let creators = req.body.creators;
+        var _b;
         let database = new Database();
         let user = yield getUserFromJWT(req.headers.authorization + "");
         let currentMap = yield database.collection.findOne({ _id: new ObjectId(req.body.id) });
-        if (!user.user || !currentMap || (creators === null || creators === void 0 ? void 0 : creators.filter(creator => { var _a; return creator.handle === ((_a = user.user) === null || _a === void 0 ? void 0 : _a.handle); }).length) === 0) {
+        if (!user.user || !currentMap || ((_b = currentMap.creators) === null || _b === void 0 ? void 0 : _b.filter(creator => { var _a; return creator.handle === ((_a = user.user) === null || _a === void 0 ? void 0 : _a.handle); }).length) === 0) {
             console.log("User not found or not creator");
             return res.sendStatus(401);
         }
@@ -173,12 +173,12 @@ export function initializeContentRoutes() {
         res.send({ result: result });
     }));
     app.post('/content/request_approval', (req, res) => __awaiter(this, void 0, void 0, function* () {
-        var _b;
+        var _c;
         let link = "https://next.mccreations.net/maps/" + req.body.slug;
         let database = new Database();
         let user = yield getUserFromJWT(req.headers.authorization + "");
         let map = yield database.collection.findOne({ slug: req.body.slug });
-        if (!user.user || !map || ((_b = map.creators) === null || _b === void 0 ? void 0 : _b.filter(creator => { var _a; return creator.handle === ((_a = user.user) === null || _a === void 0 ? void 0 : _a.handle); }).length) === 0) {
+        if (!user.user || !map || ((_c = map.creators) === null || _c === void 0 ? void 0 : _c.filter(creator => { var _a; return creator.handle === ((_a = user.user) === null || _a === void 0 ? void 0 : _a.handle); }).length) === 0) {
             return res.sendStatus(401);
         }
         requestApprovalEmail(link);
@@ -198,7 +198,7 @@ export function initializeContentRoutes() {
         });
     }));
     app.get('/content/:slug/approve', (req, res) => __awaiter(this, void 0, void 0, function* () {
-        var _c;
+        var _d;
         let database = new Database();
         let user = yield getUserFromJWT(req.headers.authorization + "");
         if (!user.user || user.user.handle !== "crazycowmm") {
@@ -234,7 +234,7 @@ export function initializeContentRoutes() {
                             url: map.images[0]
                         },
                         author: {
-                            name: (_c = map.creators) === null || _c === void 0 ? void 0 : _c.map(creator => creator.username).join(", ")
+                            name: (_d = map.creators) === null || _d === void 0 ? void 0 : _d.map(creator => creator.username).join(", ")
                         }
                     }
                 ]

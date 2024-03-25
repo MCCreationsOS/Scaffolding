@@ -166,12 +166,11 @@ export function initializeContentRoutes() {
     })
 
     app.delete('/content', async (req, res) => {
-        let creators = req.body.creators as IInlineCreator[]
         let database = new Database();
         let user = await getUserFromJWT(req.headers.authorization + "")
         let currentMap = await database.collection.findOne<MapDoc>({_id: new ObjectId(req.body.id)})
 
-        if(!user.user || !currentMap || creators?.filter(creator => creator.handle === user.user?.handle).length === 0) { 
+        if(!user.user || !currentMap || currentMap.creators?.filter(creator => creator.handle === user.user?.handle).length === 0) { 
             console.log("User not found or not creator")
             return res.sendStatus(401);
         }
