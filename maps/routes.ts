@@ -162,6 +162,11 @@ export async function findMaps(requestQuery: any, useProjection: boolean) {
 	} else {
 		requestQuery.setLimit(20)
 	}
+
+	if(query.limit === 0) {
+		query.setLimit(20)
+	}
+
 	if(requestQuery.skip) {
 		if(requestQuery.skip < 0) {
 			requestQuery.skip = "0"
