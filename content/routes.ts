@@ -37,9 +37,10 @@ export function initializeContentRoutes() {
         let slug = req.body.content.title.toLowerCase().replace(/\s/g, "_").replace(/[^a-zA-Z0-9_]/g, "")
         console.log("Slug: " + slug)
         let i = "";
-        while(!await checkIfSlugUnique(slug + i)) {
+        let isSlugUnique = await checkIfSlugUnique(slug)
+        while(!isSlugUnique) {
             i += (Math.random() * 100).toFixed(0);
-            console.log("Slug was not unique, adding some randomness")
+            isSlugUnique = await checkIfSlugUnique(slug + i)
         }
         slug = slug + i;
 
@@ -103,8 +104,10 @@ export function initializeContentRoutes() {
             }
 
             let i = "";
-            while(!await checkIfSlugUnique(map.slug + i)) {
+            let isSlugUnique = await checkIfSlugUnique(map.slug)
+            while(!isSlugUnique) {
                 i += (Math.random() * 100).toFixed(0);
+                isSlugUnique = await checkIfSlugUnique(map.slug + i)
             }
             map.slug = map.slug + i;
 
@@ -137,8 +140,10 @@ export function initializeContentRoutes() {
         }
 
         let i = "";
-        while(!(await checkIfSlugUnique(map.slug + i))) {
+        let isSlugUnique = await checkIfSlugUnique(map.slug)
+        while(!isSlugUnique) {
             i += (Math.random() * 100).toFixed(0);
+            isSlugUnique = await checkIfSlugUnique(map.slug + i)
         }
         map.slug = map.slug + i;
 
@@ -491,5 +496,5 @@ async function loadAndTransferImages(map: MapDoc) {
 
 export async function checkIfSlugUnique(slug: string) {
     let database = new Database();
-    return (await database.collection.findOne({slug: slug})) !== null
+    return (await database.collection.findOne({slug: slug})) === null
 }
