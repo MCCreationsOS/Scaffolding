@@ -163,6 +163,9 @@ export function findMaps(requestQuery, useProjection) {
         if (requestQuery.limit) {
             query.setLimit(Number.parseInt(requestQuery.limit));
         }
+        else {
+            requestQuery.setLimit(20);
+        }
         if (requestQuery.skip) {
             if (requestQuery.skip < 0) {
                 requestQuery.skip = "0";
