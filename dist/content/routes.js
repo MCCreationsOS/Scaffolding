@@ -34,12 +34,16 @@ export function initializeContentRoutes() {
         }
         let uploader;
         if (req.headers.authorization) {
+            console.log("Got authorization, attempting to find user");
             uploader = yield getUserFromJWT(req.headers.authorization);
+            console.log("Got user from authorization");
         }
         let slug = req.body.content.title.toLowerCase().replace(/\s/g, "_").replace(/[^a-zA-Z0-9_]/g, "");
+        console.log("Slug: " + slug);
         let i = "";
         while (!(yield checkIfSlugUnique(slug + i))) {
             i += (Math.random() * 100).toFixed(0);
+            console.log("Slug was not unique, adding some randomness");
         }
         slug = slug + i;
         let database = new Database();
@@ -56,13 +60,16 @@ export function initializeContentRoutes() {
                 rating: 0,
                 createdDate: new Date(Date.now())
             };
+            console.log("Attempting to insert map");
             let result = yield database.collection.insertOne(map);
+            console.log("Map inserted");
             if (uploader && uploader.user) {
                 database.collection.updateOne({ _id: result.insertedId }, { $push: { creators: { username: uploader.user.username, handle: uploader.user.handle } } });
                 res.send({ slug: map.slug });
                 return;
             }
             else {
+                console.log("No user, creating temporary access key");
                 let key = jwt.sign({ _id: result.insertedId.toJSON() }, JWTKey, { expiresIn: "24h" });
                 res.send({ key: key, slug: map.slug });
                 return;
