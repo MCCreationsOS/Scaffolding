@@ -165,7 +165,7 @@ export function initializeContentRoutes() {
         res.send({result: result})
     })
 
-    app.delete('/content/:slug', async (req, res) => {
+    app.delete('/content', async (req, res) => {
         let creators = req.body.creators as IInlineCreator[]
         let database = new Database();
         let user = await getUserFromJWT(req.headers.authorization + "")
