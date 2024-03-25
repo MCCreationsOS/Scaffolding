@@ -1,6 +1,6 @@
 import axios from "axios";
 import { Database } from "../db/connect.js";
-import { MapDoc } from "../db/types.js";
+import { IInlineCreator, MapDoc } from "../db/types.js";
 import { app } from "../index.js";
 import { JSDOM } from 'jsdom'
 import jwt from 'jsonwebtoken'
@@ -162,6 +162,21 @@ export function initializeContentRoutes() {
                 files: map.files
             }
         })
+        res.send({result: result})
+    })
+
+    app.delete('/content/:slug', async (req, res) => {
+        let creators = req.body.creators as IInlineCreator[]
+        let database = new Database();
+        let user = await getUserFromJWT(req.headers.authorization + "")
+        let currentMap = await database.collection.findOne<MapDoc>({_id: new ObjectId(req.body.id)})
+
+        if(!user.user || !currentMap || creators?.filter(creator => creator.handle === user.user?.handle).length === 0) { 
+            console.log("User not found or not creator")
+            return res.sendStatus(401);
+        }
+
+        let result = await database.collection.deleteOne({_id: new ObjectId(req.body.id)})
         res.send({result: result})
     })
 

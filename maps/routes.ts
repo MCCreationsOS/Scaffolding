@@ -64,7 +64,7 @@ export function initializeMapRoutes() {
         res.send(result.documents[0])
     })
 
-	app.post('/maps/:slug/download', async (req, res) => {
+	app.get('/maps/:slug/download', async (req, res) => {
         let result = await findMaps({limit: 1, slug: req.params.slug}, false)
 
         if(result.documents[0]) {
