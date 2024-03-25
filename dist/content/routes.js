@@ -160,7 +160,7 @@ export function initializeContentRoutes() {
         });
         res.send({ result: result });
     }));
-    app.delete('/content/:slug', (req, res) => __awaiter(this, void 0, void 0, function* () {
+    app.delete('/content', (req, res) => __awaiter(this, void 0, void 0, function* () {
         let creators = req.body.creators;
         let database = new Database();
         let user = yield getUserFromJWT(req.headers.authorization + "");
