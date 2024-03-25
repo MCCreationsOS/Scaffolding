@@ -72,7 +72,9 @@ export function initializeMapRoutes() {
 
             let database = new Database();
             database.collection.updateOne({_id: map._id}, {$inc: {downloads: 1}})
+			res.send(200)
         }
+		res.send(404)
     })
 
 	app.get('/maps/:slug/comments', async (req, res) => {

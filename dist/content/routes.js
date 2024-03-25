@@ -210,7 +210,8 @@ export function initializeContentRoutes() {
         if (map) {
             let creators = map.creators;
             creators === null || creators === void 0 ? void 0 : creators.forEach((creator) => __awaiter(this, void 0, void 0, function* () {
-                let user = yield database.collection.findOne({ handle: creator.handle });
+                let creators = new Database('content', 'creators');
+                let user = yield creators.collection.findOne({ handle: creator.handle });
                 if (user && user.email) {
                     approvedEmail(user.email, "https://next.mccreations.net/maps/" + req.params.slug, (map === null || map === void 0 ? void 0 : map.title) + "");
                 }

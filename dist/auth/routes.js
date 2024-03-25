@@ -276,6 +276,7 @@ export function initializeAuthRoutes() {
                 user.handle = user.username.toLowerCase().replace(" ", "-");
             }
             database.collection.insertOne(user);
+            res.send(200);
         }));
     }));
     app.post('/auth/signInWithEmail', (req, res) => __awaiter(this, void 0, void 0, function* () {
