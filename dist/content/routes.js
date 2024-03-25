@@ -348,7 +348,7 @@ function fetchFromPMC(url) {
                 map.images.push(url);
             }
         }));
-        yield loadAndTransferImages(map);
+        // await loadAndTransferImages(map)
         return map;
     });
 }
@@ -422,7 +422,7 @@ function fetchFromMCMaps(url) {
                 // }
             }));
         }
-        yield loadAndTransferImages(map);
+        // await loadAndTransferImages(map)
         return map;
     });
 }
