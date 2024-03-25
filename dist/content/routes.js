@@ -41,9 +41,10 @@ export function initializeContentRoutes() {
         let slug = req.body.content.title.toLowerCase().replace(/\s/g, "_").replace(/[^a-zA-Z0-9_]/g, "");
         console.log("Slug: " + slug);
         let i = "";
-        while (!(yield checkIfSlugUnique(slug + i))) {
+        let isSlugUnique = yield checkIfSlugUnique(slug);
+        while (!isSlugUnique) {
             i += (Math.random() * 100).toFixed(0);
-            console.log("Slug was not unique, adding some randomness");
+            isSlugUnique = yield checkIfSlugUnique(slug + i);
         }
         slug = slug + i;
         let database = new Database();
@@ -103,8 +104,10 @@ export function initializeContentRoutes() {
                 }
             }
             let i = "";
-            while (!(yield checkIfSlugUnique(map.slug + i))) {
+            let isSlugUnique = yield checkIfSlugUnique(map.slug);
+            while (!isSlugUnique) {
                 i += (Math.random() * 100).toFixed(0);
+                isSlugUnique = yield checkIfSlugUnique(map.slug + i);
             }
             map.slug = map.slug + i;
             let database = new Database();
@@ -134,8 +137,10 @@ export function initializeContentRoutes() {
             return;
         }
         let i = "";
-        while (!(yield checkIfSlugUnique(map.slug + i))) {
+        let isSlugUnique = yield checkIfSlugUnique(map.slug);
+        while (!isSlugUnique) {
             i += (Math.random() * 100).toFixed(0);
+            isSlugUnique = yield checkIfSlugUnique(map.slug + i);
         }
         map.slug = map.slug + i;
         let result = yield database.collection.updateOne({ _id: new ObjectId(map._id) }, {
@@ -472,6 +477,6 @@ function loadAndTransferImages(map) {
 export function checkIfSlugUnique(slug) {
     return __awaiter(this, void 0, void 0, function* () {
         let database = new Database();
-        return (yield database.collection.findOne({ slug: slug })) !== null;
+        return (yield database.collection.findOne({ slug: slug })) === null;
     });
 }
