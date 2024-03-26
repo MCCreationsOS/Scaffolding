@@ -28,6 +28,15 @@ let cursor = collection.find({})
 
 let documents = []
 for await (const doc of cursor) {
+    let timestampInMilliseconds = Date.parse(doc.createdDate); // Date.parse returns the timestamp in milliseconds
+    let timestamp = timestampInMilliseconds / 1000; // UNIX timestamps must be in seconds
+    doc.createdDate = timestamp;
+
+    timestampInMilliseconds = Date.parse(doc.updatedDate); // Date.parse returns the timestamp in milliseconds
+    timestamp = timestampInMilliseconds / 1000; // UNIX timestamps must be in seconds
+    doc.updatedDate = timestamp;
     documents.push(doc);
 }
+
+
 writeFileSync('../meilisearch/maps.json', JSON.stringify(documents))
