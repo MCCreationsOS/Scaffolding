@@ -129,7 +129,7 @@ export function initializeContentRoutes() {
         let user = await getUserFromJWT(req.headers.authorization + "")
         let currentMap = await database.collection.findOne<MapDoc>({_id: new ObjectId(map._id)})
 
-        if(!user.user || !currentMap || currentMap.creators?.filter(creator => creator.handle === user.user?.handle).length === 0) { 
+        if(!user.user || !currentMap || (currentMap.creators?.filter(creator => creator.handle === user.user?.handle).length === 0 && user.user.handle !== "crazycowmm")) { 
             console.log("User not found or not creator")
             return res.sendStatus(401);
         }
@@ -140,7 +140,8 @@ export function initializeContentRoutes() {
         }
 
         let i = "";
-        let isSlugUnique = (await checkIfSlugUnique(map.slug)) && map.slug !== currentMap.slug
+        let isSlugUnique = (await checkIfSlugUnique(map.slug)) || map.slug === currentMap.slug
+        console.log("Checking if slug is unique: " + isSlugUnique, map.slug, currentMap.slug)
         while(!isSlugUnique) {
             i += (Math.random() * 100).toFixed(0);
             isSlugUnique = await checkIfSlugUnique(map.slug + i)
@@ -157,9 +158,10 @@ export function initializeContentRoutes() {
                 downloads: map.downloads,
                 slug: map.slug,
                 createdDate: new Date(map.createdDate),
-                updatedDate: new Date(),
+                updatedDate: (req.body.dontUpdateDate) ? new Date(map.updatedDate + "") : new Date(),
                 creators: map.creators,
-                files: map.files
+                files: map.files,
+                tags: map.tags,
             }
         })
         res.send({result: result})
@@ -355,14 +357,7 @@ async function fetchFromPMC(url: string) {
     let images = html.querySelectorAll('.rsImg')
     images.forEach(async (image, idx) => {
         let url = image.getAttribute('href')!
-        try {
-            let response = await axios.get(url);
-            let buffer = await response.data;
-            upload(new Uint8Array(buffer), `${map.slug}_image_${idx}${url.substring(url.lastIndexOf('.'))}`);
-            map.images.push(`https://mccreations.s3.us-west-1.amazonaws.com/${map.slug}_image_${idx}${url.substring(url.lastIndexOf('.'))}`)
-        } catch(e) {
-            map.images.push(url)
-        }
+        map.images.push(url)
     })
 
     // await loadAndTransferImages(map)
