@@ -128,7 +128,7 @@ export function initializeContentRoutes() {
         let database = new Database();
         let user = yield getUserFromJWT(req.headers.authorization + "");
         let currentMap = yield database.collection.findOne({ _id: new ObjectId(map._id) });
-        if (!user.user || !currentMap || ((_a = currentMap.creators) === null || _a === void 0 ? void 0 : _a.filter(creator => { var _a; return creator.handle === ((_a = user.user) === null || _a === void 0 ? void 0 : _a.handle); }).length) === 0) {
+        if (!user.user || !currentMap || (((_a = currentMap.creators) === null || _a === void 0 ? void 0 : _a.filter(creator => { var _a; return creator.handle === ((_a = user.user) === null || _a === void 0 ? void 0 : _a.handle); }).length) === 0 && user.user.handle !== "crazycowmm")) {
             console.log("User not found or not creator");
             return res.sendStatus(401);
         }
@@ -137,7 +137,8 @@ export function initializeContentRoutes() {
             return;
         }
         let i = "";
-        let isSlugUnique = (yield checkIfSlugUnique(map.slug)) && map.slug !== currentMap.slug;
+        let isSlugUnique = (yield checkIfSlugUnique(map.slug)) || map.slug === currentMap.slug;
+        console.log("Checking if slug is unique: " + isSlugUnique, map.slug, currentMap.slug);
         while (!isSlugUnique) {
             i += (Math.random() * 100).toFixed(0);
             isSlugUnique = yield checkIfSlugUnique(map.slug + i);
@@ -153,9 +154,10 @@ export function initializeContentRoutes() {
                 downloads: map.downloads,
                 slug: map.slug,
                 createdDate: new Date(map.createdDate),
-                updatedDate: new Date(),
+                updatedDate: (req.body.dontUpdateDate) ? new Date(map.updatedDate + "") : new Date(),
                 creators: map.creators,
-                files: map.files
+                files: map.files,
+                tags: map.tags,
             }
         });
         res.send({ result: result });
@@ -339,15 +341,7 @@ function fetchFromPMC(url) {
         let images = html.querySelectorAll('.rsImg');
         images.forEach((image, idx) => __awaiter(this, void 0, void 0, function* () {
             let url = image.getAttribute('href');
-            try {
-                let response = yield axios.get(url);
-                let buffer = yield response.data;
-                upload(new Uint8Array(buffer), `${map.slug}_image_${idx}${url.substring(url.lastIndexOf('.'))}`);
-                map.images.push(`https://mccreations.s3.us-west-1.amazonaws.com/${map.slug}_image_${idx}${url.substring(url.lastIndexOf('.'))}`);
-            }
-            catch (e) {
-                map.images.push(url);
-            }
+            map.images.push(url);
         }));
         // await loadAndTransferImages(map)
         return map;
