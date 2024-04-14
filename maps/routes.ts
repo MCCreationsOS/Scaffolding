@@ -1,13 +1,14 @@
 import QueryString from 'qs';
 import { app } from '../index.js'
-import { Database, DatabaseQueryBuilder } from '../db/connect.js';
+import { Database, DatabaseQueryBuilder, Search } from '../db/connect.js';
 import { getIdFromJWT, getUserFromJWT } from '../auth/routes.js';
 import { MapDoc } from '../db/types.js';
 import { ObjectId } from 'mongodb';
+import { sendLog } from '../logging/logging.js';
 
 export function initializeMapRoutes() {
     app.get('/maps', async (req, res) => {
-        let result = await findMaps(req.query, true);
+        let result = await performSearch(req.query)
 		let user = await getUserFromJWT(req.headers.authorization + "")
 
 		result.documents = result.documents.filter((map: MapDoc) => {
@@ -33,6 +34,35 @@ export function initializeMapRoutes() {
             res.send(result);
         }
     })
+
+	app.get('/old/maps', async (req, res) => {
+		let result = await findMaps(req.query, false)
+		let user = await getUserFromJWT(req.headers.authorization + "")
+
+		result.documents = result.documents.filter((map: MapDoc) => {
+			if(map.status < 2) {
+				if(user.user && map.creators) {
+					for(const creator of map.creators) {
+						if(creator.handle === user.user.handle) return true;
+					}
+				} else {
+					let id = getIdFromJWT(req.headers.authorization + "") as ObjectId
+					if(id && id instanceof ObjectId && id.equals(map._id)) {
+						return true;
+					}
+				}
+				return false;
+			}
+			return true;
+		})
+
+        if(req.query.sendCount && req.query.sendCount === "true") {
+            res.send({count: result.totalCount})
+        } else {
+            res.send(result);
+        }
+	})
+
     app.get('/maps/:slug', async (req, res) => {
         let result = await findMaps({limit: 1, slug: req.params.slug}, false)
 
@@ -44,6 +74,7 @@ export function initializeMapRoutes() {
 					for(const creator of result.documents[0].creators) {
 						if(creator.handle === uObj.user.handle) filter = false;
 					}
+					if(uObj.user.handle === "crazycowmm") filter = false;
 				} else {
 					let id = getIdFromJWT(req.headers.authorization) as ObjectId
 					if(id && id instanceof ObjectId && id.equals(result.documents[0]._id)) {
@@ -98,6 +129,60 @@ export function initializeMapRoutes() {
 			return;
 		}
 		res.sendStatus(404)
+	})
+
+	app.get('/get_map_tags', async (req, res) => {
+		res.send({
+			genre: [
+				"adventure",
+				"parkour",
+				"survival",
+				"puzzle",
+				"game",
+				"build"
+			],
+			subgenre: [
+				"horror",
+				"PVE",
+				"PVP",
+				"episodic",
+				"challenge",
+				'CTM',
+				"RPG",
+				"trivia",
+				"escape",
+				"finding",
+				"maze",
+				"unfair",
+				"dropper",
+				"elytra",
+				"city",
+				"park",
+				"multiplayer",
+				"singleplayer",
+				"co-op"
+			],
+			difficulty: [
+				"chill",
+				"easy",
+				"medium",
+				"hard"
+			],
+			theme: [
+				"medieval",
+				"modern",
+				"fantasy",
+				"sci-fi",
+				"realistic",
+				"vanilla"
+			],
+			length: [
+				"short",
+				"medium",
+				"long"
+			],
+
+		})
 	})
 }
 
@@ -170,11 +255,11 @@ export async function findMaps(requestQuery: any, useProjection: boolean) {
 		query.setLimit(20)
 	}
 
-	if(requestQuery.skip) {
-		if(requestQuery.skip < 0) {
-			requestQuery.skip = "0"
+	if(requestQuery.page) {
+		if(requestQuery.page < 0) {
+			requestQuery.page = "0"
 		}
-		query.setSkip(Number.parseInt(requestQuery.skip));
+		query.setSkip(Number.parseInt(requestQuery.page) * query.limit);
 	}
 
 	const projection = {
@@ -208,4 +293,91 @@ export async function findMaps(requestQuery: any, useProjection: boolean) {
 		documents: documents as MapDoc[]
 	}
 	return result;
+}
+
+export async function performSearch(requestQuery: any) {
+	let search = new Search();
+
+	switch(requestQuery.sort) {
+		case "newest":
+			search.sort("createdDate", "desc")
+			break;
+		case "updated":
+			search.sort("updatedDate", "desc")
+			break;
+		case "title_ascending": 
+			search.sort("title", "asc")
+			break;
+		case "title_descending":
+			search.sort("title", "desc")
+			break;
+		case "oldest":
+			search.sort("createdDate", "asc")
+			break;
+		case "highest_rated": 
+			search.sort("rating", "desc")
+			break;
+		case "lowest_rated":
+			search.sort("rating", "asc")
+			break;
+		case "creator_ascending":
+			search.sort("creators.username", "asc")
+			break;
+		case "creator_descending":
+			search.sort("creators.username", "desc")
+			break;
+		// case "best_match": 
+		// 	sort = {score: {$meta: "textScore"}}
+		// 	break;
+		default:
+			search.sort("createdDate", "desc")
+			break;
+	}
+
+	if(requestQuery.status && (!requestQuery.exclusiveStatus || requestQuery.exclusiveStatus === "false")) {
+		search.filter("status", ">=", Number.parseInt(requestQuery.status))
+	} else if (requestQuery.status) {
+		search.filter("status", "=", Number.parseInt(requestQuery.status))
+	} else {
+		search.filter("status", ">=", 2)
+	}
+
+	if(requestQuery.version) {
+		requestQuery.version.replace(".0", "")
+		search.filter("files.minecraftVersion", "=", requestQuery.version)
+	}
+
+	if(requestQuery.search && !(requestQuery.search === "undefined" || requestQuery.search === "null")) {
+		search.query(requestQuery.search, false)
+	}
+
+	if(requestQuery.limit && requestQuery.page) {
+		search.paginate(Number.parseInt(requestQuery.limit), Number.parseInt(requestQuery.page) + 1)
+	}
+
+	if(requestQuery.includeTags) {
+		let tags = requestQuery.includeTags.split(",")
+		for(const tag of tags) {
+			search.filter("tags", "=", tag, "AND")
+		}
+	}
+
+	if(requestQuery.excludeTags) {
+		let tags = requestQuery.excludeTags.split(",")
+		for(const tag of tags) {
+			search.filter("tags", "!=", tag, "AND")
+		}
+	}
+
+	try {
+		let documents = await search.execute()
+		if(!documents) {
+			console.error("Meilisearch is probably not initialized.")
+			return {totalCount: 0, documents: []}
+		}
+		return { totalCount: (search.hitsPerPageS) ? documents.totalHits : documents.estimatedTotalHits, documents: documents.hits.map((doc: any) => doc)}
+	} catch(e) {
+		sendLog("performSearch", e)
+		return {totalCount: 0, documents: []}
+	}
 }

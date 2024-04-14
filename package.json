@@ -5,15 +5,16 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "start": "node dist/index.js",
+    "start": "node --env-file=.env dist/index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.554.0",
     "@aws-sdk/client-ses": "^3.474.0",
     "@aws-sdk/credential-providers": "^3.474.0",
-    "aws-sdk": "^2.1520.0",
+    "@aws-sdk/lib-storage": "^3.554.0",
     "axios": "^1.6.5",
     "bcrypt": "^5.1.1",
     "body-parser": "^1.20.2",
@@ -24,6 +25,7 @@
     "jsdom": "^24.0.0",
     "jsonwebtoken": "^9.0.2",
     "mailgun.js": "^9.4.0",
+    "meilisearch": "^0.38.0",
     "mongodb": "^6.3.0",
     "morgan": "^1.10.0",
     "papaparse": "^5.4.1",
