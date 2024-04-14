@@ -23,6 +23,7 @@ export interface ContentDocument extends Document {
     createdDate: Date,
     updatedDate?: Date,
     _id?: ObjectId,
+    tags?: string[],
 }
 
 export interface MapDoc extends ContentDocument {
