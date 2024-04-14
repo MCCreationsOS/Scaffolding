@@ -15,12 +15,41 @@ var __asyncValues = (this && this.__asyncValues) || function (o) {
     function settle(resolve, reject, d, v) { Promise.resolve(v).then(function(v) { resolve({ value: v, done: d }); }, reject); }
 };
 import { app } from '../index.js';
-import { Database, DatabaseQueryBuilder } from '../db/connect.js';
+import { Database, DatabaseQueryBuilder, Search } from '../db/connect.js';
 import { getIdFromJWT, getUserFromJWT } from '../auth/routes.js';
 import { ObjectId } from 'mongodb';
+import { sendLog } from '../logging/logging.js';
 export function initializeMapRoutes() {
     app.get('/maps', (req, res) => __awaiter(this, void 0, void 0, function* () {
-        let result = yield findMaps(req.query, true);
+        let result = yield performSearch(req.query);
+        let user = yield getUserFromJWT(req.headers.authorization + "");
+        result.documents = result.documents.filter((map) => {
+            if (map.status < 2) {
+                if (user.user && map.creators) {
+                    for (const creator of map.creators) {
+                        if (creator.handle === user.user.handle)
+                            return true;
+                    }
+                }
+                else {
+                    let id = getIdFromJWT(req.headers.authorization + "");
+                    if (id && id instanceof ObjectId && id.equals(map._id)) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+            return true;
+        });
+        if (req.query.sendCount && req.query.sendCount === "true") {
+            res.send({ count: result.totalCount });
+        }
+        else {
+            res.send(result);
+        }
+    }));
+    app.get('/old/maps', (req, res) => __awaiter(this, void 0, void 0, function* () {
+        let result = yield findMaps(req.query, false);
         let user = yield getUserFromJWT(req.headers.authorization + "");
         result.documents = result.documents.filter((map) => {
             if (map.status < 2) {
@@ -58,6 +87,8 @@ export function initializeMapRoutes() {
                         if (creator.handle === uObj.user.handle)
                             filter = false;
                     }
+                    if (uObj.user.handle === "crazycowmm")
+                        filter = false;
                 }
                 else {
                     let id = getIdFromJWT(req.headers.authorization);
@@ -105,6 +136,58 @@ export function initializeMapRoutes() {
             return;
         }
         res.sendStatus(404);
+    }));
+    app.get('/get_map_tags', (req, res) => __awaiter(this, void 0, void 0, function* () {
+        res.send({
+            genre: [
+                "adventure",
+                "parkour",
+                "survival",
+                "puzzle",
+                "game",
+                "build"
+            ],
+            subgenre: [
+                "horror",
+                "PVE",
+                "PVP",
+                "episodic",
+                "challenge",
+                'CTM',
+                "RPG",
+                "trivia",
+                "escape",
+                "finding",
+                "maze",
+                "unfair",
+                "dropper",
+                "elytra",
+                "city",
+                "park",
+                "multiplayer",
+                "singleplayer",
+                "co-op"
+            ],
+            difficulty: [
+                "chill",
+                "easy",
+                "medium",
+                "hard"
+            ],
+            theme: [
+                "medieval",
+                "modern",
+                "fantasy",
+                "sci-fi",
+                "realistic",
+                "vanilla"
+            ],
+            length: [
+                "short",
+                "medium",
+                "long"
+            ],
+        });
     }));
 }
 export function findMaps(requestQuery, useProjection) {
@@ -172,11 +255,11 @@ export function findMaps(requestQuery, useProjection) {
         if (query.limit === 0) {
             query.setLimit(20);
         }
-        if (requestQuery.skip) {
-            if (requestQuery.skip < 0) {
-                requestQuery.skip = "0";
+        if (requestQuery.page) {
+            if (requestQuery.page < 0) {
+                requestQuery.page = "0";
             }
-            query.setSkip(Number.parseInt(requestQuery.skip));
+            query.setSkip(Number.parseInt(requestQuery.page) * query.limit);
         }
         const projection = {
             title: 1,
@@ -217,5 +300,88 @@ export function findMaps(requestQuery, useProjection) {
             documents: documents
         };
         return result;
+    });
+}
+export function performSearch(requestQuery) {
+    return __awaiter(this, void 0, void 0, function* () {
+        let search = new Search();
+        switch (requestQuery.sort) {
+            case "newest":
+                search.sort("createdDate", "desc");
+                break;
+            case "updated":
+                search.sort("updatedDate", "desc");
+                break;
+            case "title_ascending":
+                search.sort("title", "asc");
+                break;
+            case "title_descending":
+                search.sort("title", "desc");
+                break;
+            case "oldest":
+                search.sort("createdDate", "asc");
+                break;
+            case "highest_rated":
+                search.sort("rating", "desc");
+                break;
+            case "lowest_rated":
+                search.sort("rating", "asc");
+                break;
+            case "creator_ascending":
+                search.sort("creators.username", "asc");
+                break;
+            case "creator_descending":
+                search.sort("creators.username", "desc");
+                break;
+            // case "best_match": 
+            // 	sort = {score: {$meta: "textScore"}}
+            // 	break;
+            default:
+                search.sort("createdDate", "desc");
+                break;
+        }
+        if (requestQuery.status && (!requestQuery.exclusiveStatus || requestQuery.exclusiveStatus === "false")) {
+            search.filter("status", ">=", Number.parseInt(requestQuery.status));
+        }
+        else if (requestQuery.status) {
+            search.filter("status", "=", Number.parseInt(requestQuery.status));
+        }
+        else {
+            search.filter("status", ">=", 2);
+        }
+        if (requestQuery.version) {
+            requestQuery.version.replace(".0", "");
+            search.filter("files.minecraftVersion", "=", requestQuery.version);
+        }
+        if (requestQuery.search && !(requestQuery.search === "undefined" || requestQuery.search === "null")) {
+            search.query(requestQuery.search, false);
+        }
+        if (requestQuery.limit && requestQuery.page) {
+            search.paginate(Number.parseInt(requestQuery.limit), Number.parseInt(requestQuery.page) + 1);
+        }
+        if (requestQuery.includeTags) {
+            let tags = requestQuery.includeTags.split(",");
+            for (const tag of tags) {
+                search.filter("tags", "=", tag, "AND");
+            }
+        }
+        if (requestQuery.excludeTags) {
+            let tags = requestQuery.excludeTags.split(",");
+            for (const tag of tags) {
+                search.filter("tags", "!=", tag, "AND");
+            }
+        }
+        try {
+            let documents = yield search.execute();
+            if (!documents) {
+                console.error("Meilisearch is probably not initialized.");
+                return { totalCount: 0, documents: [] };
+            }
+            return { totalCount: (search.hitsPerPageS) ? documents.totalHits : documents.estimatedTotalHits, documents: documents.hits.map((doc) => doc) };
+        }
+        catch (e) {
+            sendLog("performSearch", e);
+            return { totalCount: 0, documents: [] };
+        }
     });
 }

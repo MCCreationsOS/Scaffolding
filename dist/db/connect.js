@@ -1,4 +1,6 @@
+import { MeiliSearch } from "meilisearch";
 import { client } from "../index.js";
+import { sendLog } from "../logging/logging.js";
 const connectionsPool = [];
 export class Database {
     constructor(databaseName, collectionName) {
@@ -56,5 +58,57 @@ export class DatabaseQueryBuilder {
     }
     createCopy() {
         return new DatabaseQueryBuilder(this.query, this.sort, this.projection, this.limit, this.skip);
+    }
+}
+export class Search {
+    constructor(query, sort, filter, hitsPerPage, page) {
+        this.queryS = '';
+        this.sortS = "createdDate:desc";
+        (query) ? this.queryS = query : '';
+        (sort) ? this.sortS = sort : '';
+        this.filterS = filter;
+        this.hitsPerPageS = hitsPerPage;
+        this.pageS = page;
+        try {
+            this.client = new MeiliSearch({
+                host: 'http://localhost:7700',
+                apiKey: 'mccreations-search'
+            });
+            this.index = this.client.index('maps');
+        }
+        catch (error) {
+            sendLog("Meilisearch", error);
+            console.error(error);
+        }
+    }
+    query(query, add) {
+        this.queryS = add ? `${this.queryS} ${query}` : query;
+    }
+    sort(attr, direction) {
+        this.sortS = `${attr}:${direction}`;
+    }
+    filter(attr, operation, value, combiner) {
+        this.filterS = combiner ? `${this.filterS} ${combiner} ${attr}${operation}${value}` : `${attr} ${operation} ${value}`;
+    }
+    paginate(hitsPerPage, page) {
+        this.hitsPerPageS = hitsPerPage;
+        this.pageS = page;
+    }
+    execute() {
+        if (!this.client || !this.index) {
+            return;
+        }
+        let options = {};
+        if (this.hitsPerPageS) {
+            options.hitsPerPage = this.hitsPerPageS;
+            options.page = this.pageS;
+        }
+        if (this.filterS) {
+            options.filter = this.filterS;
+        }
+        if (this.sortS) {
+            options.sort = [this.sortS];
+        }
+        return this.index.search(this.queryS, options);
     }
 }

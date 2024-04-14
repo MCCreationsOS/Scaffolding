@@ -14,6 +14,7 @@ import { Database, DatabaseQueryBuilder } from "../db/connect.js";
 import { ObjectId } from "mongodb";
 import jwt from 'jsonwebtoken';
 import { forgotPasswordEmail } from "../email/email.js";
+import { sendLog } from "../logging/logging.js";
 const saltRounds = 10;
 export const JWTKey = "literally1984";
 export function initializeAuthRoutes() {
@@ -60,6 +61,7 @@ export function initializeAuthRoutes() {
                 }
             }
             catch (err) {
+                sendLog("delete user", err);
                 console.log("JWT not verified " + err);
                 res.send({ error: "Session expired, please sign in and try again" });
             }
@@ -97,6 +99,7 @@ export function initializeAuthRoutes() {
                 }
             }
             catch (err) {
+                sendLog("updateProfile", err);
                 console.log("JWT not verified");
                 res.send({ error: "Session expired, please sign in and try again" });
             }
@@ -127,6 +130,7 @@ export function initializeAuthRoutes() {
                 }
             }
             catch (err) {
+                sendLog("updateHandle", err);
                 console.log("JWT not verified");
                 res.send({ error: "Session expired, please sign in and try again" });
             }
@@ -157,6 +161,7 @@ export function initializeAuthRoutes() {
                 }
             }
             catch (err) {
+                sendLog("updateEmail", err);
                 console.log("JWT not verified");
                 res.send({ error: "Session expired, please sign in and try again" });
             }
@@ -188,6 +193,7 @@ export function initializeAuthRoutes() {
                 }
             }
             catch (err) {
+                sendLog("updatePassword", err);
                 console.log("JWT not verified");
                 res.send({ error: "Session expired, please sign in and try again" });
             }
@@ -224,6 +230,7 @@ export function initializeAuthRoutes() {
                 }
             }
             catch (e) {
+                sendLog("resetPassword", e);
                 console.log("JWT not verified");
                 res.send({ error: "Token expired; Please request a new reset email" });
             }
@@ -240,6 +247,7 @@ export function initializeAuthRoutes() {
                 res.sendStatus(200);
             }
             catch (e) {
+                sendLog("forgotPassword", e);
                 res.send({ error: "There was an error sending the reset email. Try again" });
             }
         }
@@ -275,6 +283,7 @@ export function initializeAuthRoutes() {
             else {
                 user.handle = user.username.toLowerCase().replace(" ", "-");
             }
+            user.email = user.email.toLowerCase();
             database.collection.insertOne(user);
             res.send(200);
         }));
@@ -652,6 +661,7 @@ export function getUserFromJWT(jwtString) {
             }
         }
         catch (err) {
+            sendLog("getUserFromJWT", err);
             console.log("JWT not verified");
             return { error: "Session expired, please sign in and try again" };
         }
@@ -666,6 +676,7 @@ export function getIdFromJWT(jwtString) {
         }
     }
     catch (e) {
+        sendLog("getIdFromJWT", e);
         console.log('JWT Error: ' + e);
         return { error: "Session expired, please sign in and try again" };
     }

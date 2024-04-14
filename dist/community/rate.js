@@ -1,4 +1,5 @@
 import { Database } from "../db/connect.js";
+import { sendLog } from "../logging/logging.js";
 export function rateContent(rating, content) {
     let database = new Database();
     let totalRating = 0;
@@ -15,6 +16,7 @@ export function rateContent(rating, content) {
     database.collection.updateOne({ slug: content.slug }, { $push: { ratings: rating }, $set: { rating: totalRating } }).then(() => {
         return totalRating;
     }).catch((error) => {
+        sendLog("rateContent", error);
         console.error(error);
         return -1;
     });
