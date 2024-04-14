@@ -13,11 +13,11 @@ import { app } from "../index.js";
 import { JSDOM } from 'jsdom';
 import jwt from 'jsonwebtoken';
 import { JWTKey, getUserFromJWT } from "../auth/routes.js";
-import s3 from "aws-sdk";
 import { ObjectId } from "mongodb";
 import { approvedEmail, requestApprovalEmail } from "../email/email.js";
 import puppeteer from "puppeteer";
-const { S3 } = s3;
+import { sendLog } from "../logging/logging.js";
+import { upload } from "../s3/upload.js";
 export function initializeContentRoutes() {
     app.post('/content', (req, res) => __awaiter(this, void 0, void 0, function* () {
         if (!req.body.content) {
@@ -274,29 +274,6 @@ export function initializeContentRoutes() {
         });
     }));
 }
-const bucket = new S3({
-    region: 'us-west-1',
-    accessKeyId: "***REMOVED***",
-    secretAccessKey: "***REMOVED***"
-});
-function upload(file, name) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const params = {
-            Bucket: 'mccreations',
-            Key: name,
-            Body: file
-        };
-        try {
-            const u = bucket.upload(params);
-            let data = yield u.promise();
-            console.log("Uploaded " + name);
-            return data.Location;
-        }
-        catch (error) {
-            return error;
-        }
-    });
-}
 function fetchFromPMC(url) {
     var _a, _b, _c, _d;
     return __awaiter(this, void 0, void 0, function* () {
@@ -468,15 +445,18 @@ function loadAndTransferImages(map) {
                         yield database.collection.updateOne({ slug: map.slug }, { $set: { images: map.images } });
                     }
                     catch (e) {
+                        sendLog("loadAndTransferImages", e);
                         console.log("Error loading page: " + e);
                     }
                 }
                 catch (e) {
+                    sendLog("loadAndTransferImages", e);
                     console.log("Error fetching images using puppeteer: " + e);
                 }
             }));
         }
         catch (e) {
+            sendLog("loadAndTransferImages", e);
             console.log("Error launching puppeteer: " + e);
         }
     });

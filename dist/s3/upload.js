@@ -7,11 +7,15 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import S3 from 'aws-sdk/clients/s3.js';
+import { Upload } from "@aws-sdk/lib-storage";
+import { S3 } from "@aws-sdk/client-s3";
+import { sendLog } from '../logging/logging.js';
 const bucket = new S3({
     region: 'us-west-1',
-    accessKeyId: "***REMOVED***",
-    secretAccessKey: "***REMOVED***"
+    credentials: {
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID + "",
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY + ""
+    }
 });
 export function upload(file, name) {
     return __awaiter(this, void 0, void 0, function* () {
@@ -22,14 +26,18 @@ export function upload(file, name) {
             Body: file
         };
         try {
-            const u = bucket.upload(params);
-            yield u.promise().catch(error => {
-                console.error(error);
+            const u = new Upload({
+                client: bucket,
+                params
             });
-            console.log("New file uploaded!");
+            yield u.done().catch((e) => {
+                sendLog("upload", e);
+                console.error(e);
+            });
             return "https://mccreations.s3.us-west-1.amazonaws.com/" + name;
         }
         catch (error) {
+            sendLog("upload", error);
             return error;
         }
     });

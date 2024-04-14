@@ -1,7 +1,8 @@
 import FormData from 'form-data';
 import Mailgun from 'mailgun.js';
+import { sendLog } from '../logging/logging.js';
 const mailgun = new Mailgun.default(FormData);
-const mg = mailgun.client({ username: 'api', key: '***REMOVED***' });
+const mg = mailgun.client({ username: 'api', key: process.env.MAILGUN_KEY + "" });
 export function email(to, subject, content) {
     mg.messages.create('mail.mccreations.net', {
         from: 'MCCreations <no-reply@mccreations.net>',
@@ -30,6 +31,7 @@ export function forgotPasswordEmail(to, resetToken) {
         });
     }
     catch (e) {
+        sendLog("forgotPasswordEmail", e);
         throw e;
     }
 }
@@ -40,6 +42,7 @@ export function requestApprovalEmail(link) {
         });
     }
     catch (e) {
+        sendLog("requestApprovalEmail", e);
         console.log(e);
     }
 }
@@ -51,6 +54,7 @@ export function approvedEmail(to, link, title) {
         });
     }
     catch (e) {
+        sendLog("approvedEmail", e);
         console.log(e);
     }
 }
