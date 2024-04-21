@@ -303,6 +303,7 @@ export function findMaps(requestQuery, useProjection) {
     });
 }
 export function performSearch(requestQuery) {
+    var _a;
     return __awaiter(this, void 0, void 0, function* () {
         let search = new Search();
         switch (requestQuery.sort) {
@@ -371,17 +372,13 @@ export function performSearch(requestQuery) {
                 search.filter("tags", "!=", tag, "AND");
             }
         }
-        try {
-            let documents = yield search.execute();
-            if (!documents) {
-                console.error("Meilisearch is probably not initialized.");
-                return { totalCount: 0, documents: [] };
-            }
-            return { totalCount: (search.hitsPerPageS) ? documents.totalHits : documents.estimatedTotalHits, documents: documents.hits.map((doc) => doc) };
-        }
-        catch (e) {
+        let documents = yield ((_a = search.execute()) === null || _a === void 0 ? void 0 : _a.catch((e) => {
             sendLog("performSearch", e);
+        }));
+        if (!documents) {
+            console.error("Meilisearch is probably not initialized.");
             return { totalCount: 0, documents: [] };
         }
+        return { totalCount: (search.hitsPerPageS) ? documents.totalHits : documents.estimatedTotalHits, documents: documents.hits.map((doc) => doc) };
     });
 }

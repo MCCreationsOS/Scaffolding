@@ -369,15 +369,12 @@ export async function performSearch(requestQuery: any) {
 		}
 	}
 
-	try {
-		let documents = await search.execute()
-		if(!documents) {
-			console.error("Meilisearch is probably not initialized.")
-			return {totalCount: 0, documents: []}
-		}
-		return { totalCount: (search.hitsPerPageS) ? documents.totalHits : documents.estimatedTotalHits, documents: documents.hits.map((doc: any) => doc)}
-	} catch(e) {
+	let documents = await search.execute()?.catch((e) => {
 		sendLog("performSearch", e)
+	})
+	if(!documents) {
+		console.error("Meilisearch is probably not initialized.")
 		return {totalCount: 0, documents: []}
 	}
+	return { totalCount: (search.hitsPerPageS) ? documents.totalHits : documents.estimatedTotalHits, documents: documents.hits.map((doc: any) => doc)}
 }
