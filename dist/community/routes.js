@@ -17,6 +17,7 @@ var __asyncValues = (this && this.__asyncValues) || function (o) {
 import { app } from "../index.js";
 import { Database, DatabaseQueryBuilder } from "../db/connect.js";
 import { rateContent } from "./rate.js";
+import * as words from 'naughty-words';
 export function initializeCommunityRoutes() {
     app.get('/creators', (req, res) => __awaiter(this, void 0, void 0, function* () {
         var _a, e_1, _b, _c;
@@ -73,7 +74,13 @@ export function initializeCommunityRoutes() {
     }));
     app.post('/maps/comment/:slug', (req, res) => __awaiter(this, void 0, void 0, function* () {
         let database = new Database();
-        database.collection.updateOne({ slug: req.params.slug }, { $push: { comments: { username: req.body.username, comment: req.body.comment, date: Date.now(), likes: 0, comments: {}, handle: req.body.handle } } });
+        let comments = new Database("content", "comments");
+        let approved = true;
+        if (words.en.some((word) => req.body.comment.includes(word))) {
+            approved = false;
+        }
+        let comment = yield comments.collection.insertOne({ username: req.body.username, comment: req.body.comment, date: Date.now(), likes: 0, handle: req.body.handle, approved: approved });
+        database.collection.updateOne({ slug: req.params.slug }, { $push: { comments: { _id: comment.insertedId, username: req.body.username, comment: req.body.comment, date: Date.now(), likes: 0, handle: req.body.handle, approved: approved } } });
         res.sendStatus(200);
     }));
 }
