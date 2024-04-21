@@ -1,6 +1,5 @@
 import { MongoClient, ServerApiVersion } from 'mongodb';
-import { writeFileSync } from 'fs';
-const client = new MongoClient(process.env.MONGO_URI, {
+const client = new MongoClient(process.env.MONGODB_URI, {
   serverApi: {
     version: ServerApiVersion.v1,
     strict: true,
@@ -24,5 +23,13 @@ for await (const doc of cursor) {
     documents.push(doc);
 }
 
+client.close();
 
-writeFileSync('./meilisearch/maps.json', JSON.stringify(documents))
+fetch('http://localhost:7700/indexes/maps/documents?primaryKey=_id', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer ' + process.env.MEILISEARCH_KEY
+  },
+  body: JSON.stringify(documents)
+})
