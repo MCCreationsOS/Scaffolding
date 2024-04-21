@@ -171,7 +171,7 @@ export function initializeMapRoutes() {
             difficulty: [
                 "chill",
                 "easy",
-                "medium",
+                "normal",
                 "hard"
             ],
             theme: [
