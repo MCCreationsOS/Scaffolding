@@ -2,6 +2,7 @@ import { app } from "../index.js";
 import { Database, DatabaseQueryBuilder } from "../db/connect.js";
 import { rateContent } from "./rate.js";
 import { User } from "../auth/types.js";
+import * as words from 'naughty-words';
 
 export function initializeCommunityRoutes() {
     app.get('/creators', async (req, res) => {
@@ -56,8 +57,15 @@ export function initializeCommunityRoutes() {
     
     app.post('/maps/comment/:slug', async (req, res) => {
         let database = new Database();
+        let comments = new Database("content", "comments")
+
+        let approved = true
+        if(words.en.some((word) => req.body.comment.includes(word))) {
+            approved = false
+        }
     
-        database.collection.updateOne({slug: req.params.slug}, {$push: {comments: {username: req.body.username, comment: req.body.comment, date: Date.now(), likes: 0, comments: {}, handle: req.body.handle}}})
+        let comment = await comments.collection.insertOne({username: req.body.username, comment: req.body.comment, date: Date.now(), likes: 0, handle: req.body.handle, approved: approved})
+        database.collection.updateOne({slug: req.params.slug}, {$push: {comments: {_id: comment.insertedId, username: req.body.username, comment: req.body.comment, date: Date.now(), likes: 0, handle: req.body.handle, approved: approved}}})
         res.sendStatus(200)
     })
 }
