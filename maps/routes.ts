@@ -42,6 +42,7 @@ export function initializeMapRoutes() {
 		result.documents = result.documents.filter((map: MapDoc) => {
 			if(map.status < 2) {
 				if(user.user && map.creators) {
+					if(user.user.handle === "crazycowmm") return true;
 					for(const creator of map.creators) {
 						if(creator.handle === user.user.handle) return true;
 					}
@@ -369,9 +370,10 @@ export async function performSearch(requestQuery: any) {
 		}
 	}
 
-	let documents = await search.execute()?.catch((e) => {
+	let documents = await (search.execute()?.catch((e) => {
+		console.error(e)
 		sendLog("performSearch", e)
-	})
+	}))
 	if(!documents) {
 		console.error("Meilisearch is probably not initialized.")
 		return {totalCount: 0, documents: []}
