@@ -12,6 +12,7 @@ import { approvedEmail, requestApprovalEmail } from "../email/email.js";
 import puppeteer from "puppeteer";
 import { sendLog } from "../logging/logging.js";
 import { upload } from "../s3/upload.js";
+import { updateMeilisearch } from "../meilisearch.js";
 
 export function initializeContentRoutes() {
     app.post('/content', async (req, res) => {
@@ -221,6 +222,7 @@ export function initializeContentRoutes() {
         res.sendStatus(200)
 
         let map = await database.collection.findOne<MapDoc>({slug: req.params.slug})
+        updateMeilisearch();
         if(map) {
             let creators = map.creators
             creators?.forEach(async (creator) => {
