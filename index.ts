@@ -11,6 +11,7 @@ import { initializeAuthRoutes } from './auth/routes.js';
 import { MongoClient } from 'mongodb';
 import { initializeContentRoutes } from './content/routes.js';
 import { approvedEmail } from './email/email.js';
+import { updateMeilisearch } from './meilisearch.js';
 
 export const app = express();
 app.use(helmet());
@@ -31,6 +32,8 @@ initializeCommunityRoutes();
 initializeMapRoutes();
 initializeAuthRoutes();
 initializeContentRoutes();
+
+setInterval(updateMeilisearch, 1000 * 60 * 60 * 24);
 
 var httpServer = createHttpServer(app);
 httpServer.listen(8080);
