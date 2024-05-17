@@ -213,6 +213,7 @@ export function initializeAuthRoutes() {
                     if (user && req.body.password) {
                         bcrypt.hash(user.password, saltRounds, (err, hash) => __awaiter(this, void 0, void 0, function* () {
                             if (err) {
+                                console.error(err);
                                 res.send({ error: "There was an error resetting your password" });
                                 return;
                             }
