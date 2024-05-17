@@ -211,7 +211,7 @@ export function initializeAuthRoutes() {
                     let database = new Database("content", "creators");
                     let user = yield database.collection.findOne({ email: token.email });
                     if (user && req.body.password) {
-                        bcrypt.hash(user.password, saltRounds, (err, hash) => __awaiter(this, void 0, void 0, function* () {
+                        bcrypt.hash(req.body.password, saltRounds, (err, hash) => __awaiter(this, void 0, void 0, function* () {
                             if (err) {
                                 console.error(err);
                                 res.send({ error: "There was an error resetting your password" });
