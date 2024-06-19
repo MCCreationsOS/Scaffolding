@@ -36,7 +36,8 @@ export enum Providers {
 
 export enum UserTypes {
     Account,
-    Creator
+    Creator,
+    Admin
 }
 
 export interface AuthError {
