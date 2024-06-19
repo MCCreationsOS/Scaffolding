@@ -1,6 +1,6 @@
 import { MeiliSearch } from "meilisearch";
 import { client } from "../index.js";
-import { IDatabaseQuery, MapDoc } from "./types.js";
+import { IDatabaseQuery, SearchIndex } from "./types.js";
 
 // const { MongoClient, ServerApiVersion } = require('mongodb');
 import { Collection, Filter, MongoClient, ServerApiVersion, Sort, SortDirection, Document, FilterOperators } from 'mongodb';
@@ -98,7 +98,7 @@ export class Search {
     private client
     private index
 
-    constructor(query?: string, sort?: string, filter?: string, hitsPerPage?: number, page?: number) {
+    constructor(index: SearchIndex, query?: string, sort?: string, filter?: string, hitsPerPage?: number, page?: number) {
         (query) ? this.queryS = query : '';
         (sort) ? this.sortS = sort : '';
         this.filterS = filter;
@@ -111,7 +111,7 @@ export class Search {
                 apiKey: '***REMOVED***'
             })
 
-            this.index = this.client.index('maps');
+            this.index = this.client.index(index);
 
         } catch (error) {
             sendLog("Meilisearch", error)

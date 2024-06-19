@@ -8,10 +8,12 @@ import jwt from 'jsonwebtoken'
 import { upload } from "../s3/upload.js";
 import { forgotPasswordEmail } from "../email/email.js";
 import { sendLog } from "../logging/logging.js";
+import { get } from "http";
 const saltRounds = 10;
-export const JWTKey = "literally1984"
+export let JWTKey = "literally1984"
 
 export function initializeAuthRoutes() {
+    // Get a user from a JWT token sent in the authorization header
     app.get('/auth/user', async (req, res) => {
         if(req.headers.authorization) {
             res.send(await getUserFromJWT(req.headers.authorization));
@@ -22,32 +24,38 @@ export function initializeAuthRoutes() {
 
     })
 
-    app.get('/auth/user/creators', async (req, res) => {
-        if(req.headers.authorization) {
-            let user = await getUserFromJWT(req.headers.authorization)
-            if('user' in user && user.user) {
-                let creators = [user.user]
-                let database = new Database('content', 'creators')
-                let cursor = await database.collection.find<User>({'owners': user.user.handle})
-                creators = [...creators, ...await cursor.toArray()]
-                res.send({creators: creators})
-            } else {
-                res.send({error: "You are not allowed to access this resource"})
-            }
-        } else {
-            console.log("authorization not sent")
-            res.send({error: "You are not allowed to access this resource"})
-        }
-    })
 
+    // app.get('/auth/user/creators', async (req, res) => {
+    //     if(req.headers.authorization) {
+    //         let user = await getUserFromJWT(req.headers.authorization)
+    //         if('user' in user && user.user) {
+    //             let creators = [user.user]
+    //             let database = new Database('content', 'creators')
+    //             let cursor = await database.collection.find<User>({'owners': user.user.handle})
+    //             creators = [...creators, ...await cursor.toArray()]
+    //             res.send({creators: creators})
+    //         } else {
+    //             res.send({error: "You are not allowed to access this resource"})
+    //         }
+    //     } else {
+    //         console.log("authorization not sent")
+    //         res.send({error: "You are not allowed to access this resource"})
+    //     }
+    // })
+
+    // Delete a user
     app.delete('/auth/user', async (req, res) => {
         if(req.headers.authorization) {
             try {
-                let token = jwt.verify(req.headers.authorization, JWTKey) as any
-                if(token && token._id) {
-                    let _id = new ObjectId(token._id)
+                let user = await getUserFromJWT(req.headers.authorization)
+                if(user && user.user) {
                     let database = new Database("content", "creators")
-                    database.collection.deleteOne({_id: _id})
+                    let result = await database.collection.deleteOne({_id: user.user._id})
+                    if(result.acknowledged && result.deletedCount === 1) {
+                        res.sendStatus(200)
+                    } else {
+                        res.send({error: "User not found"})
+                    }
                 } else {
                     console.log("Token not in JWT")
                     res.send({error: "Session expired, please sign in and try again"})
@@ -64,30 +72,28 @@ export function initializeAuthRoutes() {
         }
     })
 
+    // Update a user's profile (username, icon, banner, about)
     app.post('/auth/user/updateProfile', async (req, res) => {
         if(req.headers.authorization) {
             try {
-                let token = jwt.verify(req.headers.authorization, JWTKey) as any
-                if(token && token._id) {
-                    let _id = new ObjectId(token._id)
+                let user = await getUserFromJWT(req.headers.authorization)
+                if(user && user.user) {
                     let database = new Database("content", "creators")
-
-                    console.log(req.body)
                     
                     if(req.body.banner && req.body.banner.length > 1) {
-                        database.collection.updateOne({_id: _id}, {$set: {bannerURL: req.body.banner}})
+                        await database.collection.updateOne({_id: user.user._id}, {$set: {bannerURL: req.body.banner}})
                     }
 
                     if(req.body.icon && req.body.icon.length > 1) {
-                        database.collection.updateOne({_id: _id}, {$set: {iconURL: req.body.icon}})
+                        await database.collection.updateOne({_id: user.user._id}, {$set: {iconURL: req.body.icon}})
                     }
 
                     if(req.body.username && req.body.username.length > 1) {
-                        database.collection.updateOne({_id: _id}, {$set: {username: req.body.username}})
+                        await database.collection.updateOne({_id: user.user._id}, {$set: {username: req.body.username}})
                     }
 
                     if(req.body.about && req.body.about.length > 1) {
-                        database.collection.updateOne({_id: _id}, {$set: {about: req.body.about}})
+                        await database.collection.updateOne({_id: user.user._id}, {$set: {about: req.body.about}})
                     }
 
                     res.sendStatus(200)
@@ -108,19 +114,35 @@ export function initializeAuthRoutes() {
         }
     })
 
+    // Update a user's handle
     app.post('/auth/user/updateHandle', async (req, res) => {
         if(req.headers.authorization) {
             try {
-                let token = jwt.verify(req.headers.authorization, JWTKey) as any
-                if(token && token._id) {
-                    let _id = new ObjectId(token._id)
+                let user = await getUserFromJWT(req.headers.authorization)
+                if(user && user.user) {
+                    // Change handle
                     let database = new Database("content", "creators")
-                    let existingUser = await database.collection.findOne({email: req.body.handle})
+                    let existingUser = await database.collection.findOne({handle: req.body.handle})
                     if(existingUser) {
                         res.send({error: "Another account is already using that handle"})
                         return;
                     }
-                    database.collection.updateOne({_id: _id}, {$set: {handle: req.body.handle}})
+                    await database.collection.updateOne({_id: user.user._id}, {$set: {handle: req.body.handle}})
+
+                    // Update handle in all content
+                    database = new Database("content", "Maps")
+                    await database.collection.updateMany({"creators.handle": user.user.handle}, {$set: {"creators.$.handle": req.body.handle}})
+
+                    database = new Database("content", "datapacks")
+                    await database.collection.updateMany({"creators.handle": user.user.handle}, {$set: {"creators.$.handle": req.body.handle}})
+
+                    database = new Database("content", "resourcepacks")
+                    await database.collection.updateMany({"creators.handle": user.user.handle}, {$set: {"creators.$.handle": req.body.handle}})
+
+                    database = new Database("content", "comments")
+                    await database.collection.updateMany({"handle": user.user.handle}, {$set: {"handle": req.body.handle}})
+
+                    
                     res.sendStatus(200)
                 } else {
                     console.log("Token not in JWT")
@@ -138,19 +160,19 @@ export function initializeAuthRoutes() {
         }
     })
 
+    // Update a user's email
     app.post('/auth/user/updateEmail', async (req, res) => {
         if(req.headers.authorization) {
             try {
-                let token = jwt.verify(req.headers.authorization, JWTKey) as any
-                if(token && token._id) {
-                    let _id = new ObjectId(token._id)
+                let user = await getUserFromJWT(req.headers.authorization)
+                if(user && user.user) {
                     let database = new Database("content", "creators")
                     let existingUser = await database.collection.findOne({email: req.body.email})
                     if(existingUser) {
                         res.send({error: "Another account is already using that email"})
                         return;
                     }
-                    database.collection.updateOne({_id: _id}, {$set: {email: req.body.email}})
+                    await database.collection.updateOne({_id: user.user._id}, {$set: {email: req.body.email, last_important_update: Date.now()}})
                     res.sendStatus(200)
                 } else {
                     console.log("Token not in JWT")
@@ -168,19 +190,19 @@ export function initializeAuthRoutes() {
         }
     })
 
+    // Update a user's password
     app.post('/auth/user/updatePassword', async (req, res) => {
         if(req.headers.authorization) {
             try {
-                let token = jwt.verify(req.headers.authorization, JWTKey) as any
-                if(token && token._id) {
-                    let _id = new ObjectId(token._id)
+                let user = await getUserFromJWT(req.headers.authorization)
+                if(user && user.user) {
                     let database = new Database("content", "creators")
                     bcrypt.hash(req.body.password, saltRounds, async (err, hash) => {
                         if(err) {
                             res.send({error: "There was an error resetting your password"})
                             return;
                         }
-                        database.collection.updateOne({_id: _id}, {$set: {password: hash}})
+                        await database.collection.updateOne({_id: user.user._id}, {$set: {password: hash, last_important_update: Date.now()}})
                         res.sendStatus(200)
                     })
                 } else {
@@ -202,10 +224,9 @@ export function initializeAuthRoutes() {
     app.post('/auth/resetPassword', async (req, res) => {
         if(req.headers.authorization) {
             try {
-                let token = jwt.verify(req.headers.authorization, JWTKey) as any
-                if(token && token.email) {
+                let user = await getUserFromJWT(req.headers.authorization)
+                if(user && user.user) {
                     let database = new Database("content", "creators")
-                    let user = await database.collection.findOne({email: token.email})
                     if(user && req.body.password) { 
                         bcrypt.hash(req.body.password, saltRounds, async (err, hash) => {
                             if(err) {
@@ -214,7 +235,7 @@ export function initializeAuthRoutes() {
                                 return;
                             }
 
-                            database.collection.updateOne( {_id: user?._id}, {"$set": { password: hash } } )
+                            await database.collection.updateOne( {_id: user.user._id}, {"$set": { password: hash, last_important_update: Date.now() } } )
                             res.sendStatus(200)
                         })
                     } else {
@@ -237,12 +258,13 @@ export function initializeAuthRoutes() {
 
     app.post('/auth/forgotPassword', async (req, res) => {
         if(req.body.email) {
-            try {
-                forgotPasswordEmail(req.body.email, jwt.sign({email: req.body.email}, JWTKey, { expiresIn: "30min"}))
+            let database = new Database("content", "creators")
+            let user = await database.collection.findOne({email: req.body.email})
+            if(user) {
+                forgotPasswordEmail(req.body.email, jwt.sign({_id: user._id}, JWTKey, { expiresIn: "30min"}))
                 res.sendStatus(200)
-            } catch(e) {
-                sendLog("forgotPassword", e)
-                res.send({error: "There was an error sending the reset email. Try again"})
+            } else {
+                res.send({error: "User not found"})
             }
         } else {
             res.send({error: "Email address not provided"})
@@ -285,7 +307,7 @@ export function initializeAuthRoutes() {
 
             user.email = user.email.toLowerCase()
 
-            database.collection.insertOne(user)
+            await database.collection.insertOne(user)
             res.send(200)
         })
     })
@@ -312,7 +334,7 @@ export function initializeAuthRoutes() {
         bcrypt.compare(user.password, existingUser.password, (err, same) => {
             if(same) {
                 console.log("user login successful")
-                res.send({token: jwt.sign({_id: existingUser!._id}, JWTKey, {expiresIn: '31d'}), creator: {username: existingUser!.username, handle: existingUser!.handle}})
+                res.send({token: jwt.sign({_id: existingUser!._id, createdDate: Date.now()}, JWTKey, {expiresIn: '31d'}), creator: {username: existingUser!.username, handle: existingUser!.handle}})
             } else {
                 res.send({error: "Incorrect email address or password"})
             }
@@ -323,7 +345,7 @@ export function initializeAuthRoutes() {
         let result = await signInWithDiscord(req.query.code as string)
         if(instanceOfUser(result)) {
             result = result as User;
-            res.send({token: jwt.sign({_id: result._id}, JWTKey, {expiresIn: '31d'}), creator: {username: result.username}})
+            res.send({token: jwt.sign({_id: result._id, createdDate: Date.now()}, JWTKey, {expiresIn: '31d'}), creator: {username: result.username}})
         } else {
             console.log(result)
             res.send(result)
@@ -335,7 +357,7 @@ export function initializeAuthRoutes() {
         let result = await signInWithGithub(req.query.code as string)
         if(instanceOfUser(result)) {
             result = result as User
-            res.send({token: jwt.sign({_id: result._id}, JWTKey, {expiresIn: '31d'}), creator: {username: result.username, handle: result.handle}})
+            res.send({token: jwt.sign({_id: result._id, createdDate: Date.now()}, JWTKey, {expiresIn: '31d'}), creator: {username: result.username, handle: result.handle}})
         } else {
             console.log(result)
             res.send(result)
@@ -347,7 +369,7 @@ export function initializeAuthRoutes() {
         let result = await signInWithGoogle(req.query.access_token as string);
         if(instanceOfUser(result)) {
             result = result as User
-            res.send({token: jwt.sign({_id: result._id}, JWTKey, {expiresIn: '31d'}), creator: {username: result.username, handle: result.handle}})
+            res.send({token: jwt.sign({_id: result._id, createdDate: Date.now()}, JWTKey, {expiresIn: '31d'}), creator: {username: result.username, handle: result.handle}})
         } else {
             console.log(result)
             res.send(result)
@@ -358,7 +380,7 @@ export function initializeAuthRoutes() {
         let result = await signInWithMicrosoft(req.query.code as string);
         if(instanceOfUser(result)) {
             result = result as User
-            res.send({token: jwt.sign({_id: result._id}, JWTKey, {expiresIn: '31d'}), creator: {username: result.username, handle: result.handle}})
+            res.send({token: jwt.sign({_id: result._id, createdDate: Date.now()}, JWTKey, {expiresIn: '31d'}), creator: {username: result.username, handle: result.handle}})
         } else {
             console.log(result)
             res.send(result)
@@ -652,7 +674,7 @@ export async function getUserFromJWT(jwtString: string) {
             })
             let cursor = await database.executeQuery(query);
             let user = await cursor.next() as User;
-            if(user) {
+            if(user && ((user.last_important_update && token.createdDate && user.last_important_update < token.createdDate) || !user.last_important_update)) {
                 return {user: user} 
             } else {
                 console.log("User not found")
@@ -663,7 +685,7 @@ export async function getUserFromJWT(jwtString: string) {
             return {error: "Session expired, please sign in and try again"} 
         }
     } catch(err) {
-        sendLog("getUserFromJWT", err)
+        sendLog("getUserFromJWT", err + "\n JWT: " + jwtString)
         console.log("JWT not verified")
         return {error: "Session expired, please sign in and try again"} 
     }
@@ -677,7 +699,7 @@ export function getIdFromJWT(jwtString: string) {
             return new ObjectId(token._id)
         }
     } catch(e) {
-        sendLog("getIdFromJWT", e)
+        sendLog("getIdFromJWT", e + "\n JWT: " + jwtString)
         console.log('JWT Error: ' + e);
         return {error: "Session expired, please sign in and try again"}
     }
@@ -685,4 +707,8 @@ export function getIdFromJWT(jwtString: string) {
 
 function instanceOfUser(object: any) {
     return 'username' in object
+}
+
+export async function refreshJWTHash() {
+    JWTKey = (await crypto.getRandomValues(new Uint8Array(256))).join("")
 }

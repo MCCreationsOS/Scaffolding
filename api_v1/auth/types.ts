@@ -15,7 +15,8 @@ export interface User {
         name: string
     },
     providers?: Provider[],
-    owners?: string[]
+    owners?: string[],
+    last_important_update?: Date
 }
 
 export interface Provider {

@@ -24,11 +24,8 @@ export interface ContentDocument extends Document {
     updatedDate?: Date,
     _id?: ObjectId,
     tags?: string[],
-}
-
-export interface MapDoc extends ContentDocument {
     description: string,
-    files?: [{type: string, worldUrl: string, resourceUrl?: string, dataUrl?: string, minecraftVersion: string, contentVersion?: string}]
+    files?: File[]
     images: string[],
     shortDescription: string,
     status: number,
@@ -37,6 +34,16 @@ export interface MapDoc extends ContentDocument {
     downloads: number,
     views: number,
     importedUrl?: string,
+}
+
+export interface File {
+    type: string,
+    worldUrl: string,
+    resourceUrl?: string,
+    dataUrl?: string,
+    minecraftVersion: string,
+    contentVersion?: string
+    changelog?: string
 }
 
 export interface IDatabaseProjection {
@@ -49,4 +56,16 @@ export interface IDatabaseProjection {
     "creators.username": number,
     images: number,
     slug: number
+}
+
+export enum SearchIndex {
+    Maps = "maps",
+    Datapacks = "datapacks",
+    Resourcepacks = "resourcepacks",
+}
+
+export enum DatabaseCollection {
+    Maps = "Maps",
+    Datapacks = "datapacks",
+    Resourcepacks = "resourcepacks"
 }

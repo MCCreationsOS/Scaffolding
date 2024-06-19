@@ -64,7 +64,7 @@ export function initializeCommunityRoutes() {
             approved = false
         }
     
-        let comment = await comments.collection.insertOne({username: req.body.username, comment: req.body.comment, date: Date.now(), likes: 0, handle: req.body.handle, approved: approved})
+        let comment = await comments.collection.insertOne({username: req.body.username, comment: req.body.comment, date: Date.now(), likes: 0, handle: req.body.handle, approved: approved, slug: req.params.slug})
         database.collection.updateOne({slug: req.params.slug}, {$push: {comments: {_id: comment.insertedId, username: req.body.username, comment: req.body.comment, date: Date.now(), likes: 0, handle: req.body.handle, approved: approved}}})
         res.sendStatus(200)
     })
