@@ -342,48 +342,56 @@ export function initializeAuthRoutes() {
     })
 
     app.post('/auth/signInWithDiscord', async (req, res) => {
-        let result = await signInWithDiscord(req.query.code as string)
-        if(instanceOfUser(result)) {
-            result = result as User;
-            res.send({token: jwt.sign({_id: result._id, createdDate: Date.now()}, JWTKey, {expiresIn: '31d'}), creator: {username: result.username}})
-        } else {
-            console.log(result)
-            res.send(result)
-            // res.sendStatus(500)
+        if(req.query.code && req.query.code !== "undefined") {
+            let result = await signInWithDiscord(req.query.code as string)
+            if(instanceOfUser(result)) {
+                result = result as User;
+                res.send({token: jwt.sign({_id: result._id, createdDate: Date.now()}, JWTKey, {expiresIn: '31d'}), creator: {username: result.username}})
+            } else {
+                console.log(result)
+                res.send(result)
+                // res.sendStatus(500)
+            }
         }
     })
 
     app.post('/auth/signInWithGithub', async (req, res) => {
-        let result = await signInWithGithub(req.query.code as string)
-        if(instanceOfUser(result)) {
-            result = result as User
-            res.send({token: jwt.sign({_id: result._id, createdDate: Date.now()}, JWTKey, {expiresIn: '31d'}), creator: {username: result.username, handle: result.handle}})
-        } else {
-            console.log(result)
-            res.send(result)
-            // res.sendStatus(500)
+        if(req.query.code && req.query.code !== "undefined") {
+            let result = await signInWithGithub(req.query.code as string)
+            if(instanceOfUser(result)) {
+                result = result as User
+                res.send({token: jwt.sign({_id: result._id, createdDate: Date.now()}, JWTKey, {expiresIn: '31d'}), creator: {username: result.username, handle: result.handle}})
+            } else {
+                console.log(result)
+                res.send(result)
+                // res.sendStatus(500)
+            }
         }
     })
 
     app.post('/auth/signInWithGoogle', async (req, res) => {
-        let result = await signInWithGoogle(req.query.access_token as string);
-        if(instanceOfUser(result)) {
-            result = result as User
-            res.send({token: jwt.sign({_id: result._id, createdDate: Date.now()}, JWTKey, {expiresIn: '31d'}), creator: {username: result.username, handle: result.handle}})
-        } else {
-            console.log(result)
-            res.send(result)
+        if(req.query.access_token && req.query.access_token !== "undefined") {
+            let result = await signInWithGoogle(req.query.access_token as string);
+            if(instanceOfUser(result)) {
+                result = result as User
+                res.send({token: jwt.sign({_id: result._id, createdDate: Date.now()}, JWTKey, {expiresIn: '31d'}), creator: {username: result.username, handle: result.handle}})
+            } else {
+                console.log(result)
+                res.send(result)
+            }
         }
     })
 
     app.post('/auth/signInWithMicrosoft', async (req, res) => {
-        let result = await signInWithMicrosoft(req.query.code as string);
-        if(instanceOfUser(result)) {
-            result = result as User
-            res.send({token: jwt.sign({_id: result._id, createdDate: Date.now()}, JWTKey, {expiresIn: '31d'}), creator: {username: result.username, handle: result.handle}})
-        } else {
-            console.log(result)
-            res.send(result)
+        if(req.query.code && req.query.code !== "undefined") {
+            let result = await signInWithMicrosoft(req.query.code as string);
+            if(instanceOfUser(result)) {
+                result = result as User
+                res.send({token: jwt.sign({_id: result._id, createdDate: Date.now()}, JWTKey, {expiresIn: '31d'}), creator: {username: result.username, handle: result.handle}})
+            } else {
+                console.log(result)
+                res.send(result)
+            }
         }
     })
 }
@@ -543,13 +551,15 @@ async function signInWithGoogle(access_token: string): Promise<User | AuthError>
         }
     })
     let data = await res.json();
+
+    if(data.error) return {error: "Invalid access token, try again."}
     
     const database = new Database("content", "creators")
 
     let existingUser = await database.collection.findOne<User>({ "providers.id": data.id})
     if(existingUser) {
         existingUser.providers?.forEach(provider => {
-            if(provider.provider === Providers.Github) {
+            if(provider.provider === Providers.Google) {
                 provider.token = access_token
             }
         })
