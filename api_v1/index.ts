@@ -12,6 +12,8 @@ import { MongoClient } from 'mongodb';
 import { initializeContentRoutes } from './content/routes.js';
 import { approvedEmail } from './email/email.js';
 import { updateMeilisearch } from './meilisearch.js';
+import { initializeDatapackRoutes } from './content/datapacks/routes.js';
+import { initializeResourcepackRoutes } from './content/resourcepacks/routes.js';
 
 export const app = express();
 app.use(helmet());
@@ -30,7 +32,10 @@ initializeCommunityRoutes();
 initializeMapRoutes();
 initializeAuthRoutes();
 initializeContentRoutes();
+initializeDatapackRoutes();
+initializeResourcepackRoutes();
 
+updateMeilisearch();
 setInterval(updateMeilisearch, 1000 * 60 * 60 * 24);
 setInterval(refreshJWTHash, 1000 * 60 * 60 * 24 * 15);
 

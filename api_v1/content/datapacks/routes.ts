@@ -36,6 +36,35 @@ export function initializeDatapackRoutes() {
         }
     })
 
+	app.get('/datapacks-nosearch', async (req, res) => {
+		let result = await findContent(DatabaseCollection.Datapacks, req.query, false)
+		let user = await getUserFromJWT(req.headers.authorization + "")
+
+		result.documents = result.documents.filter((map: ContentDocument) => {
+			if(map.status < 2) {
+				if(user.user && map.creators) {
+					if(user.user.type === UserTypes.Admin) return true;
+					for(const creator of map.creators) {
+						if(creator.handle === user.user.handle) return true;
+					}
+				} else {
+					let id = getIdFromJWT(req.headers.authorization + "") as ObjectId
+					if(id && id instanceof ObjectId && id.equals(map._id)) {
+						return true;
+					}
+				}
+				return false;
+			}
+			return true;
+		})
+
+        if(req.query.sendCount && req.query.sendCount === "true") {
+            res.send({count: result.totalCount})
+        } else {
+            res.send(result);
+        }
+	})
+
     app.get('/datapacks/:slug', async (req, res) => {
         let result = await findContent(DatabaseCollection.Datapacks, {limit: 1, slug: req.params.slug}, false)
 
@@ -105,22 +134,33 @@ export function initializeDatapackRoutes() {
 	})
 
     // TODO: Needs more work
-	app.get('/get_datapack_tags', async (req, res) => {
+	app.get('/tags/datapacks', async (req, res) => {
 		res.send({
 			genre: [
 				"adventure",
 				"survival",
 				"game",
+                "tool",
+                "overhaul",
+                "creative",
+                "qol"
 			],
 			subgenre: [
-				"horror",
 				"PVE",
 				"PVP",
 				"challenge",
-				"RPG",
 				"unfair",
 				"multiplayer",
-				"singleplayer"
+				"singleplayer",
+                "crafting",
+                "exploration",
+                "tweak",
+                "magic",
+                "tech",
+                "mobs",
+                "bosses",
+                "weapons",
+                "tools"
 			],
 			difficulty: [
 				"chill",

@@ -2,7 +2,7 @@ import { ObjectId } from "mongodb";
 import jwt from 'jsonwebtoken'
 
 import { Database } from "../db/connect.js";
-import { ContentDocument } from "../db/types.js";
+import { ContentDocument, DatabaseCollection } from "../db/types.js";
 import { app } from "../index.js";
 import { JWTKey, getUserFromJWT } from "../auth/routes.js";
 import { approvedEmail, requestApprovalEmail } from "../email/email.js";
@@ -33,7 +33,13 @@ export function initializeContentRoutes() {
 
         switch(req.body.content.type) {
             case "map":
-                res.send(await uploadContent("Maps", req.body, uploader?.user))
+                res.send(await uploadContent(DatabaseCollection.Maps, req.body, uploader?.user))
+                break;
+            case 'datapack':
+                res.send(await uploadContent(DatabaseCollection.Datapacks, req.body, uploader?.user))
+                break;
+            case 'resourcepack':
+                res.send(await uploadContent(DatabaseCollection.Resourcepacks, req.body, uploader?.user))
                 break;
             default:
                 res.send({error: "Content type not supported"})
@@ -69,14 +75,14 @@ export function initializeContentRoutes() {
             }
 
             let i = "";
-            let isSlugUnique = await checkIfSlugUnique(map.slu, "Maps")
+            let isSlugUnique = await checkIfSlugUnique(map.slug, "Maps")
             while(!isSlugUnique) {
                 i += (Math.random() * 100).toFixed(0);
                 isSlugUnique = await checkIfSlugUnique(map.slug + i, "Maps")
             }
             map.slug = map.slug + i;
 
-            let database = new Database();
+            let database = new Database("content", req.body.type);
             let result = await database.collection.insertOne(map);
             let key
             if(!token) {

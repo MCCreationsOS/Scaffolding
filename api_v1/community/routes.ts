@@ -56,7 +56,7 @@ export function initializeCommunityRoutes() {
     })
     
     app.post('/maps/comment/:slug', async (req, res) => {
-        let database = new Database();
+        let database = new Database("content", req.body.content_type);
         let comments = new Database("content", "comments")
 
         let approved = true
