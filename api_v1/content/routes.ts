@@ -2,15 +2,44 @@ import { ObjectId } from "mongodb";
 import jwt from 'jsonwebtoken'
 
 import { Database } from "../db/connect.js";
-import { ContentDocument, DatabaseCollection } from "../db/types.js";
+import { ContentDocument, DatabaseCollection, SearchIndex } from "../db/types.js";
 import { app } from "../index.js";
-import { JWTKey, getUserFromJWT } from "../auth/routes.js";
+import { JWTKey, getIdFromJWT, getUserFromJWT } from "../auth/routes.js";
 import { approvedEmail, requestApprovalEmail } from "../email/email.js";
 import { updateMeilisearch } from "../meilisearch.js";
 import { UserTypes } from "../auth/types.js";
 import { checkIfSlugUnique, fetchFromMCMaps, fetchFromPMC, uploadContent } from "./creation.js";
+import { performSearch } from "./searching.js";
 
 export function initializeContentRoutes() {
+    app.get('/content', async (req, res) => {
+        let result = await performSearch(req.query)
+		let user = await getUserFromJWT(req.headers.authorization + "")
+
+		result.documents = result.documents.filter((map: ContentDocument) => {
+			if(map.status < 2) {
+				if(user.user && map.creators) {
+					for(const creator of map.creators) {
+						if(creator.handle === user.user.handle) return true;
+					}
+				} else {
+					let id = getIdFromJWT(req.headers.authorization + "") as ObjectId
+					if(id && id instanceof ObjectId && id.equals(map._id)) {
+						return true;
+					}
+				}
+				return false;
+			}
+			return true;
+		})
+
+        if(req.query.sendCount && req.query.sendCount === "true") {
+            res.send({count: result.totalCount})
+        } else {
+            res.send(result);
+        }
+    })
+
     app.post('/content', async (req, res) => {
         if(!req.body.content) {
             res.send({error: "Content not included in request body"})

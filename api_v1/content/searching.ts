@@ -115,8 +115,28 @@ export async function findContent(collection: DatabaseCollection, requestQuery: 
 	return result;
 }
 
-export async function performSearch(index: SearchIndex, requestQuery: any) {
-	let search = new Search(index);
+export async function performSearch(requestQuery: any) {
+	let indexes: SearchIndex[]
+
+	switch(requestQuery.contentType) {
+		case "Maps":
+			indexes = [SearchIndex.Maps]
+			break;
+		case "resourcepacks":
+			indexes = [SearchIndex.Resourcepacks]
+			break;
+		case "datapacks":
+			indexes = [SearchIndex.Datapacks]
+			break;
+		case "content":
+			indexes = [SearchIndex.Maps, SearchIndex.Resourcepacks, SearchIndex.Datapacks]
+			break;
+		default:
+			indexes = [SearchIndex.Maps]
+			break;
+	}
+
+	let search = new Search(indexes)
 
 	switch(requestQuery.sort) {
 		case "newest":
@@ -145,6 +165,12 @@ export async function performSearch(index: SearchIndex, requestQuery: any) {
 			break;
 		case "creator_descending":
 			search.sort("creators.username", "desc")
+			break;
+		case "lowest_downloads":
+			search.sort("downloads", "asc")
+			break;
+		case "highest_downloads":
+			search.sort("downloads", "desc")
 			break;
 		// case "best_match": 
 		// 	sort = {score: {$meta: "textScore"}}
@@ -189,13 +215,10 @@ export async function performSearch(index: SearchIndex, requestQuery: any) {
 		}
 	}
 
-	let documents = await (search.execute()?.catch((e) => {
-		console.error(e)
-		sendLog("performSearch", e)
-	}))
+	let documents = await search.execute()
 	if(!documents) {
 		console.error("Meilisearch is probably not initialized.")
 		return {totalCount: 0, documents: []}
 	}
-	return { totalCount: (search.hitsPerPageS) ? documents.totalHits : documents.estimatedTotalHits, documents: documents.hits.map((doc: any) => doc)}
+	return documents;
 }

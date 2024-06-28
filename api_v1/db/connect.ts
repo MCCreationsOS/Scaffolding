@@ -1,6 +1,6 @@
-import { MeiliSearch } from "meilisearch";
+import { Index, MeiliSearch, MultiSearchResponse } from "meilisearch";
 import { client } from "../index.js";
-import { IDatabaseQuery, SearchIndex } from "./types.js";
+import { ContentDocument, IDatabaseQuery, SearchIndex } from "./types.js";
 
 // const { MongoClient, ServerApiVersion } = require('mongodb');
 import { Collection, Filter, MongoClient, ServerApiVersion, Sort, SortDirection, Document, FilterOperators } from 'mongodb';
@@ -96,9 +96,9 @@ export class Search {
     hitsPerPageS
     pageS
     private client
-    private index
+    private indexes: Index<Record<string, any>>[] = []
 
-    constructor(index: SearchIndex, query?: string, sort?: string, filter?: string, hitsPerPage?: number, page?: number) {
+    constructor(indexes: SearchIndex[], query?: string, sort?: string, filter?: string, hitsPerPage?: number, page?: number) {
         (query) ? this.queryS = query : '';
         (sort) ? this.sortS = sort : '';
         this.filterS = filter;
@@ -111,7 +111,9 @@ export class Search {
                 apiKey: '***REMOVED***'
             })
 
-            this.index = this.client.index(index);
+            indexes.forEach(index => {
+                this.indexes.push(this.client!.index(index))
+            })
 
         } catch (error) {
             sendLog("Meilisearch", error)
@@ -137,8 +139,31 @@ export class Search {
         this.pageS = page;
     }
 
-    execute() {
-        if(!this.client || !this.index) {
+    reformatResults(response: MultiSearchResponse<Record<string, any>>) {
+        let totalCount = 0;
+        let documents: any[] = []
+        response.results.forEach(res => {
+            if(res.totalHits) {
+                totalCount += res.totalHits;
+            } else {
+                totalCount += res.estimatedTotalHits!;
+            }
+
+            documents.push(...res.hits)
+        })
+
+        documents.sort((a, b) => {
+            if(a.createdDate > b.createdDate) return -1;
+            else return 1;
+        })
+
+        documents = documents.slice(0, this.hitsPerPageS)
+        if(totalCount > this.hitsPerPageS!) totalCount = this.hitsPerPageS!;
+        return {totalCount, documents}
+    }
+
+    async execute() {
+        if(!this.client || this.indexes.length === 0) {
             return;
         }
         let options: any = {}
@@ -155,8 +180,14 @@ export class Search {
         if(this.sortS) {
             options.sort = [this.sortS];
         }
-
-        return this.index.search(this.queryS, options)
+        try{
+            let response = await this.client.multiSearch({queries: this.indexes.map(index => {return {indexUid: index.uid, q: this.queryS, ...options}})})
+            
+            return this.reformatResults(response)
+        } catch (error) {
+            sendLog("Meilisearch", error)
+            console.error(error)
+        }
 
     }
 }

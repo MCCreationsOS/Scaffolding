@@ -8,34 +8,6 @@ import { UserTypes } from "../../auth/types.js";
 import { Database } from "../../db/connect.js";
 
 export function initializeDatapackRoutes() {
-    app.get('/datapacks', async (req, res) => {
-        let result = await performSearch(SearchIndex.Datapacks, req.query)
-		let user = await getUserFromJWT(req.headers.authorization + "")
-
-		result.documents = result.documents.filter((datapack: ContentDocument) => {
-			if(datapack.status < 2) {
-				if(user.user && datapack.creators) {
-					for(const creator of datapack.creators) {
-						if(creator.handle === user.user.handle) return true;
-					}
-				} else {
-					let id = getIdFromJWT(req.headers.authorization + "") as ObjectId
-					if(id && id instanceof ObjectId && id.equals(datapack._id)) {
-						return true;
-					}
-				}
-				return false;
-			}
-			return true;
-		})
-
-        if(req.query.sendCount && req.query.sendCount === "true") {
-            res.send({count: result.totalCount})
-        } else {
-            res.send(result);
-        }
-    })
-
 	app.get('/datapacks-nosearch', async (req, res) => {
 		let result = await findContent(DatabaseCollection.Datapacks, req.query, false)
 		let user = await getUserFromJWT(req.headers.authorization + "")
@@ -176,11 +148,6 @@ export function initializeDatapackRoutes() {
 				"sci-fi",
 				"realistic",
 				"vanilla"
-			],
-			length: [
-				"short",
-				"medium",
-				"long"
 			],
 
 		})

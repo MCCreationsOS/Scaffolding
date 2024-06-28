@@ -8,34 +8,6 @@ import { UserTypes } from '../../auth/types.js';
 import { findContent, performSearch } from '../searching.js';
 
 export function initializeMapRoutes() {
-    app.get('/maps', async (req, res) => {
-        let result = await performSearch(SearchIndex.Maps, req.query)
-		let user = await getUserFromJWT(req.headers.authorization + "")
-
-		result.documents = result.documents.filter((map: MapDoc) => {
-			if(map.status < 2) {
-				if(user.user && map.creators) {
-					for(const creator of map.creators) {
-						if(creator.handle === user.user.handle) return true;
-					}
-				} else {
-					let id = getIdFromJWT(req.headers.authorization + "") as ObjectId
-					if(id && id instanceof ObjectId && id.equals(map._id)) {
-						return true;
-					}
-				}
-				return false;
-			}
-			return true;
-		})
-
-        if(req.query.sendCount && req.query.sendCount === "true") {
-            res.send({count: result.totalCount})
-        } else {
-            res.send(result);
-        }
-    })
-
 	app.get('/maps-nosearch', async (req, res) => {
 		let result = await findContent(DatabaseCollection.Maps, req.query, false)
 		let user = await getUserFromJWT(req.headers.authorization + "")
@@ -133,7 +105,7 @@ export function initializeMapRoutes() {
 		res.sendStatus(404)
 	})
 
-	app.get('/get_map_tags', async (req, res) => {
+	app.get('/tags/maps', async (req, res) => {
 		res.send({
 			genre: [
 				"adventure",

@@ -8,34 +8,6 @@ import { UserTypes } from "../../auth/types.js";
 import { Database } from "../../db/connect.js";
 
 export function initializeResourcepackRoutes() {
-    app.get('/resourcepacks', async (req, res) => {
-        let result = await performSearch(SearchIndex.Resourcepacks, req.query)
-		let user = await getUserFromJWT(req.headers.authorization + "")
-
-		result.documents = result.documents.filter((resourcepack: ContentDocument) => {
-			if(resourcepack.status < 2) {
-				if(user.user && resourcepack.creators) {
-					for(const creator of resourcepack.creators) {
-						if(creator.handle === user.user.handle) return true;
-					}
-				} else {
-					let id = getIdFromJWT(req.headers.authorization + "") as ObjectId
-					if(id && id instanceof ObjectId && id.equals(resourcepack._id)) {
-						return true;
-					}
-				}
-				return false;
-			}
-			return true;
-		})
-
-        if(req.query.sendCount && req.query.sendCount === "true") {
-            res.send({count: result.totalCount})
-        } else {
-            res.send(result);
-        }
-    })
-
 	app.get('/resourcepacks-nosearch', async (req, res) => {
 		let result = await findContent(DatabaseCollection.Resourcepacks, req.query, false)
 		let user = await getUserFromJWT(req.headers.authorization + "")
@@ -164,7 +136,7 @@ export function initializeResourcepackRoutes() {
                 "shaders",
                 "skybox",
 			],
-			difficulty: [
+			resolution: [
 				"8x",
                 "16x",
                 "32x",
@@ -182,11 +154,6 @@ export function initializeResourcepackRoutes() {
 				"realistic",
 				"vanilla",
                 "anime"
-			],
-			length: [
-				"short",
-				"medium",
-				"long"
 			],
 
 		})
