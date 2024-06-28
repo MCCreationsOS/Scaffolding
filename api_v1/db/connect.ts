@@ -158,7 +158,7 @@ export class Search {
         })
 
         documents = documents.slice(0, this.hitsPerPageS)
-        if(totalCount > this.hitsPerPageS!) totalCount = this.hitsPerPageS!;
+        // if(totalCount > this.hitsPerPageS!) totalCount = this.hitsPerPageS!;
         return {totalCount, documents}
     }
 
