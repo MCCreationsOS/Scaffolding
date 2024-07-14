@@ -9,6 +9,7 @@ import { ContentDocument } from "../db/types.js";
 import { JWTKey } from "../auth/routes.js";
 import { upload } from "../s3/upload.js";
 import { sendLog } from "../logging/logging.js";
+import showdown from "showdown";
 
 export async function uploadContent(collection: string, body: any, uploader?: User) {
     let database = new Database("content", collection);
@@ -40,13 +41,62 @@ export async function uploadContent(collection: string, body: any, uploader?: Us
     console.log("Map inserted")
 
     if(uploader) {
-        database.collection.updateOne({_id: result.insertedId}, {$push: {creators: {username: uploader.username, handle: uploader.handle}}})
+        database.collection.updateOne({_id: result.insertedId}, {$push: {creators: {username: uploader.username, handle: uploader.handle}}, $set: {owner: uploader.handle}})
         return({slug: content.slug});
     } else {
         console.log("No user, creating temporary access key")
         let key = jwt.sign({_id: result.insertedId.toJSON()}, JWTKey, {expiresIn: "24h"})
         return({key: key, slug: content.slug});
     }
+}
+
+export async function fetchFromModrinth(url: string) {
+    let converter = new showdown.Converter();
+    let slug = url.substring(url.lastIndexOf('/') + 1)
+    let response = await fetch(`https://api.modrinth.com/v2/project/${slug}`, {
+        headers: {
+            'User-Agent': 'BenMeie/mccreations-next (next.mccreations.net)'
+        }
+    })
+    let project = await response.json()
+    // console.log(project)
+
+    //check if project is a resourcepack or supports loader datapack
+    if(project.project_type !== 'mod' && !project.loaders.includes('minecraft') && !project.loaders.includes('datapack')) {
+        return;
+    }
+
+    let content: ContentDocument = {
+        title: project.title,
+        slug: project.slug,
+        description: converter.makeHtml(project.body),
+        shortDescription: project.description,
+        status: 0,
+        downloads: 0,
+        views: 0,
+        rating: 0,
+        createdDate: new Date(),
+        images: project.gallery.sort((a:any, b:any) => {
+            return a.ordering - b.ordering
+        }).map((image: any) => image.url),
+        importedUrl: url
+    }
+
+    let vResponse = await fetch(`https://api.modrinth.com/v2/project/${slug}/version?loaders=["minecraft","datapack"]`, {
+        headers: {
+            'User-Agent': 'BenMeie/mccreations-next (next.mccreations.net)'
+        }
+    })
+    let versions = await vResponse.json()
+    content.files = versions.map((version: any) => {
+        if(version.loaders.includes('datapack')) {
+            return {type: 'datapack', dataUrl: version.files[0].url, minecraftVersion: version.game_versions.join(', '), contentVersion: version.version_number}
+        } else if (version.loaders.includes('minecraft')) {
+            return {type: 'resourcepack', resourceUrl: version.files[0].url, minecraftVersion: version.game_versions.join(', '), contentVersion: version.version_number}
+        }
+    })
+    console.log(content)
+    return content
 }
 
 export async function fetchFromPMC(url: string) {

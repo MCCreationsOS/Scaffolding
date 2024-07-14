@@ -8,8 +8,8 @@ import { JWTKey, getIdFromJWT, getUserFromJWT } from "../auth/routes.js";
 import { approvedEmail, requestApprovalEmail } from "../email/email.js";
 import { updateMeilisearch } from "../meilisearch.js";
 import { UserTypes } from "../auth/types.js";
-import { checkIfSlugUnique, fetchFromMCMaps, fetchFromPMC, uploadContent } from "./creation.js";
-import { performSearch } from "./searching.js";
+import { checkIfSlugUnique, fetchFromMCMaps, fetchFromModrinth, fetchFromPMC, uploadContent } from "./creation.js";
+import { findContent, performSearch } from "./searching.js";
 
 export function initializeContentRoutes() {
     app.get('/content', async (req, res) => {
@@ -18,11 +18,61 @@ export function initializeContentRoutes() {
 
 		result.documents = result.documents.filter((map: ContentDocument) => {
 			if(map.status < 2) {
-				if(user.user && map.creators) {
+				if(user.user && (map.creators)) {
 					for(const creator of map.creators) {
 						if(creator.handle === user.user.handle) return true;
 					}
-				} else {
+				} else if(user.user && map.owner && map.owner === user.user.handle) {
+                    return true;
+                } else {
+					let id = getIdFromJWT(req.headers.authorization + "") as ObjectId
+					if(id && id instanceof ObjectId && id.equals(map._id)) {
+						return true;
+					}
+				}
+				return false;
+			}
+			return true;
+		})
+
+        if(req.query.sendCount && req.query.sendCount === "true") {
+            res.send({count: result.totalCount})
+        } else {
+            res.send(result);
+        }
+    })
+
+    app.get('/content-nosearch', async (req, res) => {
+        let type = req.query.contentType || "Maps";
+        let result
+        if(type === "content") {
+            result = await findContent(DatabaseCollection.Maps, req.query, false)
+            let result2 = await findContent(DatabaseCollection.Resourcepacks, req.query, false)
+            let result3 = await findContent(DatabaseCollection.Datapacks, req.query, false)
+            result.documents = result.documents.concat(result2.documents).concat(result3.documents)
+            result.documents = result.documents.sort((a, b) => {
+                if(a.createdDate > b.createdDate) {
+                    return -1
+                } else {
+                    return 1
+                }
+            })
+            result.documents.length = parseInt(req.query.limit as string) || 20
+        } else {
+            result = await findContent(type as DatabaseCollection, req.query, false)
+        }
+        let user = await getUserFromJWT(req.headers.authorization + "")
+
+		result.documents = result.documents.filter((map: ContentDocument) => {
+			if(map.status < 2) {
+				if(user.user && map.creators) {
+					if(user.user.type === UserTypes.Admin) return true;
+					for(const creator of map.creators) {
+						if(creator.handle === user.user.handle) return true;
+					}
+				} else if(user.user && map.owner && map.owner === user.user.handle) {
+                    return true;
+                } else {
 					let id = getIdFromJWT(req.headers.authorization + "") as ObjectId
 					if(id && id instanceof ObjectId && id.equals(map._id)) {
 						return true;
@@ -90,6 +140,8 @@ export function initializeContentRoutes() {
             map = await fetchFromPMC(url);
         } else if(url.startsWith('https://www.minecraftmaps.com')) {
             map = await fetchFromMCMaps(url);
+        } else if (url.startsWith('https://modrinth.com')) {
+            map = await fetchFromModrinth(url);
         } else {
             res.send({error: "URL is not supported for importing"})
             return;
@@ -100,19 +152,24 @@ export function initializeContentRoutes() {
                 let user = await getUserFromJWT(token)
                 if(user.user) {
                     map.creators = [{username: user.user.username, handle: user.user.handle}]
+                    map.owner = user.user.handle;
                 }
             }
 
             let i = "";
-            let isSlugUnique = await checkIfSlugUnique(map.slug, "Maps")
+            let isSlugUnique = await checkIfSlugUnique(map.slug, req.body.type)
             while(!isSlugUnique) {
                 i += (Math.random() * 100).toFixed(0);
-                isSlugUnique = await checkIfSlugUnique(map.slug + i, "Maps")
+                isSlugUnique = await checkIfSlugUnique(map.slug + i, req.body.type)
             }
             map.slug = map.slug + i;
 
             let database = new Database("content", req.body.type);
             let result = await database.collection.insertOne(map);
+            if(!result.acknowledged) {
+                res.send({error: "Map was not successfully imported"})
+                return;
+            }
             let key
             if(!token) {
                 key = jwt.sign({_id: result.insertedId}, JWTKey, {expiresIn: "24h"})
@@ -129,7 +186,7 @@ export function initializeContentRoutes() {
         let user = await getUserFromJWT(req.headers.authorization + "")
         let currentMap = await database.collection.findOne<ContentDocument>({_id: new ObjectId(map._id)})
 
-        if(!user.user || !currentMap || (currentMap.creators?.filter(creator => creator.handle === user.user?.handle).length === 0 && user.user.type !== UserTypes.Admin)) { 
+        if(!user.user || !currentMap || (currentMap.creators?.filter(creator => creator.handle === user.user?.handle).length === 0 && user.user.type !== UserTypes.Admin && currentMap.owner !== user.user.handle)) { 
             console.log("User not found or not creator")
             return res.sendStatus(401);
         }
@@ -167,12 +224,44 @@ export function initializeContentRoutes() {
         res.send({result: result})
     })
 
+    app.post('/content/update_translation', async (req, res) => {
+        let slug = req.body.slug;
+        let translation = req.body.translation;
+        let database = new Database('content', req.body.type);
+        let user = await getUserFromJWT(req.headers.authorization + "")
+        let key = Object.keys(translation)[0]
+        if(user.user) {
+            translation[key].author = user.user.handle;
+        }
+        if(translation[key].approved === undefined) translation[key].approved = false;
+        translation[key].date = new Date();
+        console.log(translation)
+        let cursor = await database.collection.aggregate([
+            {
+              '$match': {
+                'slug': slug
+              }
+            }, {
+              '$set': {
+                'translations': {
+                  '$mergeObjects': [
+                    '$translations', translation
+                  ]
+                }
+              }
+            }
+          ])
+          let updated = await cursor.toArray();
+        database.collection.updateOne({slug: slug}, {$set: updated[0]})
+        res.send({result: updated})
+    })
+
     app.delete('/content', async (req, res) => {
-        let database = new Database();
+        let database = new Database("content", req.body.type);
         let user = await getUserFromJWT(req.headers.authorization + "")
         let currentMap = await database.collection.findOne<ContentDocument>({_id: new ObjectId(req.body.id)})
 
-        if(!user.user || !currentMap || currentMap.creators?.filter(creator => creator.handle === user.user?.handle).length === 0) { 
+        if(!user.user || !currentMap || (currentMap.creators?.filter(creator => creator.handle === user.user?.handle).length === 0 && user.user.type !== UserTypes.Admin && currentMap.owner !== user.user.handle)) { 
             console.log("User not found or not creator")
             return res.sendStatus(401);
         }
@@ -187,7 +276,7 @@ export function initializeContentRoutes() {
         let user = await getUserFromJWT(req.headers.authorization + "")
         let map = await database.collection.findOne<ContentDocument>({slug: req.body.slug})
 
-        if(!user.user || !map || map.creators?.filter(creator => creator.handle === user.user?.handle).length === 0) { 
+        if(!user.user || !map || (map.creators?.filter(creator => creator.handle === user.user?.handle).length === 0 && user.user.type !== UserTypes.Admin && map.owner !== user.user.handle)) { 
             return res.sendStatus(401);
         }
         requestApprovalEmail(link)

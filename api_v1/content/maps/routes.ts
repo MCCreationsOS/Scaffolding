@@ -19,7 +19,9 @@ export function initializeMapRoutes() {
 					for(const creator of map.creators) {
 						if(creator.handle === user.user.handle) return true;
 					}
-				} else {
+				} else if(user.user && map.owner && map.owner === user.user.handle) {
+                    return true;
+                } else {
 					let id = getIdFromJWT(req.headers.authorization + "") as ObjectId
 					if(id && id instanceof ObjectId && id.equals(map._id)) {
 						return true;
@@ -49,7 +51,9 @@ export function initializeMapRoutes() {
 						if(creator.handle === uObj.user.handle) filter = false;
 					}
 					if(uObj.user.type === UserTypes.Admin) filter = false;
-				} else {
+				} else if(uObj.user && result.documents[0].owner && result.documents[0].owner === uObj.user.handle) {
+                    return true;
+                } else {
 					let id = getIdFromJWT(req.headers.authorization) as ObjectId
 					if(id && id instanceof ObjectId && id.equals(result.documents[0]._id)) {
 						filter = false;

@@ -79,7 +79,7 @@ export async function findContent(collection: DatabaseCollection, requestQuery: 
 	}
 
     if(requestQuery.creator) {
-        query.buildQuery("creators.handle", requestQuery.creator)
+        query.buildQuery("$or", [{ "creators.handle": requestQuery.creator }, { owner: requestQuery.creator }])
     }
 
 	const projection = {

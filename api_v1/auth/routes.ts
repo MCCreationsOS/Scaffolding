@@ -132,12 +132,15 @@ export function initializeAuthRoutes() {
                     // Update handle in all content
                     database = new Database("content", "Maps")
                     await database.collection.updateMany({"creators.handle": user.user.handle}, {$set: {"creators.$.handle": req.body.handle}})
+                    await database.collection.updateMany({"owner": user.user.handle}, {$set: {"owner": req.body.handle}})
 
                     database = new Database("content", "datapacks")
                     await database.collection.updateMany({"creators.handle": user.user.handle}, {$set: {"creators.$.handle": req.body.handle}})
+                    await database.collection.updateMany({"owner": user.user.handle}, {$set: {"owner": req.body.handle}})
 
                     database = new Database("content", "resourcepacks")
                     await database.collection.updateMany({"creators.handle": user.user.handle}, {$set: {"creators.$.handle": req.body.handle}})
+                    await database.collection.updateMany({"owner": user.user.handle}, {$set: {"owner": req.body.handle}})
 
                     database = new Database("content", "comments")
                     await database.collection.updateMany({"handle": user.user.handle}, {$set: {"handle": req.body.handle}})
@@ -288,7 +291,7 @@ export function initializeAuthRoutes() {
 
         bcrypt.hash(user.password, saltRounds, async (err, hash) => {
             if(err) {
-                res.send({error: "There was an error creating your account, please try again"})
+                res.send({error: "Bcrypt Error"})
                 return;
             }
 
@@ -296,19 +299,17 @@ export function initializeAuthRoutes() {
             user.password = hash;
             user.type = UserTypes.Account,
             user.iconURL = "https://next.mccreations.net/mcc_no_scaffold.png"
+            user.handle = user.username.toLowerCase().replace(" ", "-");
 
             existingUser = await database.collection.findOne({handle: user.username})
             if(existingUser) {
                 user.handle = user.username.toLowerCase().replace(" ", "-") + Math.floor(Math.random() * 10000)
             }
-            else {
-                user.handle = user.username.toLowerCase().replace(" ", "-");
-            }
 
             user.email = user.email.toLowerCase()
 
             await database.collection.insertOne(user)
-            res.send(200)
+            res.sendStatus(200)
         })
     })
 
