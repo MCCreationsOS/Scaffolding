@@ -188,7 +188,12 @@ export function initializeContentRoutes() {
 
         if(!user.user || !currentMap || (currentMap.creators?.filter(creator => creator.handle === user.user?.handle).length === 0 && user.user.type !== UserTypes.Admin && currentMap.owner !== user.user.handle)) { 
             console.log("User not found or not creator")
-            return res.sendStatus(401);
+            let id = await getIdFromJWT(req.headers.authorization + "")
+            if(id && id instanceof ObjectId && id.equals(currentMap?._id)) {
+
+            } else {
+                return res.sendStatus(401);
+            }
         }
 
         if(!map) {
@@ -197,8 +202,8 @@ export function initializeContentRoutes() {
         }
 
         let i = "";
-        let isSlugUnique = (await checkIfSlugUnique(map.slug, req.body.type)) || map.slug === currentMap.slug
-        console.log("Checking if slug is unique: " + isSlugUnique, map.slug, currentMap.slug)
+        let isSlugUnique = (await checkIfSlugUnique(map.slug, req.body.type)) || map.slug === currentMap?.slug
+        console.log("Checking if slug is unique: " + isSlugUnique, map.slug, currentMap?.slug)
         while(!isSlugUnique) {
             i += (Math.random() * 100).toFixed(0);
             isSlugUnique = await checkIfSlugUnique(map.slug + i, req.body.type)

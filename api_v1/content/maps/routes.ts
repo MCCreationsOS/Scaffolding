@@ -54,7 +54,9 @@ export function initializeMapRoutes() {
 				} else if(uObj.user && result.documents[0].owner && result.documents[0].owner === uObj.user.handle) {
                     return true;
                 } else {
+					if(uObj.user?.type === UserTypes.Admin) filter = false;
 					let id = getIdFromJWT(req.headers.authorization) as ObjectId
+					console.log(id)
 					if(id && id instanceof ObjectId && id.equals(result.documents[0]._id)) {
 						filter = false;
 					}
