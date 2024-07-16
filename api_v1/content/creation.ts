@@ -34,7 +34,8 @@ export async function uploadContent(collection: string, body: any, uploader?: Us
         views: 0,
         slug: slug,
         rating: 0,
-        createdDate: new Date(Date.now())
+        createdDate: new Date(Date.now()),
+        type: body.content.type,
     }
     console.log("Attempting to insert map")
     let result = await database.collection.insertOne(content);
