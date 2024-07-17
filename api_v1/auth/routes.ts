@@ -24,24 +24,23 @@ export function initializeAuthRoutes() {
 
     })
 
-
-    // app.get('/auth/user/creators', async (req, res) => {
-    //     if(req.headers.authorization) {
-    //         let user = await getUserFromJWT(req.headers.authorization)
-    //         if('user' in user && user.user) {
-    //             let creators = [user.user]
-    //             let database = new Database('content', 'creators')
-    //             let cursor = await database.collection.find<User>({'owners': user.user.handle})
-    //             creators = [...creators, ...await cursor.toArray()]
-    //             res.send({creators: creators})
-    //         } else {
-    //             res.send({error: "You are not allowed to access this resource"})
-    //         }
-    //     } else {
-    //         console.log("authorization not sent")
-    //         res.send({error: "You are not allowed to access this resource"})
-    //     }
-    // })
+    app.get('/auth/user/creators', async (req, res) => {
+        if(req.headers.authorization) {
+            let user = await getUserFromJWT(req.headers.authorization)
+            if('user' in user && user.user) {
+                let creators = [user.user]
+                let database = new Database('content', 'creators')
+                let cursor = await database.collection.find<User>({'owners': user.user.handle})
+                creators = [...creators, ...await cursor.toArray()]
+                res.send({creators: creators})
+            } else {
+                res.send({error: "You are not allowed to access this resource"})
+            }
+        } else {
+            console.log("authorization not sent")
+            res.send({error: "You are not allowed to access this resource"})
+        }
+    })
 
     // Delete a user
     app.delete('/auth/user', async (req, res) => {
