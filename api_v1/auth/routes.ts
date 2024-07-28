@@ -573,7 +573,7 @@ async function createUserFromProviderData(email: string, username: string, provi
         return {error: "User already exists but is using a different provider"}
     } else {
         let user: User = {
-            username: username,
+            username: username + "",
             email: email,
             type: UserTypes.Account,
             iconURL: iconURL,

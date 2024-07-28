@@ -64,7 +64,7 @@ export async function findContent(collection: DatabaseCollection, requestQuery: 
 	if(requestQuery.limit) {
 		query.setLimit(Number.parseInt(requestQuery.limit))
 	} else {
-		requestQuery.setLimit(20)
+		query.setLimit(20)
 	}
 
 	if(query.limit === 0) {
