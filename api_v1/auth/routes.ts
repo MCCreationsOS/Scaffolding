@@ -590,10 +590,10 @@ async function createUserFromProviderData(email: string, username: string, provi
 
         existingUser = await database.collection.findOne<User>({handle: user.username})
         if(existingUser) {
-            user.handle = user.username.toLowerCase().replace(" ", "-") + Math.floor(Math.random() * 10000)
+            user.handle = username.toLowerCase().replace(" ", "-") + Math.floor(Math.random() * 10000)
         }
         else {
-            user.handle = user.username.toLowerCase().replace(" ", "-");
+            user.handle = username.toLowerCase().replace(" ", "-");
         }
 
         await database.collection.insertOne(user)

@@ -81,8 +81,10 @@ export function initializeMapRoutes() {
         if(result.documents[0]) {
             let map = result.documents[0]
 
+			// fetch()
+
             let database = new Database();
-            database.collection.updateOne({_id: map._id}, {$inc: {downloads: 1}})
+            database.collection.findOneAndUpdate({_id: map._id}, {$inc: {downloads: 1}})
 			res.sendStatus(200)
 			return
         }
