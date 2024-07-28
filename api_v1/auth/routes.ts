@@ -277,8 +277,6 @@ export function initializeAuthRoutes() {
         let user = req.body as User
         let database = new Database("content", "creators")
 
-        console.log(user)
-
         if(!user.password) {
             res.send({error: "No password provided"});
             return;
