@@ -277,12 +277,14 @@ export function initializeAuthRoutes() {
         let user = req.body as User
         let database = new Database("content", "creators")
 
+        console.log(user)
+
         if(!user.password) {
             res.send({error: "No password provided"});
             return;
         }
 
-        let existingUser = await database.collection.findOne({email: user.email})
+        let existingUser = await database.collection.findOne({email: user.email.trim().toLowerCase()})
         if(existingUser) {
             res.send({error: "Email already in use"})
             return;
@@ -429,45 +431,18 @@ async function signInWithDiscord(code: string): Promise<User | AuthError> {
     const database = new Database("content", "creators")
 
     let existingUser = await database.collection.findOne<User>({ "providers.id": discordUser.id})
-    if(existingUser) {
+    if(existingUser && existingUser.providers && existingUser.providers.length > 0) {
+        let foundProvider = false;
         existingUser.providers?.forEach(provider => {
             if(provider.provider === Providers.Discord) {
-                provider.token = access_token,
-                provider.refreshToken = refresh_token
+                foundProvider = true
+                provider.token = access_token
             }
         })
-        return existingUser
+        if(foundProvider) return existingUser
+        else return createUserFromProviderData(discordUser.email, discordUser.global_name, Providers.Discord, access_token, refresh_token, discordUser.id, `https://cdn.discordapp.com/avatars/${discordUser.id}/${discordUser.avatar}`, `https://cdn.discordapp.com/banners/${discordUser.id}/${discordUser.banner}`)
     } else {
-        existingUser = await database.collection.findOne<User>({email: discordUser.email})
-        if(existingUser) {
-            return {error: "User already exists but is using a different provider"}
-        } else {
-            let user: User = {
-                username: discordUser.global_name,
-                email: discordUser.email,
-                type: UserTypes.Account,
-                iconURL: `https://cdn.discordapp.com/avatars/${discordUser.id}/${discordUser.avatar}`,
-                bannerURL: `https://cdn.discordapp.com/banners/${discordUser.id}/${discordUser.banner}`,
-                providers: [
-                    {
-                        provider: Providers.Discord,
-                        token: access_token,
-                        refreshToken: refresh_token,
-                        id: discordUser.id
-                    }
-                ]
-            }
-
-            existingUser = await database.collection.findOne<User>({handle: user.username})
-            if(existingUser) {
-                user.handle = user.username.toLowerCase().replace(" ", "-") + Math.floor(Math.random() * 10000)
-            }
-            else {
-                user.handle = user.username.toLowerCase().replace(" ", "-");
-            }
-            await database.collection.insertOne(user)
-            return user
-        }
+        return createUserFromProviderData(discordUser.email, discordUser.global_name, Providers.Discord, access_token, refresh_token, discordUser.id, `https://cdn.discordapp.com/avatars/${discordUser.id}/${discordUser.avatar}`, `https://cdn.discordapp.com/banners/${discordUser.id}/${discordUser.banner}`)
     }
 }
 
@@ -504,43 +479,18 @@ async function signInWithGithub(code: string): Promise<User | AuthError>  {
     const database = new Database("content", "creators")
 
     let existingUser = await database.collection.findOne<User>({ "providers.id": githubUser.id})
-    if(existingUser) {
+    if(existingUser && existingUser.providers && existingUser.providers.length > 0) {
+        let foundProvider = false;
         existingUser.providers?.forEach(provider => {
             if(provider.provider === Providers.Github) {
+                foundProvider = true
                 provider.token = access_token
             }
         })
-        return existingUser
+        if(foundProvider) return existingUser
+        else return createUserFromProviderData(githubUser.email, githubUser.login, Providers.Github, access_token, "", githubUser.id, githubUser.avatar_url, "")
     } else {
-        existingUser = await database.collection.findOne<User>({email: githubUser.email})
-        if(existingUser && githubUser.email) {
-            return {error: "User already exists but is using a different provider"}
-        } else {
-            let user: User = {
-                username: githubUser.login,
-                email: githubUser.email,
-                type: UserTypes.Account,
-                iconURL: githubUser.avatar_url,
-                providers: [
-                    {
-                        provider: Providers.Github,
-                        token: access_token,
-                        refreshToken: "",
-                        id: githubUser.id
-                    }
-                ]
-            }
-
-            existingUser = await database.collection.findOne<User>({handle: user.username})
-            if(existingUser) {
-                user.handle = user.username.toLowerCase().replace(" ", "-") + Math.floor(Math.random() * 10000)
-            }
-            else {
-                user.handle = user.username.toLowerCase().replace(" ", "-");
-            }
-            await database.collection.insertOne(user)
-            return user
-        }
+        return createUserFromProviderData(githubUser.email, githubUser.login, Providers.Github, access_token, "", githubUser.id, githubUser.avatar_url, "")
     }
 }
 
@@ -557,45 +507,18 @@ async function signInWithGoogle(access_token: string): Promise<User | AuthError>
     const database = new Database("content", "creators")
 
     let existingUser = await database.collection.findOne<User>({ "providers.id": data.id})
-    if(existingUser) {
+    if(existingUser && existingUser.providers && existingUser.providers.length > 0) {
+        let foundProvider = false;
         existingUser.providers?.forEach(provider => {
             if(provider.provider === Providers.Google) {
+                foundProvider = true
                 provider.token = access_token
             }
         })
-        return existingUser
+        if(foundProvider) return existingUser
+        else return createUserFromProviderData(data.email, data.name, Providers.Google, access_token, "", data.id, data.picture, "")
     } else {
-        existingUser = await database.collection.findOne<User>({email: data.email})
-        if(existingUser && data.email) {
-            return {error: "User already exists but is using a different provider"}
-        } else {
-            let user: User = {
-                username: data.name,
-                email: data.email,
-                type: UserTypes.Account,
-                iconURL: data.picture,
-                providers: [
-                    {
-                        provider: Providers.Google,
-                        token: access_token,
-                        refreshToken: "",
-                        id: data.id
-                    }
-                ]
-            }
-
-            existingUser = await database.collection.findOne<User>({handle: user.username})
-            if(existingUser) {
-                user.handle = user.username.toLowerCase().replace(" ", "-") + Math.floor(Math.random() * 10000)
-            }
-            else {
-                user.handle = user.username.toLowerCase().replace(" ", "-");
-            }
-
-            await database.collection.insertOne(user)
-
-            return user
-        }
+        return createUserFromProviderData(data.email, data.name, Providers.Google, access_token, "", data.id, data.picture, "")
     }
 }
 
@@ -624,50 +547,62 @@ async function signInWithMicrosoft(code: string): Promise<User | AuthError> {
         }
     })
     let microsoftUser = await res.json();
-    if(!microsoftUser) return {error: "Github user could not be fetched"}
+    if(!microsoftUser) return {error: "Microsoft user could not be fetched"}
 
     const database = new Database("content", "creators")
 
     let existingUser = await database.collection.findOne<User>({ "providers.id": microsoftUser.sub})
-    if(existingUser) {
+    if(existingUser && existingUser.providers && existingUser.providers.length > 0) {
+        let foundProvider = false;
         existingUser.providers?.forEach(provider => {
-            if(provider.provider === Providers.Github) {
+            if(provider.provider === Providers.Microsoft) {
+                foundProvider = true
                 provider.token = access_token
             }
         })
-        return existingUser
+        if(foundProvider) return existingUser
+        else return createUserFromProviderData(microsoftUser.email, microsoftUser.name, Providers.Microsoft, access_token, "", microsoftUser.sub, "", "")
     } else {
-        existingUser = await database.collection.findOne<User>({email: microsoftUser.email})
-        if(existingUser && microsoftUser.email) {
-            return {error: "User already exists but is using a different provider"}
-        } else {
-            let user: User = {
-                username: microsoftUser.name,
-                email: microsoftUser.email,
-                type: UserTypes.Account,
-                providers: [
-                    {
-                        provider: Providers.Microsoft,
-                        token: access_token,
-                        refreshToken: "",
-                        id: microsoftUser.sub
-                    }
-                ]
-            }
-
-            existingUser = await database.collection.findOne<User>({handle: user.username})
-            if(existingUser) {
-                user.handle = (user.username.toLowerCase() + Math.floor(Math.random() * 10000)).replace(" ", "-")
-            }
-            else {
-                user.handle = user.username.toLowerCase().replace(" ", "-");
-            }
-
-            await database.collection.insertOne(user)
-
-            return user
-        }
+        return createUserFromProviderData(microsoftUser.email, microsoftUser.name, Providers.Microsoft, access_token, "", microsoftUser.sub, "", "")
     }
+}
+
+async function createUserFromProviderData(email: string, username: string, provider: Providers, token: string, refreshToken: string, id: string, iconURL: string, bannerURL: string): Promise<User | AuthError> {
+    const database = new Database("content", "creators")
+
+    let existingUser = await database.collection.findOne<User>({email: email})
+    if(existingUser && email) {
+        return {error: "User already exists but is using a different provider"}
+    } else {
+        let user: User = {
+            username: username,
+            email: email,
+            type: UserTypes.Account,
+            iconURL: iconURL,
+            bannerURL: bannerURL,
+            providers: [
+                {
+                    provider: provider,
+                    token: token,
+                    refreshToken: refreshToken,
+                    id: id
+                }
+            ]
+        }
+
+        existingUser = await database.collection.findOne<User>({handle: user.username})
+        if(existingUser) {
+            user.handle = user.username.toLowerCase().replace(" ", "-") + Math.floor(Math.random() * 10000)
+        }
+        else {
+            user.handle = user.username.toLowerCase().replace(" ", "-");
+        }
+
+        await database.collection.insertOne(user)
+
+        return user
+    }
+
 }
 
 export async function getUserFromJWT(jwtString: string) {
