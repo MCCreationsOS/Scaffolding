@@ -545,6 +545,7 @@ async function signInWithMicrosoft(code: string): Promise<User | AuthError> {
         }
     })
     let microsoftUser = await res.json();
+    console.log(microsoftUser)
     if(!microsoftUser) return {error: "Microsoft user could not be fetched"}
 
     const database = new Database("content", "creators")
