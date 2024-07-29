@@ -561,9 +561,9 @@ async function signInWithMicrosoft(code: string): Promise<User | AuthError> {
             }
         })
         if(foundProvider) return existingUser
-        else return createUserFromProviderData(microsoftUser.email, microsoftUser.name, Providers.Microsoft, access_token, "", microsoftUser.sub, "", "")
+        else return createUserFromProviderData(microsoftUser.email, microsoftUser.name ?? microsoftUser.givenname + microsoftUser.familyname, Providers.Microsoft, access_token, "", microsoftUser.sub, "", "")
     } else {
-        return createUserFromProviderData(microsoftUser.email, microsoftUser.name, Providers.Microsoft, access_token, "", microsoftUser.sub, "", "")
+        return createUserFromProviderData(microsoftUser.email, microsoftUser.name ?? microsoftUser.givenname + microsoftUser.familyname, Providers.Microsoft, access_token, "", microsoftUser.sub, "", "")
     }
 }
 
