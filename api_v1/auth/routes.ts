@@ -536,6 +536,7 @@ async function signInWithMicrosoft(code: string): Promise<User | AuthError> {
         method: 'POST'
     })
     let data = await res.json();
+    console.log(data)
     let access_token = data.access_token;
     let token_type = data.token_type
 
