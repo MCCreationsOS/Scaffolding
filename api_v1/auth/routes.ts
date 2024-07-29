@@ -527,7 +527,7 @@ async function signInWithMicrosoft(code: string): Promise<User | AuthError> {
         },
         body: new URLSearchParams({
             'client_id': "***REMOVED***",
-            'client_secret': "Rao8Q~FVIUeFC7PbsB0MqEhbReoKbUtcrCJnqdos",
+            'client_secret': "***REMOVED***",
             'code': code,
             'grant_type': 'authorization_code',
             'redirect_uri': 'https://next.mccreations.net/auth/oauth_handler',
