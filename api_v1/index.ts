@@ -21,7 +21,7 @@ app.use(bodyParser.json())
 app.use(cors());
 app.use(morgan('combined'));
 
-export const client = new MongoClient("***REMOVED***");
+export const client = new MongoClient(process.env.MONGODB_URI + "");
 
 /**
  * Routes are broken up into separate files based on the 'section' of the site they are for.

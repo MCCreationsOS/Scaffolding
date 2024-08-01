@@ -10,7 +10,7 @@ import { forgotPasswordEmail } from "../email/email.js";
 import { sendLog } from "../logging/logging.js";
 import { get } from "http";
 const saltRounds = 10;
-export let JWTKey = "literally1984"
+export let JWTKey = process.env.JWTKey + ""
 
 export function initializeAuthRoutes() {
     // Get a user from a JWT token sent in the authorization header
@@ -402,8 +402,8 @@ async function signInWithDiscord(code: string): Promise<User | AuthError> {
             'Content-Type': 'application/x-www-form-urlencoded'
         },
         body: new URLSearchParams({
-            'client_id': "***REMOVED***",
-            'client_secret': "***REMOVED***",
+            'client_id': process.env.DISCORD_CLIENT_ID + "",
+            'client_secret': process.env.DISCORD_SECRET + "",
             code,
             'grant_type': 'authorization_code',
             'redirect_uri': 'https://next.mccreations.net/auth/oauth_handler?provider=discord',
@@ -446,8 +446,8 @@ async function signInWithDiscord(code: string): Promise<User | AuthError> {
 
 async function signInWithGithub(code: string): Promise<User | AuthError>  {
     let githubParams = new URLSearchParams({
-        client_id: "***REMOVED***",
-        client_secret: "***REMOVED***",
+        client_id: process.env.GITHUB_CLIENT_ID + "",
+        client_secret: process.env.GITHUB_SECRET + "",
         code: code,
         scope: "user:email,read:user"
     })
@@ -526,8 +526,8 @@ async function signInWithMicrosoft(code: string): Promise<User | AuthError> {
             'Content-Type': 'application/x-www-form-urlencoded'
         },
         body: new URLSearchParams({
-            'client_id': "***REMOVED***",
-            'client_secret': "***REMOVED***",
+            'client_id': process.env.MICROSOFT_CLIENT_ID + "",
+            'client_secret': process.env.MICROSOFT_SECRET + "",
             'code': code,
             'grant_type': 'authorization_code',
             'redirect_uri': 'https://next.mccreations.net/auth/oauth_handler',

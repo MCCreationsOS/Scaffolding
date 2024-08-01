@@ -291,7 +291,7 @@ export function initializeContentRoutes() {
         await database.collection.updateOne({slug: req.body.slug}, {$set: {status: 1}})
         res.sendStatus(200)
 
-        fetch('***REMOVED***', {
+        fetch(process.env.DISCORD_UPDATE_WEBHOOK_URL + "", {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -351,7 +351,7 @@ export function initializeContentRoutes() {
                 ]
             }
 
-            fetch("***REMOVED***", {
+            fetch(process.env.DISCORD_ADMIN_WEBHOOK_URL + "", {
                 method: 'post',
                 headers: {
                 "Content-Type": "application/json"

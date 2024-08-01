@@ -55,7 +55,7 @@ export function initializeCommunityRoutes() {
         res.send({message: "This route is out of date, please use /rate.", rating: rating})
     })
     
-    app.post('/maps/comment/:slug', async (req, res) => {
+    app.post('/content/comment/:slug', async (req, res) => {
         let database = new Database("content", req.body.content_type);
         let comments = new Database("content", "comments")
 
@@ -63,9 +63,27 @@ export function initializeCommunityRoutes() {
         if(words.en.some((word) => req.body.comment.includes(word))) {
             approved = false
         }
+
+        const comment = {
+            username: req.body.username,
+            comment: req.body.comment,
+            date: Date.now(),
+            likes: 0,
+            handle: req.body.handle,
+            approved: approved,
+            slug: req.params.slug,
+            content_type: req.body.content_type
+        }
     
-        let comment = await comments.collection.insertOne({username: req.body.username, comment: req.body.comment, date: Date.now(), likes: 0, handle: req.body.handle, approved: approved, slug: req.params.slug})
-        database.collection.updateOne({slug: req.params.slug}, {$push: {comments: {_id: comment.insertedId, username: req.body.username, comment: req.body.comment, date: Date.now(), likes: 0, handle: req.body.handle, approved: approved}}})
+        await comments.collection.insertOne(comment)
+        // database.collection.updateOne({slug: req.params.slug}, {$push: {comments: {_id: comment.insertedId, username: req.body.username, comment: req.body.comment, date: Date.now(), likes: 0, handle: req.body.handle, approved: approved}}})
         res.sendStatus(200)
+    })
+
+    app.get('/content/comments/:slug', async (req, res) => {
+        let database = new Database("content", "comments")
+        
+        let comments = await database.collection.find({slug: req.params.slug, content_type: req.query.content_type, approved: true}).toArray()
+        res.send(comments)
     })
 }
