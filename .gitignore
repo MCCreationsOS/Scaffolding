@@ -4,3 +4,4 @@ node_modules
 .env
 nginx.conf
 .parcel-cache
+dist
