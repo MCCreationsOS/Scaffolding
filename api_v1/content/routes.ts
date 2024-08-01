@@ -285,8 +285,6 @@ export function initializeContentRoutes() {
             return res.sendStatus(401);
         }
         requestApprovalEmail(link)
-
-        //***REMOVED***
     
         await database.collection.updateOne({slug: req.body.slug}, {$set: {status: 1}})
         res.sendStatus(200)

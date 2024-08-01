@@ -108,7 +108,7 @@ export class Search {
         try {
             this.client = new MeiliSearch({
                 host: 'http://localhost:7700',
-                apiKey: '***REMOVED***'
+                apiKey: 'mccreations-search'
             })
 
             indexes.forEach(index => {
