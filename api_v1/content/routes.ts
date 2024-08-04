@@ -284,7 +284,7 @@ export function initializeContentRoutes() {
         if(!user.user || !map || (map.creators?.filter(creator => creator.handle === user.user?.handle).length === 0 && user.user.type !== UserTypes.Admin && map.owner !== user.user.handle)) { 
             return res.sendStatus(401);
         }
-        requestApprovalEmail(link)
+        // requestApprovalEmail(link)
     
         await database.collection.updateOne({slug: req.body.slug}, {$set: {status: 1}})
         res.sendStatus(200)
