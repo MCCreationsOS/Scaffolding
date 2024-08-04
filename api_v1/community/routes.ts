@@ -87,3 +87,22 @@ export function initializeCommunityRoutes() {
         res.send(comments)
     })
 }
+
+export async function sendCommentsDigest() {
+    let database = new Database("content", "comments")
+    let comments = await database.collection.find({date: {$gt: Date.now() - 1000 * 60 * 60 * 24}}).toArray()
+
+    const unapprovedComments = comments.filter((comment) => !comment.approved)
+
+    if(comments.length === 0) return;
+    fetch(process.env.DISCORD_UPDATE_WEBHOOK_URL + "", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            content: "There are " + unapprovedComments.length + " unapproved comments waiting for review at https://www.minecraftmaps.com/admin_dashboard."
+        })
+    
+    })
+}

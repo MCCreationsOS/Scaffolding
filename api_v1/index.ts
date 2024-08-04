@@ -5,7 +5,7 @@ import helmet from 'helmet';
 import cors from 'cors';
 import morgan from 'morgan';
 import { createServer as createHttpServer } from 'http';
-import { initializeCommunityRoutes } from './community/routes.js';
+import { initializeCommunityRoutes, sendCommentsDigest } from './community/routes.js';
 import { initializeMapRoutes } from './content/maps/routes.js';
 import { initializeAuthRoutes, refreshJWTHash } from './auth/routes.js';
 import { MongoClient } from 'mongodb';
@@ -38,6 +38,7 @@ initializeResourcepackRoutes();
 updateMeilisearch();
 setInterval(updateMeilisearch, 1000 * 60 * 60 * 24);
 setInterval(refreshJWTHash, 1000 * 60 * 60 * 24 * 15);
+setInterval(sendCommentsDigest, 1000 * 60 * 60 * 24);
 
 var httpServer = createHttpServer(app);
 httpServer.listen(8080);
