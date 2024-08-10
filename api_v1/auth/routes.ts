@@ -406,7 +406,7 @@ async function signInWithDiscord(code: string): Promise<User | AuthError> {
             'client_secret': process.env.DISCORD_SECRET + "",
             code,
             'grant_type': 'authorization_code',
-            'redirect_uri': 'https://next.mccreations.net/auth/oauth_handler?provider=discord',
+            'redirect_uri': 'https://mccreations.net/auth/oauth_handler?provider=discord',
             'scope': 'identify+email'
         }).toString(),
         method: 'POST'
@@ -530,7 +530,7 @@ async function signInWithMicrosoft(code: string): Promise<User | AuthError> {
             'client_secret': process.env.MICROSOFT_SECRET + "",
             'code': code,
             'grant_type': 'authorization_code',
-            'redirect_uri': 'https://next.mccreations.net/auth/oauth_handler',
+            'redirect_uri': 'https://mccreations.net/auth/oauth_handler',
             'scope': 'openid email profile'
         }).toString(),
         method: 'POST'
