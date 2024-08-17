@@ -1,7 +1,8 @@
 import axios from "axios";
 import { JSDOM } from 'jsdom'
 import jwt from 'jsonwebtoken'
-import puppeteer from 'puppeteer'
+import puppeteer from 'puppeteer-extra'
+import StealthPlugin from 'puppeteer-extra-plugin-stealth'
 
 import { User } from "../auth/types.js";
 import { Database } from "../db/connect.js";
@@ -101,53 +102,82 @@ export async function fetchFromModrinth(url: string) {
 }
 
 export async function fetchFromPMC(url: string) {
-    let res = await axios.get(url)
-    let html = new JSDOM(res.data).window.document
-
+    try {
+        let map: ContentDocument | undefined = undefined;
+        puppeteer.use(StealthPlugin())
+        const browser = await puppeteer.launch({headless: false});
+            try {
+                let timeoutSeconds = 30;
+                const page = await browser.newPage();
+                
+                await page.goto(url);
+                try {
+                    let data = await page.content()
+                    console.log(data)
+                    await page.waitForSelector('div#resource-title-text h1', {timeout: 390100})
+                    data = await page.content()
+                    console.log(data)
+                    console.log("Page loaded")
+                    browser.close();
+                    let html = new JSDOM(data).window.document
+                    
     
-    let title = html.querySelector('div#resource-title-text h1')?.textContent?.trim();
-    if(!title) return;
-    let slug = title.toLowerCase().replace(/\s/g, "_").replace(/[^a-zA-Z0-9_]/g, "")
-    let description = html.querySelector('#r-text-block')?.innerHTML
-    if(!description) return;
-    let shortDescription = ''
-    let status = 0
-    let downloads = 0;
-    let views = 0;
-    let rating = 0;
-    let createdDate = new Date();
-    let users = html.querySelectorAll('.pusername')
-    let username = ""
-    if(users.length === 1) {
-        username = html.querySelectorAll('.pusername')[0].textContent + ""
-    } else {
-        username = html.querySelectorAll('.pusername')[1].textContent + ""
-    }
-
-    let map: ContentDocument = {
-        title: title,
-        slug: slug,
-        description: description,
-        shortDescription: shortDescription,
-        status: status,
-        downloads: downloads,
-        views: views,
-        rating: rating,
-        createdDate: createdDate,
-        images: [],
-        creators: [{username: username}],
-        importedUrl: url
-    }
-
-    map.files = [{type: 'world', worldUrl: "https://www.planetminecraft.com" + html.querySelector('.branded-download')?.getAttribute('href'), minecraftVersion: ''}]
-    let images = html.querySelectorAll('.rsImg')
-    images.forEach(async (image, idx) => {
-        let url = image.getAttribute('href')!
-        map.images.push(url)
-    })
-
-    // await loadAndTransferImages(map)
+        
+                    let title = html.querySelector('div#resource-title-text h1')?.textContent?.trim();
+                    if(!title) return;
+                    let slug = title.toLowerCase().replace(/\s/g, "_").replace(/[^a-zA-Z0-9_]/g, "")
+                    let description = html.querySelector('#r-text-block')?.innerHTML
+                    if(!description) return;
+                    let shortDescription = ''
+                    let status = 0
+                    let downloads = 0;
+                    let views = 0;
+                    let rating = 0;
+                    let createdDate = new Date();
+                    let users = html.querySelectorAll('.pusername')
+                    let username = ""
+                    if(users.length === 1) {
+                        username = html.querySelectorAll('.pusername')[0].textContent + ""
+                    } else {
+                        username = html.querySelectorAll('.pusername')[1].textContent + ""
+                    }
+                
+                    map = {
+                        title: title,
+                        slug: slug,
+                        description: description,
+                        shortDescription: shortDescription,
+                        status: status,
+                        downloads: downloads,
+                        views: views,
+                        rating: rating,
+                        createdDate: createdDate,
+                        images: [],
+                        creators: [{username: username}],
+                        importedUrl: url
+                    }
+                
+                    map.files = [{type: 'world', worldUrl: "https://www.planetminecraft.com" + html.querySelector('.branded-download')?.getAttribute('href'), minecraftVersion: ''}]
+                    let images = html.querySelectorAll('.rsImg')
+                    images.forEach(async (image, idx) => {
+                        let url = image.getAttribute('href')!
+                        map!.images.push(url)
+                    })
+                } catch(e) {
+                    sendLog("loadAndTransferImages", e)
+                    console.log("Error loading page: " + e)
+                    
+                }
+            } catch(e) {
+                sendLog("loadAndTransferImages", e)
+                console.log("Error fetching images using puppeteer: " + e)
+            }
     return map;
+        
+    } catch (e) {
+        console.log("Error fetching PMC: " + e)
+        return undefined;
+    }
 }
 
 export async function fetchFromMCMaps(url: string) {

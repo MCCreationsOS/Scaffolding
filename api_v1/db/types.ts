@@ -46,6 +46,17 @@ export interface File {
     changelog?: string
 }
 
+export interface CommentDocument {
+    _id: ObjectId,
+    username: string,
+    comment: string,
+    date: number,
+    likes: number,
+    handle: string,
+    approved: boolean,
+    slug: string
+}
+
 export interface IDatabaseProjection {
     _id: number,
     title: number,

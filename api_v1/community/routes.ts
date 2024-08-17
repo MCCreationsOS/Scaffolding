@@ -1,8 +1,11 @@
 import { app } from "../index.js";
 import { Database, DatabaseQueryBuilder } from "../db/connect.js";
 import { rateContent } from "./rate.js";
-import { User } from "../auth/types.js";
+import { User, UserTypes } from "../auth/types.js";
 import * as words from 'naughty-words';
+import { CommentDocument, ContentDocument } from "../db/types.js";
+import { getUserFromJWT } from "../auth/routes.js";
+import { ObjectId } from "mongodb";
 
 export function initializeCommunityRoutes() {
     app.get('/creators', async (req, res) => {
@@ -15,7 +18,7 @@ export function initializeCommunityRoutes() {
         })
 
         let cursor = await database.executeQuery(query)
-        let documents = []
+        let documents: any[] = []
         let count = 0;
         for await (const doc of cursor) {
             documents.push(doc);
@@ -86,6 +89,103 @@ export function initializeCommunityRoutes() {
         let comments = await database.collection.find({slug: req.params.slug, content_type: req.query.content_type, approved: true}).toArray()
         res.send(comments)
     })
+
+    app.get('/content/comment/:id', async (req, res) => {
+        let database = new Database("content", "comments")
+        let comment = await database.collection.findOne({_id: new ObjectId(req.params.id)})
+        res.send(comment)
+    })
+
+    app.post('/content/comments/update', async (req, res) => {
+        let database = new Database("content", "comments")
+        let query = new DatabaseQueryBuilder();
+        query.buildQuery("_id", req.body._id)
+        let comment = await database.collection.findOne(query.query)
+        let user = await getUserFromJWT(req.headers.authorization + "")
+
+        if((comment.handle && comment.handle === user.user?.handle) || user.user?.type === UserTypes.Admin) {
+            await database.collection.updateOne(query.query, {$set: {comment: req.body.comment}})
+        }
+
+        res.sendStatus(200)
+    })
+
+    app.get('/content/comments-nosearch', async (req, res) => {
+        let database = new Database("content", "comments")
+        let query = new DatabaseQueryBuilder();
+        const requestQuery : any = req.query;
+
+        switch(requestQuery.sort) {
+            case "newest":
+                query.buildSort("date", -1)
+                break;
+            case "oldest":
+                query.buildSort("date", 1)
+                break;
+            case "highest_rated": 
+                query.buildSort("rating", -1)
+                break;
+            case "lowest_rated":
+                query.buildSort("rating", 1)
+                break;
+            case "creator_ascending":
+                query.buildSort("username", 1)
+                break;
+            case "creator_descending":
+                query.buildSort("username", -1)
+                break;
+            // case "best_match": 
+            // 	sort = {score: {$meta: "textScore"}}
+            // 	break;
+            default:
+                query.buildSort("date", -1)
+        }
+
+        if (requestQuery.approved) {
+            console.log(requestQuery.approved)
+            query.buildQuery("approved", JSON.parse(requestQuery.approved))
+        }
+
+        if(requestQuery.slug) {
+            console.log(requestQuery.slug)
+            query.buildQuery("slug", requestQuery.slug as string)
+        }
+
+        if(requestQuery.limit) {
+            query.setLimit(Number.parseInt(requestQuery.limit))
+        } else {
+            query.setLimit(20)
+        }
+
+        if(query.limit === 0) {
+            query.setLimit(20)
+        }
+
+        if(requestQuery.page) {
+            if(requestQuery.page < 0) {
+                requestQuery.page = "0"
+            }
+            query.setSkip(Number.parseInt(requestQuery.page) * query.limit);
+        }
+
+        if(requestQuery.creator) {
+            query.buildQuery("handle", requestQuery.creator)
+        }
+
+        let count = await database.collection.countDocuments(query.query)
+
+        let cursor = database.executeQuery(query);
+
+        let documents: any[] = []
+        for await (const doc of cursor) {
+            documents.push(doc);
+        }
+        let result: {totalCount: number, documents: CommentDocument[]} = {
+            totalCount: count,
+            documents: documents as CommentDocument[]
+        }
+        res.send(result);
+    })
 }
 
 export async function sendCommentsDigest() {
@@ -101,7 +201,7 @@ export async function sendCommentsDigest() {
             'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-            content: "There are " + unapprovedComments.length + " unapproved comments waiting for review at https://www.minecraftmaps.com/admin_dashboard."
+            content: "There are " + unapprovedComments.length + " unapproved comments waiting for review at https://www.mccreations.net/admin_dashboard."
         })
     
     })

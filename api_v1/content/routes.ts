@@ -176,7 +176,7 @@ export function initializeContentRoutes() {
             }
             res.send({content: map.slug, key: key});
         } else {
-            res.send({error: "Map was not successfully imported"})
+            res.send({error: "Map was not successfully imported, request was probably blocked."})
         }
     })
 

@@ -35,6 +35,8 @@
     "naughty-words": "^1.2.0",
     "papaparse": "^5.4.1",
     "puppeteer": "^22.11.1",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2",
     "showdown": "^2.1.0",
     "stripe": "^15.7.0"
   },
