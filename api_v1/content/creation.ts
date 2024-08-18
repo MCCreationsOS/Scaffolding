@@ -105,7 +105,7 @@ export async function fetchFromPMC(url: string) {
     try {
         let map: ContentDocument | undefined = undefined;
         puppeteer.use(StealthPlugin())
-        const browser = await puppeteer.launch({headless: false});
+        const browser = await puppeteer.launch({headless: false, env: {DISPLAY: ':10.0', CHROME_DEVEL_SANDBOX:"/usr/local/sbin/chrome-devel-sandbox"}});
             try {
                 let timeoutSeconds = 30;
                 const page = await browser.newPage();
@@ -113,11 +113,9 @@ export async function fetchFromPMC(url: string) {
                 await page.goto(url);
                 try {
                     let data = await page.content()
-                    console.log(data)
                     await page.waitForSelector('div#resource-title-text h1', {timeout: 390100})
                     data = await page.content()
-                    console.log(data)
-                    console.log("Page loaded")
+                    console.log("PMC Map Page loaded")
                     browser.close();
                     let html = new JSDOM(data).window.document
                     
@@ -156,7 +154,6 @@ export async function fetchFromPMC(url: string) {
                         creators: [{username: username}],
                         importedUrl: url
                     }
-                
                     map.files = [{type: 'world', worldUrl: "https://www.planetminecraft.com" + html.querySelector('.branded-download')?.getAttribute('href'), minecraftVersion: ''}]
                     let images = html.querySelectorAll('.rsImg')
                     images.forEach(async (image, idx) => {

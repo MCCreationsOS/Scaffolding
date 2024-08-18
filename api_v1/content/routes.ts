@@ -184,7 +184,7 @@ export function initializeContentRoutes() {
         let map = req.body.content as ContentDocument
         let database = new Database();
         let user = await getUserFromJWT(req.headers.authorization + "")
-        let currentMap = await database.collection.findOne<ContentDocument>({_id: new ObjectId(map._id)})
+        let currentMap = await database.collection.findOne({_id: new ObjectId(map._id)})
 
         if(!user.user || !currentMap || (currentMap.creators?.filter(creator => creator.handle === user.user?.handle).length === 0 && user.user.type !== UserTypes.Admin && currentMap.owner !== user.user.handle)) { 
             console.log("User not found or not creator")
@@ -264,7 +264,7 @@ export function initializeContentRoutes() {
     app.delete('/content', async (req, res) => {
         let database = new Database("content", req.body.type);
         let user = await getUserFromJWT(req.headers.authorization + "")
-        let currentMap = await database.collection.findOne<ContentDocument>({_id: new ObjectId(req.body.id)})
+        let currentMap = await database.collection.findOne({_id: new ObjectId(req.body.id)})
 
         if(!user.user || !currentMap || (currentMap.creators?.filter(creator => creator.handle === user.user?.handle).length === 0 && user.user.type !== UserTypes.Admin && currentMap.owner !== user.user.handle)) { 
             console.log("User not found or not creator")
@@ -279,7 +279,7 @@ export function initializeContentRoutes() {
         let link = "https://next.mccreations.net/maps/" + req.body.slug
         let database = new Database();
         let user = await getUserFromJWT(req.headers.authorization + "")
-        let map = await database.collection.findOne<ContentDocument>({slug: req.body.slug})
+        let map = await database.collection.findOne({slug: req.body.slug})
 
         if(!user.user || !map || (map.creators?.filter(creator => creator.handle === user.user?.handle).length === 0 && user.user.type !== UserTypes.Admin && map.owner !== user.user.handle)) { 
             return res.sendStatus(401);
@@ -312,7 +312,7 @@ export function initializeContentRoutes() {
         await database.collection.updateOne({slug: req.params.slug}, {$set: {status: 2}})
         res.sendStatus(200)
 
-        let map = await database.collection.findOne<ContentDocument>({slug: req.params.slug})
+        let map = await database.collection.findOne({slug: req.params.slug})
         updateMeilisearch();
         if(map) {
             let creators = map.creators
