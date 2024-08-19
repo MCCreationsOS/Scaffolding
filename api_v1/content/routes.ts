@@ -164,6 +164,8 @@ export function initializeContentRoutes() {
             }
             map.slug = map.slug + i;
 
+            map.type = req.body.type.toLowerCase().replace("s", "");
+
             let database = new Database("content", req.body.type);
             let result = await database.collection.insertOne(map);
             if(!result.acknowledged) {

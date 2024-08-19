@@ -14,6 +14,7 @@ import { approvedEmail } from './email/email.js';
 import { updateMeilisearch } from './meilisearch.js';
 import { initializeDatapackRoutes } from './content/datapacks/routes.js';
 import { initializeResourcepackRoutes } from './content/resourcepacks/routes.js';
+import { initializePaymentRoutes } from './payment/routes.js';
 
 export const app = express();
 app.use(helmet());
@@ -34,6 +35,7 @@ initializeAuthRoutes();
 initializeContentRoutes();
 initializeDatapackRoutes();
 initializeResourcepackRoutes();
+initializePaymentRoutes();
 
 updateMeilisearch();
 setInterval(updateMeilisearch, 1000 * 60 * 60 * 24);
