@@ -52,12 +52,12 @@ export async function uploadContent(collection: string, body: any, uploader?: Us
     }
 }
 
-export async function fetchFromModrinth(url: string) {
+export async function fetchFromModrinth(url: string, type: string) {
     let converter = new showdown.Converter();
     let slug = url.substring(url.lastIndexOf('/') + 1)
     let response = await fetch(`https://api.modrinth.com/v2/project/${slug}`, {
         headers: {
-            'User-Agent': 'BenMeie/mccreations-next (next.mccreations.net)'
+            'User-Agent': 'MCCreationsOS/mccreations-next (mccreations.net)'
         }
     })
     let project = await response.json()
@@ -81,12 +81,13 @@ export async function fetchFromModrinth(url: string) {
         images: project.gallery.sort((a:any, b:any) => {
             return a.ordering - b.ordering
         }).map((image: any) => image.url),
-        importedUrl: url
+        importedUrl: url,
+        type: type
     }
 
     let vResponse = await fetch(`https://api.modrinth.com/v2/project/${slug}/version?loaders=["minecraft","datapack"]`, {
         headers: {
-            'User-Agent': 'BenMeie/mccreations-next (next.mccreations.net)'
+            'User-Agent': 'MCCreationsOS/mccreations-next (mccreations.net)'
         }
     })
     let versions = await vResponse.json()
@@ -101,23 +102,27 @@ export async function fetchFromModrinth(url: string) {
     return content
 }
 
-export async function fetchFromPMC(url: string) {
+export async function fetchFromPMC(url: string, type: string) {
     try {
         let map: ContentDocument | undefined = undefined;
         puppeteer.use(StealthPlugin())
         const browser = await puppeteer.launch({headless: false, env: {DISPLAY: ':10.0', CHROME_DEVEL_SANDBOX:"/usr/local/sbin/chrome-devel-sandbox"}});
+        let uploaded_images: TransferredImage[] = []
             try {
                 let timeoutSeconds = 30;
                 const page = await browser.newPage();
                 
                 await page.goto(url);
                 try {
+
+
                     let data = await page.content()
                     await page.waitForSelector('div#resource-title-text h1', {timeout: 390100})
                     data = await page.content()
                     console.log("PMC Map Page loaded")
                     browser.close();
                     let html = new JSDOM(data).window.document
+
                     
     
         
@@ -152,14 +157,36 @@ export async function fetchFromPMC(url: string) {
                         createdDate: createdDate,
                         images: [],
                         creators: [{username: username}],
-                        importedUrl: url
+                        importedUrl: url,
+                        type: type
                     }
-                    map.files = [{type: 'world', worldUrl: "https://www.planetminecraft.com" + html.querySelector('.branded-download')?.getAttribute('href'), minecraftVersion: ''}]
+                    if(type === 'map') map.files = [{type: 'world', worldUrl: "https://www.planetminecraft.com" + html.querySelector('.branded-download')?.getAttribute('href'), minecraftVersion: ''}]
+                    if(type === 'datapack') map.files = [{type: "datapack", worldUrl: "", dataUrl: "https://www.planetminecraft.com" + html.querySelector('.branded-download')?.getAttribute('href'), minecraftVersion: ''}]
+                    if(type === 'resourcepack') map.files = [{type: "resourcepack", worldUrl: "", resourceUrl: "https://www.planetminecraft.com" + html.querySelector('.branded-download')?.getAttribute('href'), minecraftVersion: ''}]
                     let images = html.querySelectorAll('.rsImg')
                     images.forEach(async (image, idx) => {
                         let url = image.getAttribute('href')!
-                        map!.images.push(url)
+                        if(url.startsWith("https://static.planetminecraft.com")) map!.images.push(url)
+                        if(url.includes("youtube.com") || url.includes("youtu.be")) map!.videoUrl = url
                     })
+
+                    map.images.forEach(async (image, idx) => {
+                        try {
+                            let response = await axios.get(image);
+                            let buffer = await response.data;
+                            let url = await upload(new Uint8Array(buffer), 'images', `${map!.slug}_image_${idx}${image.substring(image.lastIndexOf('.'))}`);
+                            if(url)
+                            uploaded_images.push({transferredUrl: url, originalUrl: image})
+                        } catch(e) {
+                            console.log("Error uploading image: " + e)
+                        }
+                    })
+                    for(let i = 0; i < map.images.length; i++) {
+                        let image = uploaded_images.find(img => img.originalUrl === map!.images[i])
+                        if(image) {
+                            map.images[i] = image.transferredUrl
+                        }
+                    }
                 } catch(e) {
                     sendLog("loadAndTransferImages", e)
                     console.log("Error loading page: " + e)
@@ -222,7 +249,8 @@ export async function fetchFromMCMaps(url: string) {
         createdDate: createdDate,
         images: [],
         creators: [{username: username}],
-        importedUrl: url
+        importedUrl: url,
+        type: 'map'
     }
 
     map.files = [{
@@ -256,69 +284,69 @@ interface TransferredImage {
     transferredUrl: string
 }
 
-export async function loadAndTransferImages(map: ContentDocument) {
-    try {
-        puppeteer.launch().then(async browser => {
-            try {
-                let idx = 0;
-                let fileCounter = 0;
-                let uploaded_images: TransferredImage[] = []
-                let timeoutSeconds = 30;
-                const page = await browser.newPage();
+// export async function loadAndTransferImages(map: ContentDocument) {
+//     try {
+//         puppeteer.launch().then(async browser => {
+//             try {
+//                 let idx = 0;
+//                 let fileCounter = 0;
+//                 let uploaded_images: TransferredImage[] = []
+//                 let timeoutSeconds = 30;
+//                 const page = await browser.newPage();
             
-                page.on('response', async (response) => {
-                    try {
-                        const matches = /.*\.(jpg|png|svg|gif|webp)$/.exec(response.url());
-                        if (matches && (matches.length === 2) && (response.url().startsWith('https://www.minecraftmaps.com/images/jdownloads/screenshots/') || response.url().startsWith("https://static.planetminecraft.com/files/image/minecraft/"))) {
-                            console.log(matches);
-                            const extension = matches[1];
-                            const buffer = await response.buffer();
-                            fileCounter += 1;
-                            let url = await upload(buffer, `${map.slug}_image_${fileCounter}.${extension}`)
-                            uploaded_images.push({transferredUrl: url, originalUrl: response.url()})
-                        }
-                    } catch(e) {
-                        console.log("Error uploading image: " + e)
-                    }
-                  });
+//                 page.on('response', async (response) => {
+//                     try {
+//                         const matches = /.*\.(jpg|png|svg|gif|webp)$/.exec(response.url());
+//                         if (matches && (matches.length === 2) && (response.url().startsWith('https://www.minecraftmaps.com/images/jdownloads/screenshots/') || response.url().startsWith("https://static.planetminecraft.com/files/image/minecraft/"))) {
+//                             console.log(matches);
+//                             const extension = matches[1];
+//                             const buffer = await response.buffer();
+//                             fileCounter += 1;
+//                             let url = await upload(buffer, `${map.slug}_image_${fileCounter}.${extension}`)
+//                             uploaded_images.push({transferredUrl: url, originalUrl: response.url()})
+//                         }
+//                     } catch(e) {
+//                         console.log("Error uploading image: " + e)
+//                     }
+//                   });
                 
-                await page.goto(map.importedUrl!);
-                try {
-                    // page.mouse.wheel({deltaY: 2000})
+//                 await page.goto(map.importedUrl!);
+//                 try {
+//                     // page.mouse.wheel({deltaY: 2000})
     
-                    while(uploaded_images.length < map.images.length && timeoutSeconds > 0) {
-                        await new Promise(resolve => setTimeout(resolve, 1000));
-                        timeoutSeconds--;
-                    }
-                    await browser.close();
+//                     while(uploaded_images.length < map.images.length && timeoutSeconds > 0) {
+//                         await new Promise(resolve => setTimeout(resolve, 1000));
+//                         timeoutSeconds--;
+//                     }
+//                     await browser.close();
     
-                    if(timeoutSeconds <= 0) {
-                        return;
-                    }
+//                     if(timeoutSeconds <= 0) {
+//                         return;
+//                     }
                     
-                    let database = new Database();
-                    for(let i = 0; i < map.images.length; i++) {
-                        let image = uploaded_images.find(img => img.originalUrl === map.images[i])
-                        if(image) {
-                            map.images[i] = image.transferredUrl
-                        }
-                    }
-                    await database.collection.updateOne({slug: map.slug}, {$set: {images: map.images}})
-                } catch(e) {
-                    sendLog("loadAndTransferImages", e)
-                    console.log("Error loading page: " + e)
+//                     let database = new Database();
+//                     for(let i = 0; i < map.images.length; i++) {
+//                         let image = uploaded_images.find(img => img.originalUrl === map.images[i])
+//                         if(image) {
+//                             map.images[i] = image.transferredUrl
+//                         }
+//                     }
+//                     await database.collection.updateOne({slug: map.slug}, {$set: {images: map.images}})
+//                 } catch(e) {
+//                     sendLog("loadAndTransferImages", e)
+//                     console.log("Error loading page: " + e)
                 
-                }
-            } catch(e) {
-                sendLog("loadAndTransferImages", e)
-                console.log("Error fetching images using puppeteer: " + e)
-            }
-        })
-    } catch(e) {
-        sendLog("loadAndTransferImages", e)
-        console.log("Error launching puppeteer: " + e)
-    }
-}
+//                 }
+//             } catch(e) {
+//                 sendLog("loadAndTransferImages", e)
+//                 console.log("Error fetching images using puppeteer: " + e)
+//             }
+//         })
+//     } catch(e) {
+//         sendLog("loadAndTransferImages", e)
+//         console.log("Error launching puppeteer: " + e)
+//     }
+// }
 
 export async function checkIfSlugUnique(slug: string, collection: string) {
     let database = new Database("content", collection);

@@ -137,11 +137,11 @@ export function initializeContentRoutes() {
         let map: ContentDocument | undefined;
 
         if(url.startsWith('https://www.planetminecraft.com')) {
-            map = await fetchFromPMC(url);
+            map = await fetchFromPMC(url, req.body.type);
         } else if(url.startsWith('https://www.minecraftmaps.com')) {
             map = await fetchFromMCMaps(url);
         } else if (url.startsWith('https://modrinth.com')) {
-            map = await fetchFromModrinth(url);
+            map = await fetchFromModrinth(url, req.body.type);
         } else {
             res.send({error: "URL is not supported for importing"})
             return;
@@ -184,11 +184,22 @@ export function initializeContentRoutes() {
 
     app.post('/content/update', async (req, res) => {
         let map = req.body.content as ContentDocument
-        let database = new Database();
+        console.log(req.body.type)
+        let database = new Database("content", req.body.type);
         let user = await getUserFromJWT(req.headers.authorization + "")
         let currentMap = await database.collection.findOne({_id: new ObjectId(map._id)})
 
-        if(!user.user || !currentMap || (currentMap.creators?.filter(creator => creator.handle === user.user?.handle).length === 0 && user.user.type !== UserTypes.Admin && currentMap.owner !== user.user.handle)) { 
+        if(!user.user) {
+            return res.sendStatus(401).send({error: "User not found"});
+        }
+
+        if(!currentMap) {
+            console.log(currentMap)
+            res.send({error: "Map not found"})
+            return;
+        }
+
+        if((currentMap.creators?.filter(creator => creator.handle === user.user?.handle).length === 0 && user.user.type !== UserTypes.Admin && currentMap.owner !== user.user.handle)) { 
             console.log("User not found or not creator")
             let id = await getIdFromJWT(req.headers.authorization + "")
             if(id && id instanceof ObjectId && id.equals(currentMap?._id)) {
@@ -226,6 +237,7 @@ export function initializeContentRoutes() {
                 creators: map.creators,
                 files: map.files,
                 tags: map.tags,
+                videoUrl: map.videoUrl,
             }
         })
         res.send({result: result})

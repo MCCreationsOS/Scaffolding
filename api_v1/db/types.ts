@@ -34,6 +34,7 @@ export interface ContentDocument extends Document {
     downloads: number,
     views: number,
     importedUrl?: string,
+    type: string
 }
 
 export interface File {

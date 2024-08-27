@@ -6,6 +6,8 @@ import * as words from 'naughty-words';
 import { CommentDocument, ContentDocument } from "../db/types.js";
 import { getUserFromJWT } from "../auth/routes.js";
 import { ObjectId } from "mongodb";
+import FormData from "form-data";
+import { createReadStream, writeFileSync } from "fs";
 
 export function initializeCommunityRoutes() {
     app.get('/creators', async (req, res) => {
@@ -56,6 +58,20 @@ export function initializeCommunityRoutes() {
     app.post('/maps/rate', async (req, res) => {
         let rating = await rateContent(Number.parseFloat(req.body.rating), req.body.map)
         res.send({message: "This route is out of date, please use /rate.", rating: rating})
+    })
+
+    app.post('/translation', async (req, res) => {
+        writeFileSync('t.ts', `export default ${JSON.stringify(req.body, undefined, 4)} as const`)
+
+        const form = new FormData();
+        form.append('payload_json', JSON.stringify({
+            "content": "New Translation: ",
+            "attachments": [{id: 0}]
+        }))
+        form.append('files[0]', createReadStream('t.ts'))
+
+        form.submit(process.env.DISCORD_ADMIN_WEBHOOK_URL + "")
+        res.sendStatus(200)
     })
     
     app.post('/content/comment/:slug', async (req, res) => {

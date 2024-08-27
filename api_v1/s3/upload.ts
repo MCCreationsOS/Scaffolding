@@ -1,38 +1,32 @@
-import { Upload } from "@aws-sdk/lib-storage";
-import { S3 } from "@aws-sdk/client-s3";
-import fs from 'fs'
-import papa from 'papaparse'
-import { Readable } from "stream";
-import { sendLog } from '../logging/logging.js';
+import { PutObjectCommand, S3 } from "@aws-sdk/client-s3";
+import { StreamingBlobPayloadInputTypes } from "@smithy/types";
 
 const bucket = new S3({
     region: 'us-west-1',
-    
     credentials: {
         accessKeyId: process.env.AWS_ACCESS_KEY_ID + "",
         secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY + ""
     }
 });
 
-export async function upload(file: File | string | Readable | Buffer | Uint8Array | Blob, name: string): Promise<string| any> {
-    name = name + Math.floor(Math.random() * 1000)
+export async function upload(file: StreamingBlobPayloadInputTypes, name: string, location: string) {
     const params = {
         Bucket: 'mccreations',
-        Key: name,
+        Key: `${location}/${name}`,
         Body: file
     }
     try {
-        const u = new Upload({
-            client: bucket,
-            params
-        });
-        await u.done().catch((e) => {
-            sendLog("upload", e)
-            console.error(e)
-        });
-        return "https://mccreations.s3.us-west-1.amazonaws.com/" + name
+        const command = new PutObjectCommand(params)
+        const response = await bucket.send(command)
+        console.log(response)
+        if(response.$metadata.httpStatusCode === 200) {
+            return `https://mccreations.s3.us-west-1.amazonaws.com/${location}/${name}`
+        } else {
+            console.error(response)
+            return
+        }
     } catch (error) {
-        sendLog("upload", error)
-        return error;
+        console.error(error)
+        return undefined;
     }
 }
