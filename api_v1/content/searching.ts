@@ -1,3 +1,4 @@
+import { encode } from "punycode";
 import { Database, DatabaseQueryBuilder, Search } from "../db/connect.js";
 import { ContentDocument, DatabaseCollection, SearchIndex } from "../db/types.js";
 import { sendLog } from "../logging/logging.js";
@@ -58,7 +59,7 @@ export async function findContent(collection: DatabaseCollection, requestQuery: 
 	}
 
     if(requestQuery.slug) {
-        query.buildQuery("slug", requestQuery.slug)
+        query.buildQuery("$or", [{slug: requestQuery.slug }, { slug: encodeURI(requestQuery.slug) }])
     }
 
 	if(requestQuery.limit) {
@@ -104,7 +105,7 @@ export async function findContent(collection: DatabaseCollection, requestQuery: 
 
 	let cursor = database.executeQuery(query);
 
-	let documents = []
+	let documents: ContentDocument[] = []
 	for await (const doc of cursor) {
 		documents.push(doc);
 	}

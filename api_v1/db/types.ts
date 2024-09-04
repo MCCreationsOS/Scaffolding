@@ -34,17 +34,33 @@ export interface ContentDocument extends Document {
     downloads: number,
     views: number,
     importedUrl?: string,
-    type: string
+    type: string,
+    extraFeatures?: {[key in "leaderboards" | "translations" | "indexing"]: boolean | LeaderboardFeature},
+}
+
+export interface LeaderboardFeature {
+    use: boolean,
+    message: string,
+    messageFormatting: string,
 }
 
 export interface File {
     type: string,
+    url?: string,
     worldUrl: string,
     resourceUrl?: string,
     dataUrl?: string,
     minecraftVersion: string,
     contentVersion?: string
-    changelog?: string
+    changelog?: string,
+    extraFiles?: NewFile[],
+    createdDate: number,
+}
+
+export interface NewFile {
+    type: string,
+    url: string,
+    required: boolean,
 }
 
 export interface CommentDocument {

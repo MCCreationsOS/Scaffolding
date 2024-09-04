@@ -2,7 +2,7 @@ import { ObjectId } from "mongodb";
 import jwt from 'jsonwebtoken'
 
 import { Database } from "../db/connect.js";
-import { ContentDocument, DatabaseCollection, SearchIndex } from "../db/types.js";
+import { ContentDocument, DatabaseCollection, LeaderboardFeature, SearchIndex } from "../db/types.js";
 import { app } from "../index.js";
 import { JWTKey, getIdFromJWT, getUserFromJWT } from "../auth/routes.js";
 import { approvedEmail, requestApprovalEmail } from "../email/email.js";
@@ -10,6 +10,16 @@ import { updateMeilisearch } from "../meilisearch.js";
 import { UserTypes } from "../auth/types.js";
 import { checkIfSlugUnique, fetchFromMCMaps, fetchFromModrinth, fetchFromPMC, uploadContent } from "./creation.js";
 import { findContent, performSearch } from "./searching.js";
+import { Readable } from "stream";
+import path from "path";
+import { generateSubmissionFunctions } from "../extraFeatures/leaderboards.js";
+import simpleGit from "simple-git";
+import { upload } from "../s3/upload.js";
+import { createWriteStream, mkdirSync, unlinkSync, writeFile, writeFileSync } from "fs";
+import { readdir, readFile, rm } from "fs/promises";
+import archiver from "archiver";
+import {open} from "yauzl";
+import { injectLeaderboards } from "./injecting/leaderboards.js";
 
 export function initializeContentRoutes() {
     app.get('/content', async (req, res) => {
@@ -222,7 +232,7 @@ export function initializeContentRoutes() {
             isSlugUnique = await checkIfSlugUnique(map.slug + i, req.body.type)
         }
         map.slug = map.slug + i;
-
+        
         let result = await database.collection.updateOne({_id: new ObjectId(map._id)}, {
             "$set": {
                 title: map.title,
@@ -238,8 +248,29 @@ export function initializeContentRoutes() {
                 files: map.files,
                 tags: map.tags,
                 videoUrl: map.videoUrl,
+                extraFeatures: map.extraFeatures,
             }
         })
+
+
+        let leaderboardFeature = map.extraFeatures?.leaderboards as LeaderboardFeature | undefined
+        if(leaderboardFeature && leaderboardFeature.use && (currentMap.extraFeatures !== map.extraFeatures || currentMap.files !== map.files)) {
+            if(leaderboardFeature.message && leaderboardFeature.message !== "" && map.files && map.files[0].url) {
+                injectLeaderboards(map.files[0].url, map.slug, map.type, leaderboardFeature.message, leaderboardFeature.messageFormatting).then((url) => {
+                    map.files![0].url = url;
+                    database.collection.updateOne({_id: new ObjectId(map._id)}, {
+                        "$set": {
+                            files: map.files,
+                            extraFeatures: map.extraFeatures
+                        }
+                    })
+                }).catch((e) => {
+                    console.log(e)
+                })
+            }
+        }
+
+
         res.send({result: result})
     })
 
@@ -318,12 +349,13 @@ export function initializeContentRoutes() {
     })
 
     app.get('/content/:slug/approve', async (req, res) => {
-        let database = new Database();
+        let type = req.query.contentType as string || "Maps";
+        let database = new Database('content', type);
         let user = await getUserFromJWT(req.headers.authorization + "")
         if(!user.user || user.user.type !== UserTypes.Admin) {
             return res.sendStatus(401);
         }
-        await database.collection.updateOne({slug: req.params.slug}, {$set: {status: 2}})
+        await database.collection.updateOne({slug: req.params.slug}, {$set: {status: 2, createdDate: new Date()}})
         res.sendStatus(200)
 
         let map = await database.collection.findOne({slug: req.params.slug})
@@ -334,7 +366,7 @@ export function initializeContentRoutes() {
                 let creators = new Database('content', 'creators')
                 let user = await creators.collection.findOne({handle: creator.handle})
                 if(user && user.email) {
-                    approvedEmail(user.email, "https://next.mccreations.net/maps/" + req.params.slug, map?.title + "")
+                    approvedEmail(user.email, `https://mccreations.net/${type.toLowerCase()}/${map.slug}`, map?.title + "")
                 }
             })
 
@@ -349,8 +381,8 @@ export function initializeContentRoutes() {
                     {
                         title: map.title,
                         //   type: "rich",
-                        description: map.shortDescription + " https://next.mccreations.net/maps/" + map.slug,
-                        url: "https://next.mccreations.net/maps/" + map.slug,
+                        description: map.shortDescription + ` https://mccreations.net/${type.toLowerCase()}/${map.slug}`,
+                        url: `https://mccreations.net/${type.toLowerCase()}/${map.slug}`,
                         //   timestamp: Date.now(),
                         //   color: 1,
                         image: {

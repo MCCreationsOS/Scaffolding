@@ -30,7 +30,7 @@ export function initializeAuthRoutes() {
             if('user' in user && user.user) {
                 let creators = [user.user]
                 let database = new Database('content', 'creators')
-                let cursor = await database.collection.find<User>({'owners': user.user.handle})
+                let cursor = await database.collection.find({'owners': user.user.handle})
                 creators = [...creators, ...await cursor.toArray()]
                 res.send({creators: creators})
             } else {
@@ -169,12 +169,12 @@ export function initializeAuthRoutes() {
                 let user = await getUserFromJWT(req.headers.authorization)
                 if(user && user.user) {
                     let database = new Database("content", "creators")
-                    let existingUser = await database.collection.findOne({email: req.body.email})
+                    let existingUser = await database.collection.findOne({email: req.body.email.toLowerCase()})
                     if(existingUser) {
                         res.send({error: "Another account is already using that email"})
                         return;
                     }
-                    await database.collection.updateOne({_id: user.user._id}, {$set: {email: req.body.email, last_important_update: Date.now()}})
+                    await database.collection.updateOne({_id: user.user._id}, {$set: {email: req.body.email.toLowerCase(), last_important_update: Date.now()}})
                     res.sendStatus(200)
                 } else {
                     console.log("Token not in JWT")
@@ -261,9 +261,9 @@ export function initializeAuthRoutes() {
     app.post('/auth/forgotPassword', async (req, res) => {
         if(req.body.email) {
             let database = new Database("content", "creators")
-            let user = await database.collection.findOne({email: req.body.email})
+            let user = await database.collection.findOne({email: req.body.email.toLowerCase()})
             if(user) {
-                forgotPasswordEmail(req.body.email, jwt.sign({_id: user._id}, JWTKey, { expiresIn: "30min"}))
+                forgotPasswordEmail(req.body.email.toLowerCase(), jwt.sign({_id: user._id}, JWTKey, { expiresIn: "30min"}))
                 res.sendStatus(200)
             } else {
                 res.send({error: "User not found"})
@@ -321,7 +321,7 @@ export function initializeAuthRoutes() {
             return;
         }
 
-        let existingUser = await database.collection.findOne({email: user.email})
+        let existingUser = await database.collection.findOne({email: user.email.toLowerCase()})
         if(!existingUser) {
             res.send({error: "Incorrect email address or password"})
             return;
@@ -428,7 +428,7 @@ async function signInWithDiscord(code: string): Promise<User | AuthError> {
 
     const database = new Database("content", "creators")
 
-    let existingUser = await database.collection.findOne<User>({ "providers.id": discordUser.id})
+    let existingUser = await database.collection.findOne({ "providers.id": discordUser.id})
     if(existingUser && existingUser.providers && existingUser.providers.length > 0) {
         let foundProvider = false;
         existingUser.providers?.forEach(provider => {
@@ -476,7 +476,7 @@ async function signInWithGithub(code: string): Promise<User | AuthError>  {
 
     const database = new Database("content", "creators")
 
-    let existingUser = await database.collection.findOne<User>({ "providers.id": githubUser.id})
+    let existingUser = await database.collection.findOne({ "providers.id": githubUser.id})
     if(existingUser && existingUser.providers && existingUser.providers.length > 0) {
         let foundProvider = false;
         existingUser.providers?.forEach(provider => {
@@ -504,7 +504,7 @@ async function signInWithGoogle(access_token: string): Promise<User | AuthError>
     
     const database = new Database("content", "creators")
 
-    let existingUser = await database.collection.findOne<User>({ "providers.id": data.id})
+    let existingUser = await database.collection.findOne({ "providers.id": data.id})
     if(existingUser && existingUser.providers && existingUser.providers.length > 0) {
         let foundProvider = false;
         existingUser.providers?.forEach(provider => {
@@ -551,7 +551,7 @@ async function signInWithMicrosoft(code: string): Promise<User | AuthError> {
 
     const database = new Database("content", "creators")
 
-    let existingUser = await database.collection.findOne<User>({ "providers.id": microsoftUser.sub})
+    let existingUser = await database.collection.findOne({ "providers.id": microsoftUser.sub})
     if(existingUser && existingUser.providers && existingUser.providers.length > 0) {
         let foundProvider = false;
         existingUser.providers?.forEach(provider => {
@@ -570,7 +570,7 @@ async function signInWithMicrosoft(code: string): Promise<User | AuthError> {
 async function createUserFromProviderData(email: string, username: string, provider: Providers, token: string, refreshToken: string, id: string, iconURL: string, bannerURL: string): Promise<User | AuthError> {
     const database = new Database("content", "creators")
 
-    let existingUser = await database.collection.findOne<User>({email: email})
+    let existingUser = await database.collection.findOne({email: email})
     if(existingUser && email) {
         return {error: "User already exists but is using a different provider"}
     } else {
@@ -590,7 +590,7 @@ async function createUserFromProviderData(email: string, username: string, provi
             ]
         }
 
-        existingUser = await database.collection.findOne<User>({handle: user.username})
+        existingUser = await database.collection.findOne({handle: user.username})
         if(existingUser) {
             user.handle = username.toLowerCase().replace(" ", "-") + Math.floor(Math.random() * 10000)
         }

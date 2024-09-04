@@ -70,7 +70,42 @@ export function initializeCommunityRoutes() {
         }))
         form.append('files[0]', createReadStream('t.ts'))
 
-        form.submit(process.env.DISCORD_ADMIN_WEBHOOK_URL + "")
+        form.submit(process.env.DISCORD_UPDATE_WEBHOOK_URL + "")
+        res.sendStatus(200)
+    })
+
+    app.get('/leaderboards/:type/:slug', async (req, res) => {
+        let database = new Database("content", "leaderboards")
+        let query = new DatabaseQueryBuilder();
+        query.buildQuery("slug", req.params.slug)
+        query.buildQuery("type", req.params.type)
+        let leaderboard = await database.collection.findOne(query.query)
+        res.send(leaderboard)
+    })
+
+    app.post('/leaderboards/:type/:slug', async (req, res) => {
+        let database = new Database("content", "leaderboards")
+        let query = new DatabaseQueryBuilder();
+        query.buildQuery("slug", req.params.slug)
+        query.buildQuery("type", req.params.type)
+        let leaderboard = await database.collection.findOne(query.query)
+
+        let user = await getUserFromJWT(req.headers.authorization + "")
+
+        let score = {
+            username: req.body.username,
+            handle: user.user?.handle,
+            score: req.body.score,
+            date: Date.now(),
+            device: req.headers['user-agent']?.includes("Macintosh") ? "Mac" : "Windows",
+            location: req.headers['cf-ipcountry']
+        }
+
+        if(leaderboard) {
+            await database.collection.updateOne(query.query, {$push: {scores: score}})
+        } else {
+            await database.collection.insertOne({slug: req.params.slug, type: req.params.type, scores: [score]})
+        }
         res.sendStatus(200)
     })
     
