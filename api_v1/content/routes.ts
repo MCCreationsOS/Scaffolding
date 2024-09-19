@@ -200,7 +200,14 @@ export function initializeContentRoutes() {
         let currentMap = await database.collection.findOne({_id: new ObjectId(map._id)})
 
         if(!user.user) {
-            return res.sendStatus(401).send({error: "User not found"});
+            let key = getIdFromJWT(req.headers.authorization + "")
+            if(!key) {
+                return res.status(401).send({error: "User not found"});
+            } else if(key instanceof ObjectId && key.equals(currentMap?._id)) {
+
+            } else {
+                return res.sendStatus(401);
+            }
         }
 
         if(!currentMap) {
@@ -209,7 +216,7 @@ export function initializeContentRoutes() {
             return;
         }
 
-        if((currentMap.creators?.filter(creator => creator.handle === user.user?.handle).length === 0 && user.user.type !== UserTypes.Admin && currentMap.owner !== user.user.handle)) { 
+        if((currentMap.creators?.filter(creator => creator.handle === user.user?.handle).length === 0 && user.user?.type !== UserTypes.Admin && currentMap.owner !== user.user?.handle)) { 
             console.log("User not found or not creator")
             let id = await getIdFromJWT(req.headers.authorization + "")
             if(id && id instanceof ObjectId && id.equals(currentMap?._id)) {

@@ -334,7 +334,7 @@ export function initializeAuthRoutes() {
         bcrypt.compare(user.password, existingUser.password, (err, same) => {
             if(same) {
                 console.log("user login successful")
-                res.send({token: jwt.sign({_id: existingUser!._id, createdDate: Date.now()}, JWTKey, {expiresIn: '31d'}), creator: {username: existingUser!.username, handle: existingUser!.handle}})
+                res.send({token: jwt.sign({_id: existingUser!._id, createdDate: Date.now()}, JWTKey, {expiresIn: '31d'}), creator: {...existingUser, password: undefined, providers: undefined}})
             } else {
                 res.send({error: "Incorrect email address or password"})
             }
@@ -346,7 +346,7 @@ export function initializeAuthRoutes() {
             let result = await signInWithDiscord(req.query.code as string)
             if(instanceOfUser(result)) {
                 result = result as User;
-                res.send({token: jwt.sign({_id: result._id, createdDate: Date.now()}, JWTKey, {expiresIn: '31d'}), creator: {username: result.username}})
+                res.send({token: jwt.sign({_id: result._id, createdDate: Date.now()}, JWTKey, {expiresIn: '31d'}), creator: {...result, password: undefined, providers: undefined}})
             } else {
                 console.log(result)
                 res.send(result)
@@ -360,7 +360,7 @@ export function initializeAuthRoutes() {
             let result = await signInWithGithub(req.query.code as string)
             if(instanceOfUser(result)) {
                 result = result as User
-                res.send({token: jwt.sign({_id: result._id, createdDate: Date.now()}, JWTKey, {expiresIn: '31d'}), creator: {username: result.username, handle: result.handle}})
+                res.send({token: jwt.sign({_id: result._id, createdDate: Date.now()}, JWTKey, {expiresIn: '31d'}), creator: {...result, password: undefined, providers: undefined}})
             } else {
                 console.log(result)
                 res.send(result)
@@ -374,7 +374,7 @@ export function initializeAuthRoutes() {
             let result = await signInWithGoogle(req.query.access_token as string);
             if(instanceOfUser(result)) {
                 result = result as User
-                res.send({token: jwt.sign({_id: result._id, createdDate: Date.now()}, JWTKey, {expiresIn: '31d'}), creator: {username: result.username, handle: result.handle}})
+                res.send({token: jwt.sign({_id: result._id, createdDate: Date.now()}, JWTKey, {expiresIn: '31d'}), creator: {...result, password: undefined, providers: undefined}})
             } else {
                 console.log(result)
                 res.send(result)
@@ -387,7 +387,7 @@ export function initializeAuthRoutes() {
             let result = await signInWithMicrosoft(req.query.code as string);
             if(instanceOfUser(result)) {
                 result = result as User
-                res.send({token: jwt.sign({_id: result._id, createdDate: Date.now()}, JWTKey, {expiresIn: '31d'}), creator: {username: result.username, handle: result.handle}})
+                res.send({token: jwt.sign({_id: result._id, createdDate: Date.now()}, JWTKey, {expiresIn: '31d'}), creator: {...result, password: undefined, providers: undefined}})
             } else {
                 console.log(result)
                 res.send(result)

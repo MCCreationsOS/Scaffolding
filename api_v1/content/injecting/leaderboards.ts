@@ -1,4 +1,4 @@
-import { createWriteStream, mkdirSync, readFileSync } from "fs"
+import { createWriteStream, mkdirSync, readFileSync, rmdir } from "fs"
 import { Readable } from "stream"
 import { cloneRepository, compressFolder, unzip } from "./utils"
 import { generateSubmissionFunctions } from "../../extraFeatures/leaderboards"
@@ -16,18 +16,19 @@ export async function injectLeaderboards(mapFile: string, slug: string, type: st
     
             writeStream.on('close', async () => {
                 let folder = await unzip("tmp/" + slug + ".zip", "tmp/")
-                await mkdir("tmp/" + folder + "/datapacks/mccleaderboards", {recursive: true}).catch(() => {})
+                await mkdir("tmp/" + folder + "/datapacks/mccleaderboards", {recursive: true})
                 await cloneRepository("https://github.com/MCCreationsOS/Java-Leaderboards.git", "tmp/" + folder + "/datapacks/mccleaderboards")
+                generateSubmissionFunctions(`tmp/${folder}/datapacks/mccleaderboards/older_versions/`, type, slug, message, messageFormatting)
                 await generateSubmissionFunctions(`tmp/${folder}/datapacks/mccleaderboards/`, type, slug, message, messageFormatting)
-                compressFolder(`tmp/${folder}/`, `tmp/${slug}.zip`)
-    
+                await compressFolder(`tmp/${folder}/`, `tmp/${slug}`)
                 const f = readFileSync(`tmp/${slug}.zip`)
-                upload(f, `${slug}.zip`, "leaderboards").then((url) => {
+                upload(f, `${slug + Date.now()}.zip`, "files").then((url) => {
                     if(url) {
                         resolve(url)
                     } else {
                         reject("Failed to upload")
                     }
+                    rmdir("tmp", {recursive: true}, () => {})
                 })
             })
         }

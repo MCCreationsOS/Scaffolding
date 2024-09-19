@@ -47,7 +47,7 @@ export interface LeaderboardFeature {
 export interface File {
     type: string,
     url?: string,
-    worldUrl: string,
+    worldUrl?: string,
     resourceUrl?: string,
     dataUrl?: string,
     minecraftVersion: string,

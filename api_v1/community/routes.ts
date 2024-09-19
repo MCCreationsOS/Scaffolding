@@ -61,14 +61,15 @@ export function initializeCommunityRoutes() {
     })
 
     app.post('/translation', async (req, res) => {
-        writeFileSync('t.ts', `export default ${JSON.stringify(req.body, undefined, 4)} as const`)
+        console.log(req.body)
+        writeFileSync('t.json', JSON.stringify(req.body, undefined, 4))
 
         const form = new FormData();
         form.append('payload_json', JSON.stringify({
             "content": "New Translation: ",
             "attachments": [{id: 0}]
         }))
-        form.append('files[0]', createReadStream('t.ts'))
+        form.append('files[0]', createReadStream('t.json'))
 
         form.submit(process.env.DISCORD_UPDATE_WEBHOOK_URL + "")
         res.sendStatus(200)
@@ -98,7 +99,8 @@ export function initializeCommunityRoutes() {
             score: req.body.score,
             date: Date.now(),
             device: req.headers['user-agent']?.includes("Macintosh") ? "Mac" : "Windows",
-            location: req.headers['cf-ipcountry']
+            location: req.headers['cf-ipcountry'],
+            score_type: req.body.score_type
         }
 
         if(leaderboard) {

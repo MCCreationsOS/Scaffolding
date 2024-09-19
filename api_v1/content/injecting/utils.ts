@@ -23,9 +23,13 @@ export function compressFolder(folderPath: string, outputPath: string) {
 }
 
 export function cloneRepository(remote: string, path: string) {
-    const git = simpleGit(path);
-    git.init().addRemote("origin", remote)
-    return git.pull("origin", "main")
+    return new Promise<void>((resolve, reject) => {
+        const git = simpleGit(path);
+        setTimeout(() => {
+            resolve()    
+        }, 1000)
+        git.init().addRemote("origin", remote).pull("origin", "main")
+    })
 }
 
 export function unzip(zip: string, outputPath: string) {
@@ -46,7 +50,7 @@ export function unzip(zip: string, outputPath: string) {
                 console.log(err)
                 reject(err)
             })
-            
+
             zipfile.on('entry', (entry) => {
                 if(/\/$/.test(entry.fileName)) {
                     zipfile.readEntry()

@@ -160,9 +160,9 @@ export async function fetchFromPMC(url: string, type: string) {
                         importedUrl: url,
                         type: type
                     }
-                    if(type === 'map') map.files = [{type: 'world', worldUrl: "https://www.planetminecraft.com" + html.querySelector('.branded-download')?.getAttribute('href'), minecraftVersion: '', createdDate: Date.now()}]
-                    if(type === 'datapack') map.files = [{type: "datapack", worldUrl: "", dataUrl: "https://www.planetminecraft.com" + html.querySelector('.branded-download')?.getAttribute('href'), minecraftVersion: '', createdDate: Date.now()}]
-                    if(type === 'resourcepack') map.files = [{type: "resourcepack", worldUrl: "", resourceUrl: "https://www.planetminecraft.com" + html.querySelector('.branded-download')?.getAttribute('href'), minecraftVersion: '', createdDate: Date.now()}]
+                    if(type === 'Maps') map.files = [{type: 'world', url: "https://www.planetminecraft.com" + html.querySelector('.branded-download')?.getAttribute('href'), minecraftVersion: '', createdDate: Date.now(), contentVersion: "1.0", extraFiles: []}]
+                    if(type === 'datapacks') map.files = [{type: "datapack", url: "https://www.planetminecraft.com" + html.querySelector('.branded-download')?.getAttribute('href'), minecraftVersion: '', createdDate: Date.now(), contentVersion: "1.0", extraFiles: []}]
+                    if(type === 'resourcepacks') map.files = [{type: "resourcepack", url: "https://www.planetminecraft.com" + html.querySelector('.branded-download')?.getAttribute('href'), minecraftVersion: '', createdDate: Date.now(), contentVersion: "1.0", extraFiles: []}]
                     let images = html.querySelectorAll('.rsImg')
                     images.forEach(async (image, idx) => {
                         let url = image.getAttribute('href')!

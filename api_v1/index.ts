@@ -42,6 +42,8 @@ setInterval(updateMeilisearch, 1000 * 60 * 60 * 24);
 setInterval(refreshJWTHash, 1000 * 60 * 60 * 24 * 15);
 setInterval(sendCommentsDigest, 1000 * 60 * 60 * 24);
 
+import("../discord_bot/index.js")
+
 var httpServer = createHttpServer(app);
 httpServer.listen(8080);
 
