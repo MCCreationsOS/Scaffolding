@@ -79,7 +79,7 @@ export function initializeDatapackRoutes() {
         if(result.documents[0]) {
             let datapack = result.documents[0]
 
-            let database = new Database();
+            let database = new Database("content", DatabaseCollection.Datapacks);
             database.collection.updateOne({_id: datapack._id}, {$inc: {downloads: 1}})
 			res.sendStatus(200)
 			return

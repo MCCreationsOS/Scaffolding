@@ -8,10 +8,11 @@ import { getUserFromJWT } from "../auth/routes.js";
 import { ObjectId } from "mongodb";
 import FormData from "form-data";
 import { createReadStream, writeFileSync } from "fs";
+import { createNotification, createNotificationToCreators } from "../notifications/index.js";
 
 export function initializeCommunityRoutes() {
     app.get('/creators', async (req, res) => {
-        let database = new Database('content', 'creators')
+        let database = new Database<User>('content', 'creators')
         let query = new DatabaseQueryBuilder();
 
         query.setProjection({
@@ -34,7 +35,7 @@ export function initializeCommunityRoutes() {
     })
 
     app.get('/creator/:handle', async (req, res) => {
-        let database = new Database('content', 'creators')
+        let database = new Database<User>('content', 'creators')
         let query = new DatabaseQueryBuilder();
 
         query.buildQuery("handle", req.params.handle)
@@ -112,11 +113,10 @@ export function initializeCommunityRoutes() {
     })
     
     app.post('/content/comment/:slug', async (req, res) => {
-        let database = new Database("content", req.body.content_type);
         let comments = new Database("content", "comments")
 
         let approved = true
-        if(words.en.some((word) => req.body.comment.includes(word))) {
+        if(words.en.some((word) => req.body.comment.includes(` ${word} `))) {
             approved = false
         }
 
@@ -132,8 +132,88 @@ export function initializeCommunityRoutes() {
         }
     
         await comments.collection.insertOne(comment)
-        // database.collection.updateOne({slug: req.params.slug}, {$push: {comments: {_id: comment.insertedId, username: req.body.username, comment: req.body.comment, date: Date.now(), likes: 0, handle: req.body.handle, approved: approved}}})
+
         res.sendStatus(200)
+
+        let contentDatabase = new Database("content", req.body.content_type)
+        let content = await contentDatabase.collection.findOne<ContentDocument>({slug: req.params.slug})
+
+        if(content) {
+            createNotificationToCreators({
+                content: content,
+                type: "comment",
+                title: {key: "Account.Notifications.NewComment.title"},
+                body: {key: "Account.Notifications.NewComment.body", options: {content_type: content.type, username: req.body.username, title: content.title}},
+                createdByUser: req.body.handle
+            })
+        }
+    })
+
+    app.post('/content/comment_like', async (req, res) => {
+        let database = new Database("content", "comments")
+        let comment = await database.collection.findOne({_id: new ObjectId(req.body.comment_id)})
+
+        if(comment) {
+            let user = await getUserFromJWT(req.headers.authorization + "")
+            if(comment.like_senders?.includes(user.user?.handle)) {
+                res.sendStatus(400)
+                return;
+            } else if (user.user) {
+                if(!comment.like_senders) comment.like_senders = []
+                comment.like_senders?.push(user.user?.handle)
+            } else if (comment.like_senders?.includes(req.ip)) {
+                res.sendStatus(400)
+                return;
+            } else {
+                if(!comment.like_senders) comment.like_senders = []
+                comment.like_senders?.push(req.ip)
+            }
+            await database.collection.updateOne({_id: comment._id}, {$set: {likes: comment.likes + 1, like_senders: comment.like_senders}})
+            res.sendStatus(200)
+        } else {
+            res.sendStatus(404)
+        }
+    })
+
+    app.post('/content/comment_reply', async (req, res) => {
+        let database = new Database("content", "comments")
+        let comment = await database.collection.findOne({_id: new ObjectId(req.body.comment_id)})
+
+        let approved = true
+        if(words.en.some((word) => req.body.reply.includes(` ${word} `))) {
+            approved = false
+        }
+
+        let reply = {
+            username: req.body.username,
+            comment: req.body.reply,
+            handle: req.body.handle,
+            date: Date.now(),
+            approved: approved
+        }
+
+        if(comment) {
+            await database.collection.updateOne({_id: comment._id}, {$push: {replies: reply}})
+            res.sendStatus(200)
+
+            if(comment.handle !== reply.handle && comment.handle) {
+                let users = new Database("content", "creators")
+                let user = await users.collection.findOne<User>({handle: comment.handle})
+                if(user) {
+                    createNotification({
+                        user: user,
+                        type: "reply",
+                        link: `/${comment.content_type.toLowerCase()}/${comment.slug}`,
+                        title: {key: "Account.Notifications.NewReply.title"},
+                        body: {key: "Account.Notifications.NewReply.body", options: {username: reply.username}},
+                        createdByUser: reply.handle
+                    })
+                }
+            }
+
+        } else {
+            res.sendStatus(404)
+        }
     })
 
     app.get('/content/comments/:slug', async (req, res) => {
@@ -149,6 +229,16 @@ export function initializeCommunityRoutes() {
         res.send(comment)
     })
 
+    app.delete('/content/comment/:id', async (req, res) => {
+        let user = await getUserFromJWT(req.headers.authorization + "")
+        let database = new Database("content", "comments")
+        let comment = await database.collection.findOne({_id: new ObjectId(req.params.id)})
+        if(comment && (comment.handle && comment.handle === user.user?.handle) || user.user?.type === UserTypes.Admin) {
+            await database.collection.deleteOne({_id: new ObjectId(req.params.id)})
+        }
+        res.sendStatus(200)
+    })
+
     app.post('/content/comments/update', async (req, res) => {
         let database = new Database("content", "comments")
         let query = new DatabaseQueryBuilder();
@@ -156,7 +246,7 @@ export function initializeCommunityRoutes() {
         let comment = await database.collection.findOne(query.query)
         let user = await getUserFromJWT(req.headers.authorization + "")
 
-        if((comment.handle && comment.handle === user.user?.handle) || user.user?.type === UserTypes.Admin) {
+        if(comment && (comment.handle && comment.handle === user.user?.handle) || user.user?.type === UserTypes.Admin) {
             await database.collection.updateOne(query.query, {$set: {comment: req.body.comment}})
         }
 

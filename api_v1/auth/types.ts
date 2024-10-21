@@ -1,4 +1,7 @@
 import { ObjectId } from "mongodb"
+import { CommentDocument } from "../db/types"
+
+export type NotificationOption = "push_only" | "push_email_daily" | "push_email_weekly" | "email_daily" | "email_weekly" | "dashboard_only" | "none"
 
 export interface User {
     _id?: ObjectId
@@ -16,8 +19,59 @@ export interface User {
     },
     providers?: Provider[],
     owners?: string[],
-    last_important_update?: Date
+    last_important_update?: Date,
+    profileLayout?: ProfileLayout,
+    wall?: WallPost[],
+    settings?: {
+        notifications: {
+            comment: NotificationOption,
+            like: NotificationOption,
+            reply: NotificationOption,
+            subscription: NotificationOption,
+            rating: NotificationOption,
+            translation: NotificationOption
+        }
+    },
+    push_subscriptions?: PushSubscription[]
 }
+
+export interface WallPost {
+    _id: string,
+    comment: string,
+    date: number
+    comments: CommentDocument[]
+}
+
+export interface ProfileLayout {
+    widgets: Widget[]
+    layout: RGLayout[]
+}
+
+export interface Widget {
+    type: string,
+    id: string,
+    data: any
+}
+
+export interface RGLayout {
+    i: string;
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+    minW?: number | undefined;
+    maxW?: number | undefined;
+    minH?: number | undefined;
+    maxH?: number | undefined;
+    moved?: boolean | undefined;
+    static?: boolean | undefined;
+    isDraggable?: boolean | undefined;
+    isResizable?: boolean | undefined;
+    resizeHandles?: ResizeHandle[] | undefined;
+    isBounded?: boolean | undefined;
+}
+
+type ResizeHandle = "s" | "w" | "e" | "n" | "sw" | "nw" | "se" | "ne";
 
 export interface Provider {
     provider: Providers,
@@ -43,4 +97,5 @@ export enum UserTypes {
 
 export interface AuthError {
     error: string
+    user?: User
 }

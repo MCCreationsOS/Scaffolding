@@ -35,7 +35,7 @@ export async function uploadContent(collection: string, body: any, uploader?: Us
         views: 0,
         slug: slug,
         rating: 0,
-        createdDate: new Date(Date.now()),
+        createdDate: Date.now(),
         type: body.content.type,
     }
     console.log("Attempting to insert map")
@@ -77,7 +77,7 @@ export async function fetchFromModrinth(url: string, type: string) {
         downloads: 0,
         views: 0,
         rating: 0,
-        createdDate: new Date(),
+        createdDate: Date.now(),
         images: project.gallery.sort((a:any, b:any) => {
             return a.ordering - b.ordering
         }).map((image: any) => image.url),
@@ -136,7 +136,7 @@ export async function fetchFromPMC(url: string, type: string) {
                     let downloads = 0;
                     let views = 0;
                     let rating = 0;
-                    let createdDate = new Date();
+                    let createdDate = Date.now();
                     let users = html.querySelectorAll('.pusername')
                     let username = ""
                     if(users.length === 1) {
@@ -234,7 +234,7 @@ export async function fetchFromMCMaps(url: string) {
     let downloads = 0;
     let views = 0;
     let rating = 0;
-    let createdDate = new Date();
+    let createdDate = Date.now();
     let username = statsPanel?.querySelectorAll('tr')[0].querySelectorAll('span')[1].textContent + ""
 
     let map: ContentDocument = {

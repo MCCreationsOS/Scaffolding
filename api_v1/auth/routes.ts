@@ -29,7 +29,7 @@ export function initializeAuthRoutes() {
             let user = await getUserFromJWT(req.headers.authorization)
             if('user' in user && user.user) {
                 let creators = [user.user]
-                let database = new Database('content', 'creators')
+                let database = new Database<User>('content', 'creators')
                 let cursor = await database.collection.find({'owners': user.user.handle})
                 creators = [...creators, ...await cursor.toArray()]
                 res.send({creators: creators})
@@ -113,6 +113,42 @@ export function initializeAuthRoutes() {
         }
     })
 
+    app.post('/auth/user/updateProfileLayout', async (req, res) => {
+        if(req.headers.authorization) {
+            try {
+                let user = await getUserFromJWT(req.headers.authorization)
+                if(user && user.user) {
+                    let database = new Database("content", "creators")
+                    await database.collection.updateOne({_id: user.user._id}, {$set: {profileLayout: req.body.profileLayout}})
+                    res.sendStatus(200)
+                }
+            } catch(err) {
+                sendLog("updateProfileLayout", err)
+                console.log("JWT not verified")
+                res.send({error: "Session expired, please sign in and try again"})
+            }
+        } else {
+            console.log("authorization not sent")
+            res.send({error: "You are not allowed to access this resource"})
+        }
+    })
+
+    app.post('/auth/user/updateNotifications', async (req, res) => {
+        if(req.headers.authorization) {
+            let user = await getUserFromJWT(req.headers.authorization)
+            if(user && user.user) {
+                let database = new Database("content", "creators")
+                await database.collection.updateOne({_id: user.user._id}, {$set: {"settings.notifications": req.body}})
+                res.sendStatus(200)
+            } else {
+                res.status(401).send({error: "User not found"})
+            }
+        } else {
+            console.log("authorization not sent")
+            res.status(401).send({error: "You are not allowed to access this resource"})
+        }
+    })
+
     // Update a user's handle
     app.post('/auth/user/updateHandle', async (req, res) => {
         if(req.headers.authorization) {
@@ -189,6 +225,66 @@ export function initializeAuthRoutes() {
         } else {
             console.log("authorization not sent")
             res.send({error: "You are not allowed to access this resource"})
+        }
+    })
+
+    app.post('/auth/user/addProvider', async (req, res) => {
+        if(req.headers.authorization) {
+            try {
+                let user = await getUserFromJWT(req.headers.authorization)
+                if(user && user.user) {
+                    let provider = req.body.provider
+                    if(!provider || provider.length < 1) {
+                        res.send({error: "Provider not found"})
+                        return;
+                    }
+                    let result: User | AuthError
+                    switch(provider) {
+                        case "discord":
+                            result = await signInWithDiscord(req.query.code as string)
+                            break;
+                        case "github":
+                            result = await signInWithGithub(req.query.code as string)
+                            break;
+                        case "google":
+                            result = await signInWithGoogle(req.query.access_token as string)
+                            break;
+                        case "microsoft":
+                            result = await signInWithMicrosoft(req.query.code as string)
+                            break;
+                        default:
+                            res.send({error: "Provider not found"})
+                            return;
+                    }
+                    if(result && !instanceOfUser(result)) {
+                        result = result as AuthError;
+                        console.log(result.user?.providers)
+                        let providers = result.user?.providers
+                        if(providers) {
+                            user.user.providers?.push({
+                                provider: providers[0].provider,
+                                token: providers[0].token,
+                                refreshToken: providers[0].refreshToken,
+                                id: providers[0].id
+                            })
+
+                            let database = new Database("content", "creators")
+                            await database.collection.updateOne({_id: user.user._id}, {$set: {providers: user.user.providers}})
+                            res.sendStatus(200)
+                        } else {
+                            res.send({error: "User not found"})
+                        }
+                    } else {
+                        res.send({error: "User is already connected to this provider"})
+                    }
+                } else {
+                    console.log("Token not in JWT")
+                    res.send({error: "Session expired, please sign in and try again"})
+                }
+            } catch(err) {
+                console.log(err)
+                res.send({error: "Session expired, please sign in and try again"})
+            }
         }
     })
 
@@ -426,7 +522,7 @@ async function signInWithDiscord(code: string): Promise<User | AuthError> {
     let discordUser = await res.json();
     if(!discordUser) return {error: "Discord user could not be fetched"}
 
-    const database = new Database("content", "creators")
+    const database = new Database<User>("content", "creators")
 
     let existingUser = await database.collection.findOne({ "providers.id": discordUser.id})
     if(existingUser && existingUser.providers && existingUser.providers.length > 0) {
@@ -474,7 +570,7 @@ async function signInWithGithub(code: string): Promise<User | AuthError>  {
     let githubUser = await res.json();
     if(!githubUser) return {error: "Github user could not be fetched"}
 
-    const database = new Database("content", "creators")
+    const database = new Database<User>("content", "creators")
 
     let existingUser = await database.collection.findOne({ "providers.id": githubUser.id})
     if(existingUser && existingUser.providers && existingUser.providers.length > 0) {
@@ -502,7 +598,7 @@ async function signInWithGoogle(access_token: string): Promise<User | AuthError>
 
     if(data.error) return {error: "Invalid access token, try again."}
     
-    const database = new Database("content", "creators")
+    const database = new Database<User>("content", "creators")
 
     let existingUser = await database.collection.findOne({ "providers.id": data.id})
     if(existingUser && existingUser.providers && existingUser.providers.length > 0) {
@@ -549,7 +645,7 @@ async function signInWithMicrosoft(code: string): Promise<User | AuthError> {
     console.log(microsoftUser)
     if(!microsoftUser) return {error: "Microsoft user could not be fetched"}
 
-    const database = new Database("content", "creators")
+    const database = new Database<User>("content", "creators")
 
     let existingUser = await database.collection.findOne({ "providers.id": microsoftUser.sub})
     if(existingUser && existingUser.providers && existingUser.providers.length > 0) {
@@ -568,35 +664,36 @@ async function signInWithMicrosoft(code: string): Promise<User | AuthError> {
 }
 
 async function createUserFromProviderData(email: string, username: string, provider: Providers, token: string, refreshToken: string, id: string, iconURL: string, bannerURL: string): Promise<User | AuthError> {
-    const database = new Database("content", "creators")
+    const database = new Database<User>("content", "creators")
 
     let existingUser = await database.collection.findOne({email: email})
-    if(existingUser && email) {
-        return {error: "User already exists but is using a different provider"}
-    } else {
-        let user: User = {
-            username: username + "",
-            email: email,
-            type: UserTypes.Account,
-            iconURL: iconURL,
-            bannerURL: bannerURL,
-            providers: [
-                {
-                    provider: provider,
-                    token: token,
-                    refreshToken: refreshToken,
-                    id: id
-                }
-            ]
-        }
+    let user: User = {
+        username: username + "",
+        email: email,
+        type: UserTypes.Account,
+        iconURL: iconURL,
+        bannerURL: bannerURL,
+        providers: [
+            {
+                provider: provider,
+                token: token,
+                refreshToken: refreshToken,
+                id: id
+            }
+        ]
+    }
+    let userWithHandle = await database.collection.findOne({handle: user.username})
+    if(userWithHandle) {
+        user.handle = username.toLowerCase().replace(" ", "-") + Math.floor(Math.random() * 10000)
+    }
+    else {
+        user.handle = username.toLowerCase().replace(" ", "-");
+    }
 
-        existingUser = await database.collection.findOne({handle: user.username})
-        if(existingUser) {
-            user.handle = username.toLowerCase().replace(" ", "-") + Math.floor(Math.random() * 10000)
-        }
-        else {
-            user.handle = username.toLowerCase().replace(" ", "-");
-        }
+    if(existingUser && email) {
+        return {error: "User already exists but is using a different provider", user: user}
+    } else {
+
 
         await database.collection.insertOne(user)
 
@@ -610,7 +707,7 @@ export async function getUserFromJWT(jwtString: string) {
         let token = jwt.verify(jwtString, JWTKey) as any
         if(token && token._id) {
             let _id = new ObjectId(token._id)
-            let database = new Database("content", "creators")
+            let database = new Database<User>("content", "creators")
             let query = new DatabaseQueryBuilder()
             query.buildQuery("_id", _id);
             query.setProjection({

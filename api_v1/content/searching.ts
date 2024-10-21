@@ -4,7 +4,7 @@ import { ContentDocument, DatabaseCollection, SearchIndex } from "../db/types.js
 import { sendLog } from "../logging/logging.js";
 
 export async function findContent(collection: DatabaseCollection, requestQuery: any, useProjection: boolean) {
-    let database = new Database("content", collection);
+    let database = new Database<ContentDocument>("content", collection);
     let query = new DatabaseQueryBuilder();
 
 	switch(requestQuery.sort) {

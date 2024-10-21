@@ -74,12 +74,12 @@ export function initializeResourcepackRoutes() {
     })
 
 	app.get('/resourcepacks/:slug/download', async (req, res) => {
-        let result = await findContent(DatabaseCollection.Resourcepacks, {limit: 1, slug: req.params.slug}, false)
+        let result = await findContent(DatabaseCollection.Resourcepacks, {limit: "1", slug: req.params.slug}, false)
 
         if(result.documents[0]) {
             let resourcepack = result.documents[0]
 
-            let database = new Database();
+            let database = new Database("content", DatabaseCollection.Resourcepacks);
             database.collection.updateOne({_id: resourcepack._id}, {$inc: {downloads: 1}})
 			res.sendStatus(200)
 			return

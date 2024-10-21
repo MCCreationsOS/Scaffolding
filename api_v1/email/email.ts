@@ -2,6 +2,8 @@ import FormData from 'form-data';
 // import Mailgun from 'mailgun.js';
 import { sendLog } from '../logging/logging.js';
 import Mail from '@sendgrid/mail';
+import { NotificationDocument } from '../db/types.js';
+import { getTranslation } from '../../lang/index.js';
 Mail.setApiKey(process.env.SENDGRID_API_KEY + "");
 
 export function approvedEmail(to: string, link: string, title: string) {
@@ -57,6 +59,47 @@ export function requestApprovalEmail(link: string) {
         templateId: "d-ae90ac85d7f643b89b5321ebb44756d3",
         dynamicTemplateData: {
             previewContent: link
+        }
+    })
+}
+
+export function notificationEmail(to: string, notifications: NotificationDocument[], frequency: "weekly" | "daily") {
+    let days = "day"
+    if(frequency === "weekly") {
+        days = "week"
+    }
+
+    
+    Mail.send({
+        to: to,
+        from: 'MCCreations <mail@mccreations.net>',
+        subject: "Your Notifications for the past " + days,
+        content: [
+            {
+                type: 'text/html',
+                value: "blank"
+            }
+            
+        ],
+        templateId: "d-88659d28071e4da69745b7f4ef481205",
+        dynamicTemplateData: {
+            notifications: notifications.map(n => {
+                let link = "https://mccreations.net/" + n.link
+
+                if(link.includes("wall")) {
+                    let creator = link.split("/")[2]
+                    link = `/creator/${creator}#wall_title`
+                } else {
+                    link = link + "#comments_title"
+                }
+
+                return {
+                    title: (typeof n.title === "string" ? n.title : getTranslation("en-US", n.title.key, n.title.options)),
+                    body: (typeof n.body === "string" ? n.body : getTranslation("en-US", n.body.key, n.body.options)),
+                    link: link
+                }
+            }),
+            days: days
         }
     })
 }

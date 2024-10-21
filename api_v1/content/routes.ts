@@ -7,7 +7,7 @@ import { app } from "../index.js";
 import { JWTKey, getIdFromJWT, getUserFromJWT } from "../auth/routes.js";
 import { approvedEmail, requestApprovalEmail } from "../email/email.js";
 import { updateMeilisearch } from "../meilisearch.js";
-import { UserTypes } from "../auth/types.js";
+import { User, UserTypes } from "../auth/types.js";
 import { checkIfSlugUnique, fetchFromMCMaps, fetchFromModrinth, fetchFromPMC, uploadContent } from "./creation.js";
 import { findContent, performSearch } from "./searching.js";
 import { Readable } from "stream";
@@ -20,6 +20,8 @@ import { readdir, readFile, rm } from "fs/promises";
 import archiver from "archiver";
 import {open} from "yauzl";
 import { injectLeaderboards } from "./injecting/leaderboards.js";
+import { postNewCreation } from "../../discord_bot/index.js";
+import { createNotificationsForSubscribers, createNotificationToCreators } from "../notifications/index.js";
 
 export function initializeContentRoutes() {
     app.get('/content', async (req, res) => {
@@ -27,7 +29,7 @@ export function initializeContentRoutes() {
 		let user = await getUserFromJWT(req.headers.authorization + "")
 
 		result.documents = result.documents.filter((map: ContentDocument) => {
-			if(map.status < 2) {
+			if(map.status < 1) {
 				if(user.user && (map.creators)) {
 					for(const creator of map.creators) {
 						if(creator.handle === user.user.handle) return true;
@@ -174,7 +176,7 @@ export function initializeContentRoutes() {
             }
             map.slug = map.slug + i;
 
-            map.type = req.body.type.toLowerCase().replace("s", "");
+            map.type = req.body.type.toLowerCase().substring(0, req.body.type.length - 1);
 
             let database = new Database("content", req.body.type);
             let result = await database.collection.insertOne(map);
@@ -277,6 +279,10 @@ export function initializeContentRoutes() {
             }
         }
 
+        if(map.status === 2) {
+            updateMeilisearch();
+        }
+
 
         res.send({result: result})
     })
@@ -293,7 +299,7 @@ export function initializeContentRoutes() {
         if(translation[key].approved === undefined) translation[key].approved = false;
         translation[key].date = new Date();
         console.log(translation)
-        let cursor = await database.collection.aggregate([
+        let cursor = await database.collection.aggregate<ContentDocument>([
             {
               '$match': {
                 'slug': slug
@@ -311,6 +317,15 @@ export function initializeContentRoutes() {
           let updated = await cursor.toArray();
         database.collection.updateOne({slug: slug}, {$set: updated[0]})
         res.send({result: updated})
+
+        if(user.user && user.user.handle !== updated[0].owner) {
+            createNotificationToCreators({
+                content: updated[0],
+                type: req.body.type,
+                title: {key: "Account.Notifications.NewTranslation.title"},
+                body: {key: "Account.Notifications.NewTranslation.body", options: {type: req.body.type, username: user.user?.username, language: key}}
+            })
+        }
     })
 
     app.delete('/content', async (req, res) => {
@@ -328,8 +343,9 @@ export function initializeContentRoutes() {
     })
 
     app.post('/content/request_approval', async (req, res) => {
-        let link = "https://next.mccreations.net/maps/" + req.body.slug
-        let database = new Database();
+        let link = `https://mccreations.net/${req.body.type.toLowerCase()}/${req.body.slug}`
+        let type = req.body.type || "Maps";
+        let database = new Database("content", type);
         let user = await getUserFromJWT(req.headers.authorization + "")
         let map = await database.collection.findOne({slug: req.body.slug})
 
@@ -347,17 +363,28 @@ export function initializeContentRoutes() {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                content: "New Map Requesting Approval: " + link
+                content: `New ${type} Requesting Approval: ${link}`
             })
         
-        }).then(response => {
-            console.log(response)
+        })
+
+        map.creators?.forEach(async (creator) => {
+            let creators = new Database('content', 'creators')
+            let user = await creators.collection.findOne<User>({handle: creator.handle})
+            if(user) {
+                createNotificationsForSubscribers({
+                    user: user,
+                    link: link,
+                    title: {key: "Account.Notifications.NewPost.title"},
+                    body: {key: "Account.Notifications.NewPost.body", options: {type: type, username: creator.handle}}
+                })
+            }
         })
     })
 
     app.get('/content/:slug/approve', async (req, res) => {
         let type = req.query.contentType as string || "Maps";
-        let database = new Database('content', type);
+        let database = new Database<ContentDocument>("content", type);
         let user = await getUserFromJWT(req.headers.authorization + "")
         if(!user.user || user.user.type !== UserTypes.Admin) {
             return res.sendStatus(401);
@@ -377,44 +404,21 @@ export function initializeContentRoutes() {
                 }
             })
 
-            let discordMessage = {
-                content: "<@&883788946327347210>",
-                allowed_mentions:{
-                    roles: [
-                        "883788946327347210"
-                    ]
-                },
-                embeds: [
-                    {
-                        title: map.title,
-                        //   type: "rich",
-                        description: map.shortDescription + ` https://mccreations.net/${type.toLowerCase()}/${map.slug}`,
-                        url: `https://mccreations.net/${type.toLowerCase()}/${map.slug}`,
-                        //   timestamp: Date.now(),
-                        //   color: 1,
-                        image: {
-                            url: map.images[0]
-                        },
-                        author: {
-                            name: map.creators?.map(creator => creator.username).join(", ")
-                        }
-                    }
-                ]
-            }
-
-            fetch(process.env.DISCORD_ADMIN_WEBHOOK_URL + "", {
-                method: 'post',
-                headers: {
-                "Content-Type": "application/json"
-                },
-                body: JSON.stringify(discordMessage)
-            });
+            postNewCreation(map, "<@&883788946327347210>")
         }
     })
 
     app.post('/content/rate/:slug', async (req, res) => {
-        let database = new Database();
+        let database = new Database<ContentDocument>();
         let map = req.body.map
+        switch(map.type) {
+            case "datapack":
+                database = new Database<ContentDocument>("content", "datapacks")
+                break;
+            case "resourcepack":
+                database = new Database<ContentDocument>("content", "resourcepacks")
+                break;
+        }
 	
         // Calculate new rating
         let rating = 0;
@@ -434,6 +438,13 @@ export function initializeContentRoutes() {
 
         database.collection.updateOne({slug: req.params.slug}, {$set: {ratings: ratings, rating: rating}}).then(() => {
             res.send({rating: rating})
+        })
+
+        createNotificationToCreators({
+            content: map,
+            type: map.type,
+            title: {key: "Account.Notifications.NewRating.title"},
+            body: {key: "Account.Notifications.NewRating.body", options: {rating: rating, title: map.title}}
         })
     })
 }

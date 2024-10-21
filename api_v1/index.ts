@@ -15,12 +15,17 @@ import { updateMeilisearch } from './meilisearch.js';
 import { initializeDatapackRoutes } from './content/datapacks/routes.js';
 import { initializeResourcepackRoutes } from './content/resourcepacks/routes.js';
 import { initializePaymentRoutes } from './payment/routes.js';
-
+import { initializeDiscordBot } from '../discord_bot/index.js';
+import { Search } from './db/connect.js';
+import { initializeCreatorRoutes } from './creators/routes.js';
+import { initializeNotificationRoutes } from './notifications/routes.js';
+import { sendDailyNotifications, sendWeeklyNotifications } from './notifications/index.js';
 export const app = express();
 app.use(helmet());
 app.use(bodyParser.json())
 app.use(cors());
 app.use(morgan('combined'));
+app.set('trust proxy', true);
 
 export const client = new MongoClient(process.env.MONGODB_URI + "");
 
@@ -36,14 +41,17 @@ initializeContentRoutes();
 initializeDatapackRoutes();
 initializeResourcepackRoutes();
 initializePaymentRoutes();
+initializeDiscordBot();
+initializeCreatorRoutes();
+initializeNotificationRoutes();
+
 
 updateMeilisearch();
 setInterval(updateMeilisearch, 1000 * 60 * 60 * 24);
 setInterval(refreshJWTHash, 1000 * 60 * 60 * 24 * 15);
 setInterval(sendCommentsDigest, 1000 * 60 * 60 * 24);
-
-import("../discord_bot/index.js")
+setInterval(sendDailyNotifications, 1000 * 60 * 60);
+setInterval(sendWeeklyNotifications, 1000 * 60 * 60);
 
 var httpServer = createHttpServer(app);
 httpServer.listen(8080);
-

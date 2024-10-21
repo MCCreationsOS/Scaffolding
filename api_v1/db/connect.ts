@@ -9,9 +9,9 @@ import { sendLog } from "../logging/logging.js";
 
 const connectionsPool: {client: MongoClient, inUse: boolean}[] = [];
 
-export class Database {
+export class Database<T extends Document> {
     database
-    collection
+    collection: Collection<T>
 
     constructor(databaseName?: string, collectionName?: string) {
         if(databaseName) {
@@ -30,7 +30,7 @@ export class Database {
     }
 
     executeQuery(query: IDatabaseQuery) {
-        let c = this.collection.find(query.query).limit(query.limit).sort(query.sort).project(query.projection).skip(query.skip);
+        let c = this.collection.find<T>(query.query).limit(query.limit).sort(query.sort).project(query.projection).skip(query.skip);
         return c
     }
 }
@@ -152,9 +152,35 @@ export class Search {
             documents.push(...res.hits)
         })
 
-        documents.sort((a, b) => {
-            if(a.createdDate > b.createdDate) return -1;
-            else return 1;
+        documents.sort((a: ContentDocument, b: ContentDocument) => {
+            switch(this.sortS) {
+                case "createdDate:desc":
+                    return b.createdDate - a.createdDate
+                case "createdDate:asc":
+                    return a.createdDate - b.createdDate
+                case "downloads:desc":
+                    return b.downloads - a.downloads
+                case "downloads:asc":
+                    return a.downloads - b.downloads
+                case "rating:desc":
+                    return b.rating - a.rating
+                case "rating:asc":
+                    return a.rating - b.rating
+                case "updatedDate:desc":
+                    return b.updatedDate ?? 0 - (a.updatedDate ?? 0)
+                case "updatedDate:asc":
+                    return (a.updatedDate ?? 0) - (b.updatedDate ?? 0)
+                case "title:asc":
+                    return a.title.localeCompare(b.title)
+                case "title:desc":
+                    return b.title.localeCompare(a.title)
+                case "creators.username:asc":
+                    return a.creators?.map(creator => creator.username).join(", ").localeCompare(b.creators?.map(creator => creator.username).join(", ") ?? "") ?? 0
+                case "creators.username:desc":
+                    return b.creators?.map(creator => creator.username).join(", ").localeCompare(a.creators?.map(creator => creator.username).join(", ") ?? "") ?? 0
+                default:
+                    return 0
+            }
         })
 
         documents = documents.slice(0, this.hitsPerPageS)
@@ -180,6 +206,7 @@ export class Search {
         if(this.sortS) {
             options.sort = [this.sortS];
         }
+        console.log(this.sortS)
         try{
             let response = await this.client.multiSearch({queries: this.indexes.map(index => {return {indexUid: index.uid, q: this.queryS, ...options}})})
             

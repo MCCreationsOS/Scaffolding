@@ -20,8 +20,8 @@ export interface ContentDocument extends Document {
     slug: string,
     rating: number,
     ratings?: number[],
-    createdDate: Date,
-    updatedDate?: Date,
+    createdDate: number,
+    updatedDate?: number,
     _id?: ObjectId,
     tags?: string[],
     description: string,
@@ -72,6 +72,24 @@ export interface CommentDocument {
     handle: string,
     approved: boolean,
     slug: string
+    content_type: "Maps" | "datapacks" | "resourcepacks" | "wall"
+    replies?: CommentDocument[]
+    like_senders?: string[]
+}
+
+export type NotificationType = "comment" | "like" | "reply" | "subscription" | "rating" | "translation"
+
+export interface NotificationDocument {
+    _id?: ObjectId,
+    user_id: ObjectId,
+    type: NotificationType,
+    date: number,
+    link: string
+    read: boolean,
+    notified: boolean,
+    title: string | {key: string, options?: any},
+    body: string | {key: string, options?: any},
+    createdByUser?: string
 }
 
 export interface IDatabaseProjection {
