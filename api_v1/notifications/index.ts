@@ -3,7 +3,7 @@ import { User } from "../auth/types";
 import { Database } from "../db/connect";
 import { ContentDocument, NotificationDocument, NotificationType } from "../db/types";
 import webpush from 'web-push'
-import { getTranslation } from "../../lang";
+import { getTranslation } from "../translation";
 import { notificationEmail } from "../email/email";
 
 webpush.setVapidDetails(
@@ -97,50 +97,52 @@ async function sendPushNotification(notification: NotificationDocument, user: Us
 }
 
 export async function subscribeToPushNotifications(user_id: string, subscription: PushSubscription) {
-    let database = new Database("content", "creators")
+    let database = new Database<User>("content", "creators")
     await database.collection.updateOne({_id: new ObjectId(user_id)}, {$push: {push_subscriptions: subscription}})
 }
 
 export async function sendDailyNotifications() {
-    if(Date.now() % 86400000 !== 0) {
-        return
-    }
 
     let database = new Database("content", "creators")
     let cursor = await database.collection.find<User>({settings: {$exists: true}})
     for await(let user of cursor) {
         let settings = Object.keys(user.settings?.notifications ?? {})
         let send = false
+        let toSend: string[] = []
         for(let setting of settings) {
             if(user.settings?.notifications[setting].includes("email_daily")) {
                 send = true
+                toSend.push(setting)
             }
         }
         if(send) {
-            let notifications = await database.collection.find<NotificationDocument>({user_id: user._id!, read: false, date: {$gte: Date.now() - 86400000}}).toArray()
-            notificationEmail(user.email, notifications, "daily")
+            let notifications = await database.collection.find<NotificationDocument>({user_id: user._id!, read: false, date: {$gte: Date.now() - 86400000}, type: {$in: toSend}}).toArray()
+            if(notifications.length > 0) {
+                notificationEmail(user.email, notifications, "daily", toSend)
+            }
         }
     }
 }
 
 export async function sendWeeklyNotifications() {
-    if(Date.now() % 604800000 !== 0) {
-        return
-    }
 
     let database = new Database("content", "creators")
     let cursor = await database.collection.find<User>({settings: {$exists: true}})
     for await(let user of cursor) {
         let settings = Object.keys(user.settings?.notifications ?? {})
         let send = false
+        let toSend: string[] = []
         for(let setting of settings) {
             if(user.settings?.notifications[setting].includes("email_weekly")) {
                 send = true
+                toSend.push(setting)
             }
         }
         if(send) {
-            let notifications = await database.collection.find<NotificationDocument>({user_id: user._id!, read: false, date: {$gte: Date.now() - 604800000}}).toArray()
-            notificationEmail(user.email, notifications, "weekly")
+            let notifications = await database.collection.find<NotificationDocument>({user_id: user._id!, read: false, date: {$gte: Date.now() - 604800000}, type: {$in: toSend}}).toArray()
+            if(notifications.length > 0) {
+                notificationEmail(user.email, notifications, "weekly", toSend)
+            }
         }
     }
 }

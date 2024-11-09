@@ -21,7 +21,6 @@ export interface User {
     owners?: string[],
     last_important_update?: Date,
     profileLayout?: ProfileLayout,
-    wall?: WallPost[],
     settings?: {
         notifications: {
             comment: NotificationOption,
@@ -32,7 +31,9 @@ export interface User {
             translation: NotificationOption
         }
     },
-    push_subscriptions?: PushSubscription[]
+    push_subscriptions?: PushSubscription[],
+    subscriptions?: string[],
+    subscribers?: string[]
 }
 
 export interface WallPost {

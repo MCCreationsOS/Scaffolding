@@ -9,7 +9,7 @@ import { approvedEmail, requestApprovalEmail } from "../email/email.js";
 import { updateMeilisearch } from "../meilisearch.js";
 import { User, UserTypes } from "../auth/types.js";
 import { checkIfSlugUnique, fetchFromMCMaps, fetchFromModrinth, fetchFromPMC, uploadContent } from "./creation.js";
-import { findContent, performSearch } from "./searching.js";
+import { findContent, getFeed, performSearch } from "./searching.js";
 import { Readable } from "stream";
 import path from "path";
 import { generateSubmissionFunctions } from "../extraFeatures/leaderboards.js";
@@ -100,6 +100,17 @@ export function initializeContentRoutes() {
         } else {
             res.send(result);
         }
+    })
+
+    app.get('/content/feed', async (req, res) => {
+        let user = await getUserFromJWT(req.headers.authorization + "")
+        if(!user.user) {
+            res.sendStatus(401)
+            return;
+        }
+        let page = parseInt(req.query.page as string) || 0
+        let limit = parseInt(req.query.limit as string) || 20
+        res.send(await getFeed(user.user, limit, page))
     })
 
     app.post('/content', async (req, res) => {

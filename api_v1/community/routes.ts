@@ -234,9 +234,15 @@ export function initializeCommunityRoutes() {
         let database = new Database("content", "comments")
         let comment = await database.collection.findOne({_id: new ObjectId(req.params.id)})
         if(comment && (comment.handle && comment.handle === user.user?.handle) || user.user?.type === UserTypes.Admin) {
-            await database.collection.deleteOne({_id: new ObjectId(req.params.id)})
+            let deleted = await database.collection.deleteOne({_id: new ObjectId(req.params.id)})
+            if(deleted.deletedCount === 1) {
+                res.sendStatus(200)
+            } else {
+                res.sendStatus(404)
+            }
+        } else {
+            res.sendStatus(403)
         }
-        res.sendStatus(200)
     })
 
     app.post('/content/comments/update', async (req, res) => {
@@ -254,9 +260,32 @@ export function initializeCommunityRoutes() {
     })
 
     app.get('/content/comments-nosearch', async (req, res) => {
-        let database = new Database("content", "comments")
+        res.send(await findComments(req.query))
+    })
+}
+
+export async function sendCommentsDigest() {
+    let database = new Database("content", "comments")
+    let comments = await database.collection.find({date: {$gt: Date.now() - 1000 * 60 * 60 * 24}}).toArray()
+
+    const unapprovedComments = comments.filter((comment) => !comment.approved)
+
+    if(comments.length === 0) return;
+    fetch(process.env.DISCORD_UPDATE_WEBHOOK_URL + "", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            content: "There are " + unapprovedComments.length + " unapproved comments waiting for review at https://www.mccreations.net/admin_dashboard."
+        })
+    
+    })
+}
+
+export async function findComments(requestQuery: any) {
+    let database = new Database("content", "comments")
         let query = new DatabaseQueryBuilder();
-        const requestQuery : any = req.query;
 
         switch(requestQuery.sort) {
             case "newest":
@@ -326,26 +355,6 @@ export function initializeCommunityRoutes() {
         let result: {totalCount: number, documents: CommentDocument[]} = {
             totalCount: count,
             documents: documents as CommentDocument[]
-        }
-        res.send(result);
-    })
-}
-
-export async function sendCommentsDigest() {
-    let database = new Database("content", "comments")
-    let comments = await database.collection.find({date: {$gt: Date.now() - 1000 * 60 * 60 * 24}}).toArray()
-
-    const unapprovedComments = comments.filter((comment) => !comment.approved)
-
-    if(comments.length === 0) return;
-    fetch(process.env.DISCORD_UPDATE_WEBHOOK_URL + "", {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            content: "There are " + unapprovedComments.length + " unapproved comments waiting for review at https://www.mccreations.net/admin_dashboard."
-        })
-    
-    })
+    }
+    return result;
 }

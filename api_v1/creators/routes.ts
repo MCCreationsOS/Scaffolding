@@ -9,6 +9,11 @@ export function initializeCreatorRoutes() {
     app.get('/creator/:handle', async (req, res) => {
         let database = new Database("content", "creators")
         let creator = await database.collection.findOne({handle: req.params.handle})
+        if(!creator) {
+            res.sendStatus(404)
+            return;
+        }
+
         res.send(creator);
     })
 

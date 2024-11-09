@@ -3,7 +3,7 @@ import FormData from 'form-data';
 import { sendLog } from '../logging/logging.js';
 import Mail from '@sendgrid/mail';
 import { NotificationDocument } from '../db/types.js';
-import { getTranslation } from '../../lang/index.js';
+import { getTranslation } from '../translation/index.js';
 Mail.setApiKey(process.env.SENDGRID_API_KEY + "");
 
 export function approvedEmail(to: string, link: string, title: string) {
@@ -63,7 +63,7 @@ export function requestApprovalEmail(link: string) {
     })
 }
 
-export function notificationEmail(to: string, notifications: NotificationDocument[], frequency: "weekly" | "daily") {
+export function notificationEmail(to: string, notifications: NotificationDocument[], frequency: "weekly" | "daily", types: string[]) {
     let days = "day"
     if(frequency === "weekly") {
         days = "week"
@@ -73,7 +73,7 @@ export function notificationEmail(to: string, notifications: NotificationDocumen
     Mail.send({
         to: to,
         from: 'MCCreations <mail@mccreations.net>',
-        subject: "Your Notifications for the past " + days,
+        subject: "Your " + types.join(", ") + " notifications for the past " + days,
         content: [
             {
                 type: 'text/html',
@@ -99,7 +99,8 @@ export function notificationEmail(to: string, notifications: NotificationDocumen
                     link: link
                 }
             }),
-            days: days
+            days: days,
+            types: types.join(", ")
         }
     })
 }

@@ -176,3 +176,11 @@ export async function postNewCreation(creation: ContentDocument, message: string
         creationsToPost = []
     }, 30 * 60 * 1000)
 }
+
+export async function sendMessage(message: string, channel: string) {
+    client.channels.fetch(channel).then(channel => {
+        if(channel && channel.isTextBased() && channel.type === ChannelType.GuildAnnouncement) {
+            channel.send(message)
+        }
+    }).catch(console.log)
+}

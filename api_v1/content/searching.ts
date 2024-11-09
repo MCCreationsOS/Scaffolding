@@ -1,7 +1,9 @@
 import { encode } from "punycode";
 import { Database, DatabaseQueryBuilder, Search } from "../db/connect.js";
-import { ContentDocument, DatabaseCollection, SearchIndex } from "../db/types.js";
+import { CommentDocument, ContentDocument, DatabaseCollection, SearchIndex } from "../db/types.js";
 import { sendLog } from "../logging/logging.js";
+import { User } from "../auth/types.js";
+import { findComments } from "../community/routes.js";
 
 export async function findContent(collection: DatabaseCollection, requestQuery: any, useProjection: boolean) {
     let database = new Database<ContentDocument>("content", collection);
@@ -80,7 +82,8 @@ export async function findContent(collection: DatabaseCollection, requestQuery: 
 	}
 
     if(requestQuery.creator) {
-        query.buildQuery("$or", [{ "creators.handle": requestQuery.creator }, { owner: requestQuery.creator }])
+		let creators = requestQuery.creator.split(",")
+		query.buildQuery("$or", [{ "creators.handle": {$in: creators} }, { owner: {$in: creators} }])
     }
 
 	const projection = {
@@ -216,10 +219,37 @@ export async function performSearch(requestQuery: any) {
 		}
 	}
 
+	if(requestQuery.creators && requestQuery.creators.length > 0) {
+		let creators = requestQuery.creators.split(",")
+		for(const creator of creators) {
+			search.filter("creators.handle", "=", creator, "OR")
+		}
+	}
+
 	let documents = await search.execute()
 	if(!documents) {
 		console.error("Meilisearch is probably not initialized.")
 		return {totalCount: 0, documents: []}
 	}
 	return documents;
+}
+
+export async function getFeed(user: User, limit: number = 20, page: number = 0) {
+	let maps = await findContent(DatabaseCollection.Maps, {
+		creator: user.subscriptions?.join(",") || ""
+	}, false)
+	let resourcepacks = await findContent(DatabaseCollection.Resourcepacks, {
+		creator: user.subscriptions?.join(",") || ""
+	}, false)
+	let datapacks = await findContent(DatabaseCollection.Datapacks, {
+		creator: user.subscriptions?.join(",") || ""
+	}, false)
+	let commentsDB = new Database("content", "comments")
+	let comments = await commentsDB.collection.find<CommentDocument>({handle: {$in: user.subscriptions || []}, approved: true, content_type: "wall"}).toArray()
+
+	let feed = [...maps.documents, ...resourcepacks.documents, ...datapacks.documents, ...comments]
+	feed = feed.sort((a, b) => {
+		return (b['createdDate'] ?? b['date']) - (a['createdDate'] ?? a['date'])
+	}).slice(page * limit, (page + 1) * limit)
+	return feed;
 }

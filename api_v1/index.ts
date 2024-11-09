@@ -19,7 +19,9 @@ import { initializeDiscordBot } from '../discord_bot/index.js';
 import { Search } from './db/connect.js';
 import { initializeCreatorRoutes } from './creators/routes.js';
 import { initializeNotificationRoutes } from './notifications/routes.js';
+import { initializeTranslationRoutes } from './translation/routes.js';
 import { sendDailyNotifications, sendWeeklyNotifications } from './notifications/index.js';
+import schedule from 'schedule-jobs-with-cron';
 export const app = express();
 app.use(helmet());
 app.use(bodyParser.json())
@@ -44,14 +46,18 @@ initializePaymentRoutes();
 initializeDiscordBot();
 initializeCreatorRoutes();
 initializeNotificationRoutes();
+initializeTranslationRoutes();
 
 
 updateMeilisearch();
 setInterval(updateMeilisearch, 1000 * 60 * 60 * 24);
 setInterval(refreshJWTHash, 1000 * 60 * 60 * 24 * 15);
 setInterval(sendCommentsDigest, 1000 * 60 * 60 * 24);
-setInterval(sendDailyNotifications, 1000 * 60 * 60);
-setInterval(sendWeeklyNotifications, 1000 * 60 * 60);
+
+sendDailyNotifications()
+
+const dailyJob = new schedule.CronJob("dailyJob", sendDailyNotifications, "5 12 * * *")
+const weeklyJob = new schedule.CronJob("weeklyJob", sendWeeklyNotifications, "0 12 * * 1")
 
 var httpServer = createHttpServer(app);
 httpServer.listen(8080);
