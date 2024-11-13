@@ -712,7 +712,8 @@ export async function getUserFromJWT(jwtString: string) {
             query.buildQuery("_id", _id);
             query.setProjection({
                 password: 0,
-                providers: 0
+                providers: 0,
+                push_subscriptions: 0
             })
             let cursor = await database.executeQuery(query);
             let user = await cursor.next() as User;
