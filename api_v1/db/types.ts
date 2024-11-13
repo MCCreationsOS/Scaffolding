@@ -77,7 +77,7 @@ export interface CommentDocument {
     like_senders?: string[]
 }
 
-export type NotificationType = "comment" | "like" | "reply" | "subscription" | "rating" | "translation"
+export type NotificationType = "comment" | "like" | "reply" | "follow" | "rating" | "translation"
 
 export interface NotificationDocument {
     _id?: ObjectId,

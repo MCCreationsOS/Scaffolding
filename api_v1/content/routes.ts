@@ -400,7 +400,7 @@ export function initializeContentRoutes() {
         if(!user.user || user.user.type !== UserTypes.Admin) {
             return res.sendStatus(401);
         }
-        await database.collection.updateOne({slug: req.params.slug}, {$set: {status: 2, createdDate: new Date()}})
+        await database.collection.updateOne({slug: req.params.slug}, {$set: {status: 2, createdDate: Date.now()}})
         res.sendStatus(200)
 
         let map = await database.collection.findOne({slug: req.params.slug})

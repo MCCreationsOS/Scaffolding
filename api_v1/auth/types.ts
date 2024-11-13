@@ -26,14 +26,14 @@ export interface User {
             comment: NotificationOption,
             like: NotificationOption,
             reply: NotificationOption,
-            subscription: NotificationOption,
+            follow: NotificationOption,
             rating: NotificationOption,
             translation: NotificationOption
         }
     },
     push_subscriptions?: PushSubscription[],
-    subscriptions?: string[],
-    subscribers?: string[]
+    following?: string[],
+    followers?: string[]
 }
 
 export interface WallPost {

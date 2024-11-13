@@ -23,7 +23,7 @@ export function initializeCreatorRoutes() {
         res.send(await comments.toArray())
     })
 
-    app.post('/creator/subscribe', async (req, res) => {
+    app.post('/creator/follow', async (req, res) => {
         let user = await getUserFromJWT(req.headers.authorization + "")
         if(!user || !user.user) {
             res.sendStatus(401)
@@ -31,13 +31,13 @@ export function initializeCreatorRoutes() {
         }
 
         let database = new Database("content", "creators")
-        await database.collection.updateOne({handle: req.body.handle}, {$push: {subscribers: user.user._id}})
+        await database.collection.updateOne({handle: req.body.handle}, {$push: {followers: user.user._id}})
 
-        await database.collection.updateOne({_id: user.user._id}, {$push: {subscriptions: req.body.handle}})
+        await database.collection.updateOne({_id: user.user._id}, {$push: {following: req.body.handle}})
         res.sendStatus(200)
     })
 
-    app.post('/creator/unsubscribe', async (req, res) => {
+    app.post('/creator/unfollow', async (req, res) => {
         let user = await getUserFromJWT(req.headers.authorization + "")
         if(!user || !user.user) {
             res.sendStatus(401)
@@ -45,9 +45,9 @@ export function initializeCreatorRoutes() {
         }
 
         let database = new Database("content", "creators")
-        await database.collection.updateOne({handle: req.body.handle}, {$pull: {subscribers: user.user._id}})
+        await database.collection.updateOne({handle: req.body.handle}, {$pull: {followers: user.user._id}})
 
-        await database.collection.updateOne({_id: user.user._id}, {$pull: {subscriptions: req.body.handle}})
+        await database.collection.updateOne({_id: user.user._id}, {$pull: {following: req.body.handle}})
         res.sendStatus(200)
     })
 }

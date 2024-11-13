@@ -45,9 +45,9 @@ export async function createNotificationsForSubscribers(options: {
 }) {
     let database = new Database("content", "creators")
     let creator = await database.collection.findOne({_id: options.user._id!})
-    if(creator && creator.subscriptions) {
-        for(let subscription of creator.subscriptions) {
-            await createNotification({...options, user: subscription, type: "subscription", createdByUser: options.user.handle})
+    if(creator && creator.following) {
+        for(let user of creator.following) {
+            await createNotification({...options, user: user, type: "follow", createdByUser: options.user.handle})
         }
     }
 }
@@ -84,7 +84,8 @@ async function sendPushNotification(notification: NotificationDocument, user: Us
     let payload = {
         title: (typeof notification.title === "string" ? notification.title : await getTranslation('en-US', notification.title.key, notification.title.options)),
         body: (typeof notification.body === "string" ? notification.body : await getTranslation('en-US', notification.body.key, notification.body.options)),
-        icon: "/favicon.ico"
+        icon: "/favicon.ico",
+        link: notification.link
     }
 
     for(let subscription of subscriptions) {
@@ -116,8 +117,9 @@ export async function sendDailyNotifications() {
             }
         }
         if(send) {
-            let notifications = await database.collection.find<NotificationDocument>({user_id: user._id!, read: false, date: {$gte: Date.now() - 86400000}, type: {$in: toSend}}).toArray()
+            let notifications = await database.collection.find<NotificationDocument>({user_id: user._id!, read: false, notified: false, type: {$in: toSend}}).toArray()
             if(notifications.length > 0) {
+                database.collection.updateMany({user_id: user._id!, read: false, notified: false, type: {$in: toSend}}, {$set: {notified: true}})
                 notificationEmail(user.email, notifications, "daily", toSend)
             }
         }
@@ -139,8 +141,9 @@ export async function sendWeeklyNotifications() {
             }
         }
         if(send) {
-            let notifications = await database.collection.find<NotificationDocument>({user_id: user._id!, read: false, date: {$gte: Date.now() - 604800000}, type: {$in: toSend}}).toArray()
+            let notifications = await database.collection.find<NotificationDocument>({user_id: user._id!, read: false, notified: false, type: {$in: toSend}}).toArray()
             if(notifications.length > 0) {
+                database.collection.updateMany({user_id: user._id!, read: false, notified: false, type: {$in: toSend}}, {$set: {notified: true}})
                 notificationEmail(user.email, notifications, "weekly", toSend)
             }
         }
