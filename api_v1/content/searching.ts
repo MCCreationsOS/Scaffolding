@@ -110,7 +110,7 @@ export async function findContent(collection: DatabaseCollection, requestQuery: 
 
 	let documents: ContentDocument[] = []
 	for await (const doc of cursor) {
-		documents.push(doc);
+		documents.push(doc as ContentDocument);
 	}
 	let result: {totalCount: number, documents: ContentDocument[]} = {
 		totalCount: count,
@@ -235,21 +235,25 @@ export async function performSearch(requestQuery: any) {
 }
 
 export async function getFeed(user: User, limit: number = 20, page: number = 0) {
+	if(!user.following || user.following.length === 0) {
+		return {feed: [], totalCount: 0}
+	}
 	let maps = await findContent(DatabaseCollection.Maps, {
-		creator: user.subscriptions?.join(",") || ""
+		creator: user.following?.join(",") || ""
 	}, false)
 	let resourcepacks = await findContent(DatabaseCollection.Resourcepacks, {
-		creator: user.subscriptions?.join(",") || ""
+		creator: user.following?.join(",") || ""
 	}, false)
 	let datapacks = await findContent(DatabaseCollection.Datapacks, {
-		creator: user.subscriptions?.join(",") || ""
+		creator: user.following?.join(",") || ""
 	}, false)
 	let commentsDB = new Database("content", "comments")
-	let comments = await commentsDB.collection.find<CommentDocument>({handle: {$in: user.subscriptions || []}, approved: true, content_type: "wall"}).toArray()
+	let comments = await commentsDB.collection.find<CommentDocument>({handle: {$in: user.following || []}, approved: true, content_type: "wall"}).toArray()
 
 	let feed = [...maps.documents, ...resourcepacks.documents, ...datapacks.documents, ...comments]
+	let totalCount = feed.length
 	feed = feed.sort((a, b) => {
 		return (b['createdDate'] ?? b['date']) - (a['createdDate'] ?? a['date'])
 	}).slice(page * limit, (page + 1) * limit)
-	return feed;
+	return {feed, totalCount};
 }
