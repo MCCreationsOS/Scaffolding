@@ -67,7 +67,7 @@
             "comment": "New Comments",
             "like": "Like Notifications",
             "reply": "New Replies",
-            "subscription": "New Subscription Posts",
+            "follow": "New Follow Posts",
             "email_daily": "Email Daily",
             "email_weekly": "Email Weekly",
             "push_only": "Push Only",

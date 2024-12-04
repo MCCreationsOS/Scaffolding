@@ -11,7 +11,6 @@ export interface IDatabaseQuery {
 export interface IInlineCreator {
     username: string,
     handle?: string
-
 }
 
 export interface ContentDocument extends Document {
@@ -20,8 +19,8 @@ export interface ContentDocument extends Document {
     slug: string,
     rating: number,
     ratings?: number[],
-    createdDate: number,
-    updatedDate?: number,
+    createdDate: Date,
+    updatedDate?: Date,
     _id?: ObjectId,
     tags?: string[],
     description: string,
@@ -108,10 +107,12 @@ export enum SearchIndex {
     Maps = "maps",
     Datapacks = "datapacks",
     Resourcepacks = "resourcepacks",
+    Marketplace = "marketplace"
 }
 
 export enum DatabaseCollection {
     Maps = "Maps",
     Datapacks = "datapacks",
-    Resourcepacks = "resourcepacks"
+    Resourcepacks = "resourcepacks",
+    Marketplace = "marketplace"
 }

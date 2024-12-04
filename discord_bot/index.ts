@@ -1,7 +1,6 @@
 import { ChannelType, Client, GatewayIntentBits, Interaction, REST, Routes } from "discord.js"
 import { performSearch } from "../api_v1/content/searching"
 import { ContentDocument } from "../api_v1/db/types"
-import { uploadContent } from "../api_v1/content/creation"
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds
@@ -174,7 +173,7 @@ export async function postNewCreation(creation: ContentDocument, message: string
     
 
         creationsToPost = []
-    }, 30 * 60 * 1000)
+    }, 60 * 1000)
 }
 
 export async function sendMessage(message: string, channel: string) {

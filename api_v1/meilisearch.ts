@@ -71,5 +71,14 @@ export async function updateMeilisearch() {
     },
     body: JSON.stringify(resourcesL)
   })
+
+  // fetch('http://localhost:7700/indexes/resourcepacks/settings/filterable-attributes', {
+  //   method: 'PUT',
+  //   headers: {
+  //     'Content-Type': 'application/json',
+  //     'Authorization': 'Bearer ' + process.env.MEILISEARCH_KEY
+  //   },
+  //   body: JSON.stringify(["files.minecraftVersion", "status", "downloads", "rating", "createdDate", "updatedDate", "tags", "creators.handle"])
+  // })
 }
 
