@@ -1,12 +1,14 @@
 
 import { Static, TVoid, Type } from "@sinclair/typebox";
-import { _dangerouslyGetUnsanitizedUserFromJWT, getDiscordAccessToken, getDiscordUser, getGithubAccessToken, getGithubUser, getGoogleUser, getMicrosoftAccessToken, getMicrosoftUser, getUserFromJWT } from "../../auth/user";
+import { _dangerouslyGetUnsanitizedUserFromJWT, bcryptHash, createJWT, getDiscordAccessToken, getDiscordUser, getGithubAccessToken, getGithubUser, getGoogleUser, getMicrosoftAccessToken, getMicrosoftUser, getUserFromJWT } from "../../auth/user";
 import { CollectionName, Database } from "../../database";
 import { NotificationOption, ProfileLayout, User } from "../../schemas/user";
 import { Router } from "../router";
 import { AuthorizationHeader } from "../../schemas/auth";
 import { GenericResponseType } from "../../schemas/generic";
 import { Providers } from "../../database/models/users";
+import { forgotPasswordEmail } from "../../email";
+import jwt from "jsonwebtoken";
 
 Router.app.get<{ 
     Reply: GenericResponseType<typeof User>, 
@@ -397,10 +399,38 @@ Router.app.post<{
             return
         }
 
-        bcrypt.hash(req.body.password, saltRounds, async (err, hash) => {
-            if(err) {
-                res.code(400).send({error: "Failed to update password"})
+        bcryptHash(req.body.password).then((hash) => {
+            user.password = hash
+        }).then(async () => {
+            let database = new Database("content", "creators")
+            let result = await database.collection.updateOne({_id: user._id}, {$set: user})
+            if(result.acknowledged && result.modifiedCount === 1) {
+                res.code(200).send()
+            } else {
+                res.code(400).send({error: "Failed to update user"})
             }
         })
+    }).catch((err) => {
+        res.code(401).send({error: "Unauthorized"})
     })
+})
+
+const ForgotPasswordBody = Type.Object({
+    email: Type.String()
+})
+
+type ForgotPasswordBody = Static<typeof ForgotPasswordBody>
+
+Router.app.post<{
+    Body: ForgotPasswordBody,
+    Reply: GenericResponseType<TVoid>
+}>("/user/forgotPassword", async (req, res) => {
+    let database = new Database("content", "creators")
+    let user = await database.collection.findOne({email: req.body.email.toLowerCase()})
+    if(user) {
+        forgotPasswordEmail(req.body.email.toLowerCase(), createJWT({_id: user._id}, "30min"))
+        res.code(200).send()
+    } else {
+        res.code(400).send({error: "User not found"})
+    }
 })

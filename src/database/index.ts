@@ -1,6 +1,7 @@
 import { Collection, MongoClient, Db, Filter, Sort, OptionalUnlessRequiredId, UpdateFilter, Document } from "mongodb"
+import { env } from "../env";
 
-export const client = new MongoClient(process.env.MONGODB_URI + "");
+export const client = new MongoClient(env.MONGODB_URI);
 
 export type CollectionName = "Maps" | "datapacks" | "resourcepacks" | "creators" | "comments" | "notifications" | "leaderboards" | "marketplace" | "translations"
 

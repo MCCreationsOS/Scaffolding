@@ -5,8 +5,9 @@ import { UserType, UserTypes } from "../schemas/user";
 import bcrypt from "bcrypt";
 import jwt from 'jsonwebtoken'
 import { DiscordUser, GithubUser, GoogleUser, MicrosoftUser } from "./models";
+import { env } from "../env";
 const saltRounds = 10;
-export let JWTKey = process.env.JWTKey + ""
+export let JWTKey = env.JWTKey
 
 /**
  * Finds a user by their provider id and provider
@@ -25,6 +26,37 @@ async function findExistingUser(id: string, provider: Providers): Promise<FullUs
         if(foundProvider) return user
     }
     return null
+}
+
+/**
+ * Compares a password to a hash
+ * @param password The password to compare
+ * @param hash The hash to compare to
+ * @returns Whether the password matches the hash
+ */
+export function bcryptCompare(password: string, hash: string): Promise<boolean> {
+    return new Promise((resolve, reject) => {
+        bcrypt.compare(password, hash, (err, same) => {
+            resolve(same)
+        })
+    })
+}
+
+/**
+ * Hashes a password
+ * @param password The password to hash
+ * @returns The hashed password
+ */
+export function bcryptHash(password: string): Promise<string> {
+    return new Promise((resolve, reject) => {
+        bcrypt.hash(password, saltRounds, (err, hash) => {
+            resolve(hash)
+        })
+    })
+}
+
+export function createJWT(data: any, expiresIn: string = "30d") {
+    return jwt.sign(data, JWTKey, { expiresIn: expiresIn })
 }
 
 export async function signInWithEmail(email: string, password: string): Promise<FullUser | null> {
@@ -53,6 +85,7 @@ export async function signUpWithEmail(username: string, email: string, password:
     if(user) handle = handle + Math.floor(Math.random() * 10000)
 
     let newUser: FullUser = {
+        _id: new ObjectId(),
         username: username,
         email: email,
         password: hashedPassword,
@@ -91,8 +124,8 @@ export async function getDiscordAccessToken(code: string): Promise<string> {
             'Content-Type': 'application/x-www-form-urlencoded'
         },
         body: new URLSearchParams({
-            'client_id': process.env.DISCORD_CLIENT_ID + "",
-            'client_secret': process.env.DISCORD_SECRET + "",
+            'client_id': env.DISCORD_CLIENT_ID + "",
+            'client_secret': env.DISCORD_SECRET + "",
             code,
             'grant_type': 'authorization_code',
             'redirect_uri': 'https://mccreations.net/auth/oauth_handler?provider=discord',
@@ -142,8 +175,8 @@ export async function signInWithGithub(code: string): Promise<FullUser> {
  */
 export async function getGithubAccessToken(code: string): Promise<string> {
     let githubParams = new URLSearchParams({
-        client_id: process.env.GITHUB_CLIENT_ID + "",
-        client_secret: process.env.GITHUB_SECRET + "",
+        client_id: env.GITHUB_CLIENT_ID + "",
+        client_secret: env.GITHUB_SECRET + "",
         code: code,
         scope: "user:email,read:user"
     })
@@ -225,8 +258,8 @@ export async function getMicrosoftAccessToken(code: string): Promise<string> {
             'Content-Type': 'application/x-www-form-urlencoded'
         },
         body: new URLSearchParams({
-            'client_id': process.env.MICROSOFT_CLIENT_ID + "",
-            'client_secret': process.env.MICROSOFT_SECRET + "",
+            'client_id': env.MICROSOFT_CLIENT_ID + "",
+            'client_secret': env.MICROSOFT_SECRET + "",
             'code': code,
             'grant_type': 'authorization_code',
             'redirect_uri': 'https://mccreations.net/auth/oauth_handler',
@@ -271,6 +304,7 @@ async function createUserFromProviderData(email: string, username: string, provi
     const database = new Database<FullUser>("creators")
 
     let user: FullUser = {
+        _id: new ObjectId(),
         username: username + "",
         email: email,
         type: UserTypes.Account,

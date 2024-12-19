@@ -1,4 +1,5 @@
 import { Static, Type } from "@sinclair/typebox";
+import { ObjectId } from "mongodb";
 
 export enum UserTypes {
     Account,
@@ -19,7 +20,7 @@ export const ProfileLayout = Type.Object({
 })
 
 export const User = Type.Object({
-    _id: Type.Optional(Type.Any()),
+    _id: Type.Unsafe<ObjectId>(),
     type: Type.Enum(UserTypes),
     username: Type.String(),
     email: Type.Lowercase(Type.String()),
