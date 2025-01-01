@@ -22,6 +22,7 @@ import { initializeNotificationRoutes } from './notifications/routes.js';
 import { initializeTranslationRoutes } from './translation/routes.js';
 import { sendDailyNotifications, sendWeeklyNotifications } from './notifications/index.js';
 import schedule from 'schedule-jobs-with-cron';
+import { initializeUploadRoutes } from './s3/upload.js';
 export const app = express();
 app.use(helmet());
 app.use(bodyParser.json())
@@ -29,7 +30,7 @@ app.use(cors());
 app.use(morgan('combined'));
 app.set('trust proxy', true);
 
-export const client = new MongoClient(process.env.MONGODB_URI + "");
+export const client = new MongoClient("mongodb+srv://app-test:%40pp-t$st@mccreations.454k0cx.mongodb.net/?retryWrites=true&w=majority&appName=mccreations");
 
 /**
  * Routes are broken up into separate files based on the 'section' of the site they are for.
@@ -47,6 +48,7 @@ initializeDiscordBot();
 initializeCreatorRoutes();
 initializeNotificationRoutes();
 initializeTranslationRoutes();
+initializeUploadRoutes();
 
 
 updateMeilisearch();
