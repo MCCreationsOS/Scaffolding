@@ -22,6 +22,7 @@ import { initializeNotificationRoutes } from './notifications/routes.js';
 import { initializeTranslationRoutes } from './translation/routes.js';
 import { sendDailyNotifications, sendWeeklyNotifications } from './notifications/index.js';
 import schedule from 'schedule-jobs-with-cron';
+import { initializeUploadRoutes } from './s3/upload.js';
 export const app = express();
 app.use(helmet());
 app.use(bodyParser.json())
@@ -30,7 +31,6 @@ app.use(morgan('combined'));
 app.set('trust proxy', true);
 
 export const client = new MongoClient(process.env.MONGODB_URI + "");
-
 /**
  * Routes are broken up into separate files based on the 'section' of the site they are for.
  * Even though all content routes live in the same content folder they each have their own initialization function.
@@ -47,6 +47,7 @@ initializeDiscordBot();
 initializeCreatorRoutes();
 initializeNotificationRoutes();
 initializeTranslationRoutes();
+initializeUploadRoutes();
 
 
 updateMeilisearch();
