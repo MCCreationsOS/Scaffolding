@@ -3,6 +3,8 @@ import { MeiliSearch, MultiSearchResponse } from "meilisearch"
 import { Index } from "meilisearch"
 import { Creation } from "../schemas/creation"
 
+export type SearchIndex  = "maps" | "datapacks" | "resourcepacks" | "marketplace"
+
 export class Search {
     queryS = ''
     sortS = "createdDate:desc"
