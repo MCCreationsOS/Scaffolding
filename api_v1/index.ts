@@ -30,7 +30,7 @@ app.use(cors());
 app.use(morgan('combined'));
 app.set('trust proxy', true);
 
-export const client = new MongoClient("mongodb+srv://app-test:%40pp-t$st@mccreations.454k0cx.mongodb.net/?retryWrites=true&w=majority&appName=mccreations");
+export const client = new MongoClient(process.env.MONGODB_URI!);
 
 /**
  * Routes are broken up into separate files based on the 'section' of the site they are for.
@@ -49,7 +49,6 @@ initializeCreatorRoutes();
 initializeNotificationRoutes();
 initializeTranslationRoutes();
 initializeUploadRoutes();
-
 
 updateMeilisearch();
 setInterval(updateMeilisearch, 1000 * 60 * 60 * 24);

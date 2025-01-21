@@ -7,7 +7,7 @@
   "types": "dist/api_v1/index.d.ts",
   "type": "module",
   "scripts": {
-    "start": "node --env-file=.env dist/api_v1/index.js",
+    "start": "node dist/api_v1/index.js",
     "test": "jest",
     "watch": "parcel watch",
     "build": "parcel build"
