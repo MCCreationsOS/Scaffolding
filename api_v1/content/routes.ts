@@ -199,7 +199,7 @@ export function initializeContentRoutes() {
             if(!token) {
                 key = jwt.sign({_id: result.insertedId}, JWTKey, {expiresIn: "24h"})
             }
-            res.send({content: map.slug, key: key});
+            res.send({content: map, key: key});
         } else {
             res.send({error: "Map was not successfully imported, request was probably blocked."})
         }

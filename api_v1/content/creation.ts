@@ -44,11 +44,11 @@ export async function uploadContent(collection: string, body: any, uploader?: Us
 
     if(uploader) {
         database.collection.updateOne({_id: result.insertedId}, {$push: {creators: {username: uploader.username, handle: uploader.handle}}, $set: {owner: uploader.handle}})
-        return({slug: content.slug});
+        return({slug: content.slug, content: content});
     } else {
         console.log("No user, creating temporary access key")
         let key = jwt.sign({_id: result.insertedId.toJSON()}, JWTKey, {expiresIn: "24h"})
-        return({key: key, slug: content.slug});
+        return({key: key, slug: content.slug, content: content});
     }
 }
 

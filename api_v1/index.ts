@@ -30,7 +30,8 @@ app.use(cors());
 app.use(morgan('combined'));
 app.set('trust proxy', true);
 
-export const client = new MongoClient(process.env.MONGODB_URI + "");
+export const client = new MongoClient(process.env.MONGODB_URI!);
+
 /**
  * Routes are broken up into separate files based on the 'section' of the site they are for.
  * Even though all content routes live in the same content folder they each have their own initialization function.
@@ -48,7 +49,6 @@ initializeCreatorRoutes();
 initializeNotificationRoutes();
 initializeTranslationRoutes();
 initializeUploadRoutes();
-
 
 updateMeilisearch();
 setInterval(updateMeilisearch, 1000 * 60 * 60 * 24);
