@@ -1,4 +1,5 @@
 import { UserType } from "../../schemas/user";
+import { PushSubscription } from "web-push";
 
 /**
  * The provider document
@@ -31,8 +32,12 @@ export enum Providers {
     Apple
 }
 
+/**
+ * Representation of an unsanitized user
+ */
 export interface FullUser extends UserType {
     providers: Provider[],
     password?: string,
     last_important_update?: Date,
+    push_subscriptions?: PushSubscription[]
 }

@@ -2,24 +2,25 @@ import { Static, Type } from "@sinclair/typebox";
 import { User } from "./user";
 import { ObjectId } from "mongodb";
 
-export const ContentType = Type.Enum({
+export const TContentType = Type.Enum({
     MAP: "map",
     DATAPACK: "datapack",
-    RESOURCEPACK: "resourcepack"
+    RESOURCEPACK: "resourcepack",
+    MARKETPLACE: "marketplace"
 })
 
-export type ContentType = Static<typeof ContentType>
+export type ContentType = Static<typeof TContentType>
 
-export const CollectionName = Type.Enum({
+export const TCollectionName = Type.Enum({
     MAPS: "Maps",
     DATAPACKS: "datapacks",
     RESOURCEPACKS: "resourcepacks",
     MARKETPLACE: "marketplace"
 })
 
-export type CollectionName = Static<typeof CollectionName>
+export type CollectionName = Static<typeof TCollectionName>
 
-export const Status = Type.Enum({
+export const TStatus = Type.Enum({
     DRAFT: 0,
     PENDING: 1,
     APPROVED: 2,
@@ -27,9 +28,9 @@ export const Status = Type.Enum({
     REJECTED: 4
 })
 
-export type Status = Static<typeof Status>
+export type Status = Static<typeof TStatus>
 
-export const FileType = Type.Enum({
+export const TFileType = Type.Enum({
     WORLD: "world",
     RESOURCE: "resource",
     DATA: "data",
@@ -39,35 +40,35 @@ export const FileType = Type.Enum({
     ADDON: "addon"
 })
 
-export type FileType = Static<typeof FileType>
+export type FileType = Static<typeof TFileType>
 
-export const ExtraFile = Type.Object({
-    type: FileType,
+export const TExtraFile = Type.Object({
+    type: TFileType,
     url: Type.String(),
     required: Type.Boolean()
 })
 
-export type ExtraFile = Static<typeof ExtraFile>
+export type ExtraFile = Static<typeof TExtraFile>
 
-export const File = Type.Object({
-    type: FileType,
+export const TFile = Type.Object({
+    type: TFileType,
     url: Type.String(),
     worldUrl: Type.Optional(Type.String()),
     resourceUrl: Type.Optional(Type.String()),
     dataUrl: Type.Optional(Type.String()),
-    minecraftVersion: Type.String(),
+    minecraftVersion: Type.Array(Type.String()),
     contentVersion: Type.Optional(Type.String()),
     changelog: Type.Optional(Type.String()),
-    extraFiles: Type.Optional(Type.Array(ExtraFile)),
-    createdDate: Type.Number()
+    extraFiles: Type.Optional(Type.Array(TExtraFile)),
+    createdDate: Type.String()
 })
 
-export type File = Static<typeof File>
+export type File = Static<typeof TFile>
 
-export const Creation = Type.Object({
+export const TCreation = Type.Object({
     _id: Type.Unsafe<ObjectId>(),
     title: Type.String(),
-    contentType: ContentType,
+    type: TContentType,
     rating: Type.Number(),
     ratings: Type.Array(Type.Number()),
     createdDate: Type.String(),
@@ -82,15 +83,15 @@ export const Creation = Type.Object({
     creators: Type.Array(User),
     slug: Type.String(),
     extraFeatures: Type.Optional(Type.Record(Type.String(), Type.Any())),
-    files: Type.Optional(Type.Array(File)),
+    files: Type.Optional(Type.Array(TFile)),
     importedUrl: Type.Optional(Type.String()),
     status: Type.Number(),
     owner: Type.Optional(Type.String())
 })
 
-export type Creation = Static<typeof Creation>
+export type Creation = Static<typeof TCreation>
 
-export const Sort = Type.Enum({
+export const TSort = Type.Enum({
     NEWEST: "newest",
     OLDEST: "oldest",
     UPDATED: "updated",
@@ -104,4 +105,4 @@ export const Sort = Type.Enum({
     LEAST_DOWNLOADED: "least_downloaded"
 })
 
-export type Sort = Static<typeof Sort>
+export type Sort = Static<typeof TSort>

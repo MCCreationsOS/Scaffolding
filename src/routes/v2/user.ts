@@ -1,28 +1,48 @@
 
 import { Static, TVoid, Type } from "@sinclair/typebox";
-import { _dangerouslyGetUnsanitizedUserFromJWT, bcryptHash, createJWT, getDiscordAccessToken, getDiscordUser, getGithubAccessToken, getGithubUser, getGoogleUser, getMicrosoftAccessToken, getMicrosoftUser, getUserFromJWT } from "../../auth/user";
+import { _dangerouslyGetUnsanitizedUserFromJWT, bcryptHash, createJWT, getDiscordAccessToken, getDiscordUser, getGithubAccessToken, getGithubUser, getGoogleUser, getMicrosoftAccessToken, getMicrosoftUser, processAuthorizationHeader } from "../../auth/user";
 import { CollectionName, Database } from "../../database";
 import { NotificationOption, ProfileLayout, User } from "../../schemas/user";
 import { Router } from "../router";
 import { AuthorizationHeader } from "../../schemas/auth";
-import { GenericResponseType } from "../../schemas/generic";
+import { GenericResponseType, WithCount } from "../../schemas/generic";
 import { Providers } from "../../database/models/users";
 import { forgotPasswordEmail } from "../../email";
 import jwt from "jsonwebtoken";
+import { TCreation } from "../../schemas/creation";
+import { Search } from "../../search";
 
 Router.app.get<{ 
     Reply: GenericResponseType<typeof User>, 
     Headers: AuthorizationHeader 
 }>("/user", async (req, res) => {
-    if(req.headers.authorization.startsWith("Bearer ")) {
-        res.code(401).send({error: "Unauthorized"})
-        return
+    let user = await processAuthorizationHeader(req.headers.authorization)
+    if(!user) {
+        return res.code(401).send({error: "Unauthorized"})
     }
-    getUserFromJWT(req.headers.authorization).then((user) => {
-        res.code(200).send(user)
-    }).catch((err) => {
-        res.code(401).send({error: "Unauthorized"})
-    })
+    return res.code(200).send(user)
+})
+
+const WithCountFeed = WithCount(TCreation)
+
+Router.app.get<{
+    Querystring: {
+        limit?: number
+        page?: number
+    }
+    Reply: GenericResponseType<typeof WithCountFeed>
+    Headers: AuthorizationHeader
+}>("/feed", async (req, res) => {
+    let user = await processAuthorizationHeader(req.headers.authorization)
+    if(!user) {
+        return res.code(401).send({error: "Unauthorized"})
+    }
+    
+    if(!user.following || user.following.length === 0) {
+        return res.code(200).send({totalCount: 0, documents: []})
+    }
+
+    const search = new Search(["maps", "resourcepacks", "datapacks"])
 })
 
 Router.app.delete<{ 
@@ -30,27 +50,25 @@ Router.app.delete<{
     Reply: GenericResponseType<TVoid> 
 }>("/user", async (req, res) => {
     if(req.headers.authorization.startsWith("Bearer ")) {
-        res.code(401).send({error: "Unauthorized"})
-        return
+        return res.code(401).send({error: "Unauthorized"})
     }
-    getUserFromJWT(req.headers.authorization).then( async (user) => {
+    processAuthorizationHeader(req.headers.authorization).then( async (user) => {
         if(!user) {
-            res.code(401).send({error: "Unauthorized"})
-            return
+            return res.code(401).send({error: "Unauthorized"})
         }
         if(user._id) {
             let database = new Database("content", "creators")
             let result = await database.collection.deleteOne({_id: user._id})
             if(result.acknowledged && result.deletedCount === 1) {
-                res.code(200).send()
+                return res.code(200).send()
             } else {
-                res.code(400).send({error: "User not found"})
+                return res.code(400).send({error: "User not found"})
             }
         } else {
-            res.code(400).send({error: "User not found"})
+            return res.code(400).send({error: "User not found"})
         }
     }).catch((err) => {
-        res.code(401).send({error: "Unauthorized"})
+        return res.code(401).send({error: "Unauthorized"})
     })
 })
 
@@ -68,13 +86,11 @@ Router.app.post<{
     Reply: GenericResponseType<TVoid> 
 }>("/user/updateProfile", async (req, res) => {
     if(req.headers.authorization.startsWith("Bearer ")) {
-        res.code(401).send({error: "Unauthorized"})
-        return
+        return res.code(401).send({error: "Unauthorized"})
     }
-    getUserFromJWT(req.headers.authorization).then(async (user) => {
+    processAuthorizationHeader(req.headers.authorization).then(async (user) => {
         if(!user) {
-            res.code(401).send({error: "Unauthorized"})
-            return
+            return res.code(401).send({error: "Unauthorized"})
         }
 
         user.username = req.body.username
@@ -84,13 +100,13 @@ Router.app.post<{
         let database = new Database("content", "creators")
         let result = await database.collection.updateOne({_id: user._id}, {$set: user})
         if(result.acknowledged && result.modifiedCount === 1) {
-            res.code(200).send()
+            return res.code(200).send()
         } else {
-            res.code(400).send({error: "Failed to update user"})
+            return res.code(400).send({error: "Failed to update user"})
         }
 
     }).catch((err) => {
-        res.code(401).send({error: "Unauthorized"})
+        return res.code(401).send({error: "Unauthorized"})
     })
 })
 
@@ -106,13 +122,11 @@ Router.app.post<{
     Reply: GenericResponseType<TVoid> 
 }>("/user/updateProfileLayout", async (req, res) => {
     if(req.headers.authorization.startsWith("Bearer ")) {
-        res.code(401).send({error: "Unauthorized"})
-        return
+        return res.code(401).send({error: "Unauthorized"})
     }
-    getUserFromJWT(req.headers.authorization).then(async (user) => {
+    processAuthorizationHeader(req.headers.authorization).then(async (user) => {
         if(!user) {
-            res.code(401).send({error: "Unauthorized"})
-            return
+            return res.code(401).send({error: "Unauthorized"})
         }
 
         user.profileLayout = req.body.layout
@@ -120,12 +134,12 @@ Router.app.post<{
         let database = new Database("content", "creators")
         let result = await database.collection.updateOne({_id: user._id}, {$set: user})
         if(result.acknowledged && result.modifiedCount === 1) {
-            res.code(200).send()
+            return res.code(200).send()
         } else {
-            res.code(400).send({error: "Failed to update user"})
+            return res.code(400).send({error: "Failed to update user"})
         }
     }).catch((err) => {
-        res.code(401).send({error: "Unauthorized"})
+        return res.code(401).send({error: "Unauthorized"})
     })
 })
 
@@ -148,13 +162,11 @@ Router.app.post<{
     Reply: GenericResponseType<TVoid> 
 }>("/user/updateSettings", async (req, res) => {
     if(req.headers.authorization.startsWith("Bearer ")) {
-        res.code(401).send({error: "Unauthorized"})
-        return
+        return res.code(401).send({error: "Unauthorized"})
     }
-    getUserFromJWT(req.headers.authorization).then(async (user) => {
+    processAuthorizationHeader(req.headers.authorization).then(async (user) => {
         if(!user) {
-            res.code(401).send({error: "Unauthorized"})
-            return
+            return res.code(401).send({error: "Unauthorized"})
         }
 
         user.settings = req.body
@@ -162,12 +174,12 @@ Router.app.post<{
         let database = new Database("content", "creators")
         let result = await database.collection.updateOne({_id: user._id}, {$set: user})
         if(result.acknowledged && result.modifiedCount === 1) {
-            res.code(200).send()
+            return res.code(200).send()
         } else {
-            res.code(400).send({error: "Failed to update user"})
+            return res.code(400).send({error: "Failed to update user"})
         }
     }).catch((err) => {
-        res.code(401).send({error: "Unauthorized"})
+        return res.code(401).send({error: "Unauthorized"})
     })
 })
 
@@ -183,13 +195,11 @@ Router.app.post<{
     Reply: GenericResponseType<TVoid> 
 }>("/user/updateHandle", async (req, res) => {
     if(req.headers.authorization.startsWith("Bearer ")) {
-        res.code(401).send({error: "Unauthorized"})
-        return
+        return res.code(401).send({error: "Unauthorized"})
     }
-    getUserFromJWT(req.headers.authorization).then(async (user) => {
+    processAuthorizationHeader(req.headers.authorization).then(async (user) => {
         if(!user) {
-            res.code(401).send({error: "Unauthorized"})
-            return
+            return res.code(401).send({error: "Unauthorized"})
         }
 
         user.handle = req.body.handle
@@ -197,8 +207,7 @@ Router.app.post<{
         let database = new Database("content", "creators")
         let existingUser = await database.collection.findOne({handle: req.body.handle})
         if(existingUser) {
-            res.code(400).send({error: "Another account is already using that handle"})
-            return
+            return res.code(400).send({error: "Another account is already using that handle"})
         }
 
         let result = await database.collection.updateOne({_id: user._id}, {$set: user})
@@ -215,13 +224,13 @@ Router.app.post<{
             await database.collection.updateMany({"handle": user.handle}, {$set: {"handle": req.body.handle}})
 
             
-            res.code(200).send()
+            return res.code(200).send()
         } else {
-            res.code(400).send({error: "Failed to update user"})
+            return res.code(400).send({error: "Failed to update user"})
         }
 
     }).catch((err) => {
-        res.code(401).send({error: "Unauthorized"})
+        return res.code(401).send({error: "Unauthorized"})
     })
 })
 
@@ -237,13 +246,11 @@ Router.app.post<{
     Reply: GenericResponseType<TVoid> 
 }>("/user/updateEmail", async (req, res) => {
     if(req.headers.authorization.startsWith("Bearer ")) {
-        res.code(401).send({error: "Unauthorized"})
-        return
+        return res.code(401).send({error: "Unauthorized"})
     }
-    getUserFromJWT(req.headers.authorization).then(async (user) => {
+    processAuthorizationHeader(req.headers.authorization).then(async (user) => {
         if(!user) {
-            res.code(401).send({error: "Unauthorized"})
-            return
+            return res.code(401).send({error: "Unauthorized"})
         }
 
         user.email = req.body.email.toLowerCase()
@@ -251,18 +258,17 @@ Router.app.post<{
         let database = new Database("content", "creators")
         let existingUser = await database.collection.findOne({email: req.body.email.toLowerCase(), _id: {$ne: user._id}})
         if(existingUser) {
-            res.code(400).send({error: "Another account is already using that email"})
-            return
+            return res.code(400).send({error: "Another account is already using that email"})
         }
 
         let result = await database.collection.updateOne({_id: user._id}, {$set: user})
         if(result.acknowledged && result.modifiedCount === 1) {
-            res.code(200).send()
+            return res.code(200).send()
         } else {
-            res.code(400).send({error: "Failed to update user"})
+            return res.code(400).send({error: "Failed to update user"})
         }
     }).catch((err) => {
-        res.code(401).send({error: "Unauthorized"})
+        return res.code(401).send({error: "Unauthorized"})
     })
 })
 
@@ -279,18 +285,15 @@ Router.app.post<{
     Reply: GenericResponseType<TVoid> 
 }>("/user/providers", async (req, res) => {
     if(req.headers.authorization.startsWith("Bearer ")) {
-        res.code(401).send({error: "Unauthorized"})
-        return
+        return res.code(401).send({error: "Unauthorized"})
     }
     _dangerouslyGetUnsanitizedUserFromJWT(req.headers.authorization).then(async (user) => {
         if(!user) {
-            res.code(401).send({error: "Unauthorized"})
-            return
+            return res.code(401).send({error: "Unauthorized"})
         }
 
         if(user.providers?.find((provider) => provider.provider === req.body.provider)) {
-            res.code(400).send({error: "Provider already added"})
-            return
+            return res.code(400).send({error: "Provider already added"})
         }
 
         if(req.body.provider === Providers.Discord) {
@@ -333,13 +336,13 @@ Router.app.post<{
         let database = new Database("content", "creators")
         let result = await database.collection.updateOne({_id: user._id}, {$set: user})
         if(result.acknowledged && result.modifiedCount === 1) {
-            res.code(200).send()
+            return res.code(200).send()
         } else {
-            res.code(400).send({error: "Failed to update user"})
+            return res.code(400).send({error: "Failed to update user"})
         }
 
     }).catch((err) => {
-        res.code(401).send({error: "Unauthorized"})
+        return res.code(401).send({error: "Unauthorized"})
     })
 })
 
@@ -355,13 +358,11 @@ Router.app.delete<{
     Reply: GenericResponseType<TVoid> 
 }>("/user/providers", async (req, res) => {
     if(req.headers.authorization.startsWith("Bearer ")) {
-        res.code(401).send({error: "Unauthorized"})
-        return
+        return res.code(401).send({error: "Unauthorized"})
     }
     _dangerouslyGetUnsanitizedUserFromJWT(req.headers.authorization).then(async (user) => {
         if(!user) {
-            res.code(401).send({error: "Unauthorized"})
-            return
+            return res.code(401).send({error: "Unauthorized"})
         }
 
         user.providers = user.providers?.filter((provider) => provider.provider !== req.body.provider)
@@ -369,12 +370,12 @@ Router.app.delete<{
         let database = new Database("content", "creators")
         let result = await database.collection.updateOne({_id: user._id}, {$set: user})
         if(result.acknowledged && result.modifiedCount === 1) {
-            res.code(200).send()
+            return res.code(200).send()
         } else {
-            res.code(400).send({error: "Failed to update user"})
+            return res.code(400).send({error: "Failed to update user"})
         }
     }).catch((err) => {
-        res.code(401).send({error: "Unauthorized"})
+        return res.code(401).send({error: "Unauthorized"})
     })
 })
 
@@ -390,13 +391,11 @@ Router.app.post<{
     Reply: GenericResponseType<TVoid>
 }>("/user/updatePassword", async (req, res) => {
     if(req.headers.authorization.startsWith("Bearer ")) {
-        res.code(401).send({error: "Unauthorized"})
-        return
+        return res.code(401).send({error: "Unauthorized"})
     }
     _dangerouslyGetUnsanitizedUserFromJWT(req.headers.authorization).then(async (user) => {
         if(!user) {
-            res.code(401).send({error: "Unauthorized"})
-            return
+            return res.code(401).send({error: "Unauthorized"})
         }
 
         bcryptHash(req.body.password).then((hash) => {
@@ -405,13 +404,13 @@ Router.app.post<{
             let database = new Database("content", "creators")
             let result = await database.collection.updateOne({_id: user._id}, {$set: user})
             if(result.acknowledged && result.modifiedCount === 1) {
-                res.code(200).send()
+                return res.code(200).send()
             } else {
-                res.code(400).send({error: "Failed to update user"})
+                return res.code(400).send({error: "Failed to update user"})
             }
         })
     }).catch((err) => {
-        res.code(401).send({error: "Unauthorized"})
+        return res.code(401).send({error: "Unauthorized"})
     })
 })
 
@@ -429,8 +428,8 @@ Router.app.post<{
     let user = await database.collection.findOne({email: req.body.email.toLowerCase()})
     if(user) {
         forgotPasswordEmail(req.body.email.toLowerCase(), createJWT({_id: user._id}, "30min"))
-        res.code(200).send()
+        return res.code(200).send()
     } else {
-        res.code(400).send({error: "User not found"})
+        return res.code(400).send({error: "User not found"})
     }
 })

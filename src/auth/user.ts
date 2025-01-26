@@ -55,10 +55,22 @@ export function bcryptHash(password: string): Promise<string> {
     })
 }
 
+/**
+ * Creates a JWT
+ * @param data The data to include in the JWT
+ * @param expiresIn The expiration time of the JWT
+ * @returns The JWT
+ */
 export function createJWT(data: any, expiresIn: string = "30d") {
     return jwt.sign(data, JWTKey, { expiresIn: expiresIn })
 }
 
+/**
+ * Sign a user in with their email and password
+ * @param email The email of the user
+ * @param password The password of the user
+ * @returns The user if found, null otherwise
+ */
 export async function signInWithEmail(email: string, password: string): Promise<FullUser | null> {
     const database = new Database<FullUser>("creators")
     let user = await database.findOne({email: email})
@@ -73,6 +85,13 @@ export async function signInWithEmail(email: string, password: string): Promise<
     })
 }
 
+/**
+ * Sign up a user using an email and password
+ * @param username The username of the user
+ * @param email The email of the user
+ * @param password The password of the user
+ * @returns The user if created, null otherwise
+ */
 export async function signUpWithEmail(username: string, email: string, password: string): Promise<FullUser | null> {
     const database = new Database<FullUser>("creators")
     let user = await database.findOne({email: email})
@@ -100,7 +119,7 @@ export async function signUpWithEmail(username: string, email: string, password:
 }
 
 /**
- * Signs in with discord
+ * Signs a user in using discord
  * @param code The oauth code (not access token) from discord
  * @returns The user if found, null otherwise
  */
@@ -329,6 +348,17 @@ async function createUserFromProviderData(email: string, username: string, provi
 
     return user
 
+}
+
+export async function processAuthorizationHeader(authorization: string) {
+    if(authorization.startsWith("Bearer ")) {
+        // Handle API keys
+        return undefined
+    }
+    else {
+        // Handle JWT
+        return await getUserFromJWT(authorization)
+    }
 }
 
 /**

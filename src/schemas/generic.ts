@@ -5,6 +5,9 @@ export const GenericResponse = <T extends TSchema>(schema: T) => Type.Object({
     200: schema,
     "4xx": Type.Object({
         error: Type.String()
+    }),
+    "5xx": Type.Object({
+        error: Type.String()
     })
 })
 

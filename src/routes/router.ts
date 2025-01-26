@@ -11,9 +11,9 @@ export class Router {
         // import('./v2/forum')
         import('./v2/leaderboards')
         // import('./v2/marketplace')
-        // import('./v2/notifications')
+        import('./v2/notifications')
         // import('./v2/report')
-        // import('./v2/translation')
+        import('./v2/translation')
         import('./v2/user')
 
         setTimeout(() => {

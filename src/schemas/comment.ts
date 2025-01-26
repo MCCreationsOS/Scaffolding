@@ -23,9 +23,9 @@ const SubComment = Type.Object({
     likes: Type.Number()
 })
 
-export const Comment = Type.Object({
+export const TComment = Type.Object({
     ...SubComment.properties,
     replies: Type.Array(SubComment)
 })
 
-export type Comment = Static<typeof Comment>
+export type Comment = Static<typeof TComment>

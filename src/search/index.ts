@@ -2,10 +2,79 @@ import { MeiliSearch, MultiSearchResponse } from "meilisearch"
 
 import { Index } from "meilisearch"
 import { Creation } from "../schemas/creation"
+import { Database } from "../database"
 
 export type SearchIndex  = "maps" | "datapacks" | "resourcepacks" | "marketplace"
 
 export class Search {
+
+    public static async initialize() {
+        const client = new MeiliSearch({
+            host: 'http://localhost:7700',
+            apiKey: process.env.MEILISEARCH_KEY
+        })
+
+        const indexes = ["maps", "datapacks", "resourcepacks", "marketplace"]
+        const maps = new Database("content", "Maps")
+        const datapacks = new Database("content", "datapacks")
+        const resourcepacks = new Database("content", "resourcepacks")
+        const marketplace = new Database("content", "marketplace")
+
+        const mapsCursor = maps.collection.find({})
+        const datapacksCursor = datapacks.collection.find({})
+        const resourcepacksCursor = resourcepacks.collection.find({})
+        const marketplaceCursor = marketplace.collection.find({})
+
+        for await (const doc of mapsCursor) {
+            let timestampInMilliseconds = Date.parse(doc.createdDate);
+            let timestamp = timestampInMilliseconds / 1000; 
+            doc.createdDate = timestamp;
+
+            timestampInMilliseconds = Date.parse(doc.updatedDate);
+            timestamp = timestampInMilliseconds / 1000;
+            doc.updatedDate = timestamp;
+            client.index("maps").addDocuments([doc])
+        }
+
+        for await (const doc of datapacksCursor) {
+            let timestampInMilliseconds = Date.parse(doc.createdDate);
+            let timestamp = timestampInMilliseconds / 1000; 
+            doc.createdDate = timestamp;
+
+            timestampInMilliseconds = Date.parse(doc.updatedDate);
+            timestamp = timestampInMilliseconds / 1000;
+            doc.updatedDate = timestamp;
+            client.index("datapacks").addDocuments([doc])
+        }
+
+        for await (const doc of resourcepacksCursor) {
+            let timestampInMilliseconds = Date.parse(doc.createdDate);
+            let timestamp = timestampInMilliseconds / 1000; 
+            doc.createdDate = timestamp;
+
+            timestampInMilliseconds = Date.parse(doc.updatedDate);
+            timestamp = timestampInMilliseconds / 1000;
+            doc.updatedDate = timestamp;
+            client.index("resourcepacks").addDocuments([doc])
+        }
+
+        for await (const doc of marketplaceCursor) {
+            let timestampInMilliseconds = Date.parse(doc.createdDate);
+            let timestamp = timestampInMilliseconds / 1000; 
+            doc.createdDate = timestamp;
+
+            timestampInMilliseconds = Date.parse(doc.updatedDate);
+            timestamp = timestampInMilliseconds / 1000;
+            doc.updatedDate = timestamp;
+            client.index("marketplace").addDocuments([doc])
+        }
+
+        indexes.forEach(index => {
+            client.index(index).updateFilterableAttributes(["creators.handle", "tags", "files.minecraftVersion", "status"])
+            client.index(index).updateSortableAttributes(["downloads", "rating", "createdDate", "updatedDate", "title", "creators.username"])
+        })
+    }
+
     queryS = ''
     sortS = "createdDate:desc"
     filterS

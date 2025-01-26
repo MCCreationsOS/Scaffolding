@@ -1,3 +1,6 @@
+/**
+ * @remarks The user object returned from the Microsoft OAuth API
+ */
 export interface MicrosoftUser {
     id: string
     email: string,
@@ -7,6 +10,9 @@ export interface MicrosoftUser {
     familyname: string
 }
 
+/**
+ * @remarks The user object returned from the Discord OAuth API
+ */
 export interface DiscordUser {
     id: string
     email: string
@@ -15,6 +21,9 @@ export interface DiscordUser {
     banner?: string
 }
 
+/**
+ * @remarks The user object returned from the Github OAuth API
+ */
 export interface GithubUser {
     id: string
     email: string
@@ -22,6 +31,9 @@ export interface GithubUser {
     avatar_url: string
 }
 
+/**
+ * @remarks The user object returned from the Google OAuth API
+ */
 export interface GoogleUser {
     id: string
     email: string
