@@ -386,11 +386,12 @@ export async function getUserFromJWT(jwtString: string, resolveWithJWT: boolean 
     }
 }
 
+
 /**
  * Gets an unsanitized user from a JWT. Use this with **extreme caution**.
  * @param jwtString The JWT
  * @returns The user if found, null otherwise
- */
+*/
 export async function _dangerouslyGetUnsanitizedUserFromJWT(jwtString: string) {
     try {
         let token = jwt.verify(jwtString, JWTKey) as any
@@ -404,6 +405,34 @@ export async function _dangerouslyGetUnsanitizedUserFromJWT(jwtString: string) {
     } catch(err) {
         return undefined
     }
+}
+
+export async function getUserFromHandle(handle: string) {
+    const database = new Database<FullUser>("creators")
+    let user = await database.findOne({handle: handle})
+    if(user) {
+        return sanitizeUser(user)
+    } else {
+        return undefined
+    }
+}
+
+export async function _dangerouslyGetUnsanitizedUserFromHandle(handle: string) {
+    const database = new Database<FullUser>("creators")
+    return await database.findOne({handle: handle})
+}
+
+export async function getUserFromID(id: string) {
+    const database = new Database<FullUser>("creators")
+    let user = await database.findOne({_id: new ObjectId(id)})
+    if(user) {
+        return sanitizeUser(user)
+    }
+}
+
+export async function _dangerouslyGetUnsanitizedUserFromID(id: string) {
+    const database = new Database<FullUser>("creators")
+    return await database.findOne({_id: new ObjectId(id)})
 }
 
 /**
