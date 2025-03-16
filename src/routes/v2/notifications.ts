@@ -25,9 +25,9 @@ Router.app.get<{
 
     let database = new Database<Notification>("content", "notifications")
 
-    let notifications = await database.find({user_id: new ObjectId(user._id)}, 20, (parseInt(req.query.page || "0") * 20))
-
-    return res.status(200).send({totalCount: notifications.length, documents: notifications})
+    let notifications = (await database.find({user_id: new ObjectId(user._id)}, 20, (parseInt(req.query.page || "0") * 20), {date: -1}))
+    const count = await database.collection.countDocuments({user_id: new ObjectId(user._id)})
+    return res.status(200).send({totalCount: count, documents: notifications})
 })
 
 Router.app.patch<{
