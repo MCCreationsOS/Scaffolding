@@ -373,7 +373,7 @@ export async function getUserFromJWT(jwtString: string, resolveWithJWT: boolean 
             let _id = new ObjectId(token._id)
             let database = new Database<FullUser>("creators")
             let user = await database.findOne({_id: _id})
-            if(user && ((user.last_important_update && token.createdDate && user.last_important_update < token.createdDate) || !user.last_important_update)) {
+            if(user && ((user.last_important_update && token.createdDate && new Date(user.last_important_update).getTime() < new Date(token.createdDate).getTime()) || !user.last_important_update)) {
                 return resolveWithJWT ? sanitizeUser(user, jwtString) : sanitizeUser(user)
             } else {
                 return undefined
