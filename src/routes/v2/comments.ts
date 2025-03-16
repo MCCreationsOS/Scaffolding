@@ -8,6 +8,10 @@ import { AuthorizationHeader } from '../../schemas/auth';
 import { processAuthorizationHeader } from "../../auth/user";
 import { UserTypes } from "../../schemas/user";
 import { containsProfanity } from "../../utils/text";
+import { createNotificationToCreators } from "../../notifications";
+import { Creation } from "../../schemas/creation";
+import { convertCommentTypeToCollectionName } from "../../utils/database";
+import { NotificationType } from "../../schemas/notifications";
 
 /**
  * Query for getting comments
@@ -73,15 +77,28 @@ Router.app.post<{
 
     if(containsProfanity(req.body.comment)) {
         req.body.approved = false
+    } else {
+        req.body.approved = true
     }
 
     let database = new Database<Comment>("content", "comments")
     let comment = await database.insertOne(req.body)
     if(comment.acknowledged) {
-        return res.status(200).send()
+        res.status(200).send()
     } else {
         return res.status(400).send({
             error: "Failed to create comment"
+        })
+    }
+
+    let creations = new Database<Creation>(convertCommentTypeToCollectionName(req.body.content_type))
+    let creation = await creations.findOne({slug: req.body.slug})
+    if(creation && creation.owner !== req.body.handle && creation.creators.map((creator) => creator.handle).includes(req.body.handle)) {
+        createNotificationToCreators({
+            content: creation,
+            type: NotificationType.Comment,
+            title: {key: "Account.Notifications.NewComment.title"},
+            body: {key: "Account.Notifications.NewComment.body", options: {username: req.body.username, content_type: creation.type, title: creation.title}}
         })
     }
 })

@@ -1,6 +1,7 @@
 import { Page } from "puppeteer";
 import { Readable } from "stream";
 import { uploadFromStream } from "../storage";
+import { createReadStream, watch } from "fs";
 
 export async function downloadFileFromDropbox(page: Page) {
     return new Promise<string>(async (resolve, reject) => {
@@ -10,8 +11,8 @@ export async function downloadFileFromDropbox(page: Page) {
             subscribeToDownloadEvent(page).then(resolve).catch(reject)
 
             await page.click('.dig-IconButton[aria-label="Download"]')
-            await page.waitForSelector('.dig-Button--transparent')
-            await page.click('.dig-Button--transparent')
+            await page.waitForSelector('text/Or continue with download only')
+            await page.click('text/Or continue with download only')
         } catch(e) {
             console.log("Error downloading file from dropbox: " + e)
             reject(e)
@@ -64,17 +65,26 @@ export async function downloadFileFromGoogleDrive(page: Page) {
 export async function subscribeToDownloadEvent(page: Page) {
     return new Promise<string>(async (resolve, reject) => {
         const client = await page.createCDPSession()
-        client.on('Browser.downloadWillBegin', async (event) => {
-            client.send('Browser.cancelDownload', {guid: event.guid})
-            
-            const response = await fetch(event.url)
-            if(response.ok && response.body) {
-                const stream = Readable.fromWeb(response.body as any)
-                const location = await uploadFromStream(stream, "files", event.suggestedFilename, "application/zip")
-                resolve(location)
-            } else {
-                reject(new Error("Error downloading file from " + event.url))
+        client.send("Browser.setDownloadBehavior", {
+            behavior: "allow",
+            downloadPath: "./temp"
+        })
+
+        let file = ""
+
+        watch("./temp", (event, filename) => {
+            if(event === "rename" && filename?.endsWith(".crdownload")) {
+                file = filename.replace(".crdownload", "")
+            } else if(event === "rename" && filename?.endsWith(".zip") && file === filename) {
+                const fstream = createReadStream(`./temp/${filename}`)
+                uploadFromStream(fstream, "files", filename, "application/zip").then((url) => {
+                    resolve(url)
+                })
             }
         })
+
+        setTimeout(() => {
+            resolve(page.url())
+        }, 10000)
     })
 }

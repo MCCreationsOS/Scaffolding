@@ -5,10 +5,9 @@ import { CollectionName, Database } from "../../database";
 import { NotificationOption, ProfileLayout, User } from "../../schemas/user";
 import { Router } from "../router";
 import { AuthorizationHeader } from "../../schemas/auth";
-import { GenericResponseType, WithCount } from "../../schemas/generic";
+import { ErrorSchema, GenericResponseType, WithCount } from "../../schemas/generic";
 import { Providers } from "../../database/models/users";
 import { forgotPasswordEmail } from "../../email";
-import jwt from "jsonwebtoken";
 import { TCreation } from "../../schemas/creation";
 import { Search } from "../../search";
 
@@ -16,19 +15,50 @@ Router.app.get<{
     Reply: GenericResponseType<typeof User>, 
     Headers: AuthorizationHeader 
 }>("/user", async (req, res) => {
-    let user = await processAuthorizationHeader(req.headers.authorization)
-    if(!user) {
+        let user = await processAuthorizationHeader(req.headers.authorization, true)
+        if(!user) {
         return res.code(401).send({error: "Unauthorized"})
     }
     return res.code(200).send(user)
+})
+
+const TUserSettings = Type.Object({
+    settings: Type.Object({
+        notifications: Type.Object({
+            comment: NotificationOption,
+            like: NotificationOption,
+            reply: NotificationOption,
+            follow: NotificationOption,
+            rating: NotificationOption,
+            translation: NotificationOption
+        })
+    }),
+    push_subscriptions: Type.Array(Type.Object({
+        endpoint: Type.String(),
+        keys: Type.Object({
+            auth: Type.String(),
+            p256dh: Type.String()
+        })
+    }))
+})
+
+Router.app.get<{
+    Reply: GenericResponseType<typeof TUserSettings>
+    Headers: AuthorizationHeader
+}>("/user/settings", async (req, res) => {
+    let user = await _dangerouslyGetUnsanitizedUserFromJWT(req.headers.authorization)
+    if(!user) {
+        return res.code(401).send({error: "Unauthorized"})
+    }
+    return res.code(200).send({settings: user.settings!, push_subscriptions: user.push_subscriptions ?? []})
 })
 
 const WithCountFeed = WithCount(TCreation)
 
 Router.app.get<{
     Querystring: {
-        limit?: number
-        page?: number
+        limit?: string
+        page?: string
     }
     Reply: GenericResponseType<typeof WithCountFeed>
     Headers: AuthorizationHeader
@@ -43,15 +73,28 @@ Router.app.get<{
     }
 
     const search = new Search(["maps", "resourcepacks", "datapacks"])
+    search.filter("creators.handle", "IN", user.following)
+    search.paginate(parseInt(req.query.limit ?? "20"), parseInt(req.query.page ?? "0") + 1)
+    let documents = await search.execute()
+
+    const database = new Database("content", "comments")
+    const comments = await database.collection.find({handle: {$in: user.following}, approved: true, content_type: "wall"}).toArray()
+
+    const feed = [...documents?.documents ?? [], ...comments]
+    feed.sort((a, b) => {
+        return (b['createdDate'] ?? b['date']) - (a['createdDate'] ?? a['date'])
+    })
+
+    if(!documents) {
+        return res.code(400).send({error: "Failed to fetch feed"})
+    }
+    return res.code(200).send({totalCount: feed.length, documents: feed})
 })
 
 Router.app.delete<{ 
     Headers: AuthorizationHeader, 
     Reply: GenericResponseType<TVoid> 
 }>("/user", async (req, res) => {
-    if(req.headers.authorization.startsWith("Bearer ")) {
-        return res.code(401).send({error: "Unauthorized"})
-    }
     processAuthorizationHeader(req.headers.authorization).then( async (user) => {
         if(!user) {
             return res.code(401).send({error: "Unauthorized"})
@@ -164,7 +207,7 @@ Router.app.post<{
     if(req.headers.authorization.startsWith("Bearer ")) {
         return res.code(401).send({error: "Unauthorized"})
     }
-    processAuthorizationHeader(req.headers.authorization).then(async (user) => {
+    _dangerouslyGetUnsanitizedUserFromJWT(req.headers.authorization).then(async (user) => {
         if(!user) {
             return res.code(401).send({error: "Unauthorized"})
         }
@@ -213,16 +256,11 @@ Router.app.post<{
         let result = await database.collection.updateOne({_id: user._id}, {$set: user})
         if(result.acknowledged && result.modifiedCount === 1) {
             // Update handle in all content
-            for(let content of ["Maps", "datapacks", "resourcepacks", "marketplace"] as CollectionName[]) {
+            for(let content of ["Maps", "datapacks", "resourcepacks", "marketplace", "comments", "leaderboards", "notifications"] as CollectionName[]) {
                 database = new Database("content", content)
                 await database.collection.updateMany({"creators.handle": user.handle}, {$set: {"creators.$.handle": req.body.handle}})
                 await database.collection.updateMany({"owner": user.handle}, {$set: {"owner": req.body.handle}})
             }
-
-            // Update handle in all comments
-            database = new Database("content", "comments")
-            await database.collection.updateMany({"handle": user.handle}, {$set: {"handle": req.body.handle}})
-
             
             return res.code(200).send()
         } else {
@@ -400,6 +438,7 @@ Router.app.post<{
 
         bcryptHash(req.body.password).then((hash) => {
             user.password = hash
+            user.last_important_update = new Date()
         }).then(async () => {
             let database = new Database("content", "creators")
             let result = await database.collection.updateOne({_id: user._id}, {$set: user})

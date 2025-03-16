@@ -1,4 +1,4 @@
-import { GenericResponseType, WithCount } from "../../schemas/generic"
+import { ErrorSchema, GenericResponseType, WithCount } from "../../schemas/generic"
 import { TVoid, Type } from "@sinclair/typebox"
 import { Router } from "../router"
 import { User, UserType } from "../../schemas/user"
@@ -8,35 +8,19 @@ import { Database } from "../../database"
 import { Comment, TComment } from "../../schemas/comment"
 import { AuthorizationHeader } from "../../schemas/auth"
 
-const WithCountUser = WithCount(User)
 const WithCountComment = WithCount(TComment)
-
-Router.app.get<{
-    Reply: GenericResponseType<typeof WithCountUser>
-}>("/creators", async (req, res) => {
-    let database = new Database<FullUser>("content", "creators")
-    let users = await database.find({})
-    let sanitizedUsers: UserType[] = []
-    users.forEach(user => {
-        sanitizedUsers.push(sanitizeUser(user))
-    })
-
-    return res.status(200).send({
-        totalCount: users.length,
-        documents: sanitizedUsers
-    })
-})
 
 Router.app.get<{
     Reply: GenericResponseType<typeof User>
     Params: {
         handle: string
-    }
+    },
+    Headers: AuthorizationHeader
 }>("/creator/:handle", async (req, res) => {
     let database = new Database<FullUser>("content", "creators")
     let user = await database.findOne({handle: req.params.handle})
     if (user) {
-        return res.status(200).send(sanitizeUser(user))
+        return res.status(200).send(sanitizeUser(user, req.headers.authorization))
     } else {
         return res.status(404).send({error: "User not found"})
     }

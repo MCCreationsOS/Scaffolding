@@ -8,6 +8,7 @@ import { Database } from "../database";
 import { Creation } from "../schemas/creation";
 import { FullUser } from "../database/models/users";
 import { getTranslation } from "../translation";
+import { CronJob } from "schedule-jobs-with-cron";
 
 webpush.setVapidDetails(
     'mailto:crazycowmm@gmail.com',
@@ -41,16 +42,21 @@ export async function createNotification(options: {
 }
 
 export async function createNotificationsForSubscribers(options: {
-    user: UserType,
+    creators: UserType[],
     link: string,
     title: string | {key: string, options?: any},
     body: string | {key: string, options?: any}
 }) {
-    let database = new Database("content", "creators")
-    let creator = await database.collection.findOne({_id: options.user._id!})
-    if(creator && creator.following) {
-        for(let user of creator.following) {
-            await createNotification({...options, user: user, type: "follow", createdByUser: options.user.handle})
+    let database = new Database<FullUser>("content", "creators")
+    let creators = await database.collection.find({_id: {$in: options.creators.map(creator => creator._id!)}}).toArray()
+    for(let creator of creators) {
+        if(creator && creator.following) {
+            for(let handle of creator.following) {
+                let user = await database.collection.findOne({handle: handle})
+                if(user) {
+                    await createNotification({...options, user: user, type: "follow", createdByUser: creator.handle})
+                }
+            }
         }
     }
 }
@@ -152,3 +158,6 @@ export async function sendWeeklyNotifications() {
         }
     }
 }
+
+new CronJob("dailyNotifications", sendDailyNotifications, "0 0 * * *")
+new CronJob("weeklyNotifications", sendWeeklyNotifications, "0 0 * * 1")

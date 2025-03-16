@@ -1,6 +1,6 @@
 import { Router } from "../router";
 import { AuthorizationHeader } from "../../schemas/auth";
-import { GenericResponseType, WithCount } from "../../schemas/generic";
+import { ErrorSchema, GenericResponseType, WithCount } from "../../schemas/generic";
 import { TNotification , Notification} from "../../schemas/notifications";
 import { processAuthorizationHeader } from "../../auth/user";
 import { Database } from "../../database";
@@ -12,6 +12,9 @@ import { subscribeToPushNotifications } from "../../notifications";
 const WithCountNotification = WithCount(TNotification)
 
 Router.app.get<{
+    Querystring: {
+        page: string
+    }
     Reply: GenericResponseType<typeof WithCountNotification>
     Headers: AuthorizationHeader
 }>("/notifications", async (req, res) => {
@@ -22,7 +25,7 @@ Router.app.get<{
 
     let database = new Database<Notification>("content", "notifications")
 
-    let notifications = await database.find({user_id: user._id})
+    let notifications = await database.find({user_id: new ObjectId(user._id)}, 20, (parseInt(req.query.page || "0") * 20))
 
     return res.status(200).send({totalCount: notifications.length, documents: notifications})
 })

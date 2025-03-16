@@ -3,10 +3,11 @@ import { Leaderboard } from "../../schemas/leaderboard";
 import { Database } from "../../database";
 import { Type, Static, TVoid } from "@sinclair/typebox";
 import { AuthorizationHeader } from '../../schemas/auth';
-import { GenericResponseType } from "../../schemas/generic";
-import { ContentType } from "../../schemas/creation";
+import { ErrorSchema, GenericResponseType } from "../../schemas/generic";
+import { ContentType, TContentType } from "../../schemas/creation";
 import { processAuthorizationHeader } from "../../auth/user";
 import { UserType } from "../../schemas/user";
+import { ObjectId } from "mongodb";
 
 Router.app.get<{
     Params: {
@@ -39,7 +40,12 @@ Router.app.post<{
     let database = new Database<Leaderboard>("content", "leaderboards")
     let leaderboard = await database.findOne({slug: req.params.slug, type: req.params.type})
     if(!leaderboard) {
-        return res.status(404).send({error: "Leaderboard not found"})
+        leaderboard = {
+            _id: new ObjectId(),
+            slug: req.params.slug,
+            type: req.params.type,
+            scores: []
+        }
     }
 
     let user: UserType | undefined = undefined

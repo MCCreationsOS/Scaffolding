@@ -3,7 +3,7 @@ import { env } from "../env";
 
 export const client = new MongoClient(env.MONGODB_URI);
 
-export type CollectionName = "Maps" | "datapacks" | "resourcepacks" | "creators" | "comments" | "notifications" | "leaderboards" | "marketplace" | "translations"
+export type CollectionName = "Maps" | "datapacks" | "resourcepacks" | "creators" | "comments" | "notifications" | "leaderboards" | "marketplace" | "translations" | "files"
 
 /**
  * A database class for interacting with the database
@@ -104,18 +104,5 @@ export class Database<T extends Document> {
      */
     async countDocuments(query: Filter<T>) {
         return this.collection.countDocuments(query);
-    }
-}
-
-export function convertContentTypeToCollectionName(contentType: string): CollectionName {
-    switch(contentType) {
-        case "map":
-            return "Maps"
-        case "datapack":
-            return "datapacks"
-        case "resourcepack":
-            return "resourcepacks"
-        default:
-            throw new Error("Invalid content type")
     }
 }

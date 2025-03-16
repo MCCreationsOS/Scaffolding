@@ -1,25 +1,29 @@
 import Fastify, { FastifyReply, FastifyRequest, FastifySchema, RouteHandlerMethod } from "fastify";
-
+import fastifyMultipart from "@fastify/multipart";
+import fastifySSE from "fastify-sse-v2";
+import autoload from "@fastify/autoload"
+import path from "path"
 export class Router {
     static app = Fastify({logger: true})
 
-    static initialize() {
-        import('./v2/auth')
-        import('./v2/comments')
-        import('./v2/creations')
-        import('./v2/creators')
-        // import('./v2/forum')
-        import('./v2/leaderboards')
-        // import('./v2/marketplace')
-        import('./v2/notifications')
-        // import('./v2/report')
-        import('./v2/translation')
-        import('./v2/user')
+    static async initialize() {
+        this.app.register(fastifyMultipart, {
+            limits: {
+                fileSize: 30 * 1024 * 1024,
+            }
+        })
+        this.app.register(fastifySSE)
 
-        setTimeout(() => {
-            this.app.listen({port: 8080, host: "::"}, () => {
-                console.log("Server is running on port 8080")
-            })
-        }, 1000)
+        // // Automatically load all routes in the v2 folder
+        this.app.register(autoload, {
+            dir: path.join(__dirname, "v2"),
+            // matchFilter: (path) => path.endsWith("creations.ts"),
+            logLevel: "debug"
+        })
+
+        await this.app.ready()
+        this.app.listen({port: 8080, host: "::"}, () => {
+            console.log("Server is running on port 8080")
+        })
     }
 }

@@ -1,127 +1,106 @@
-import { Static } from "@sinclair/typebox";
+import { Static, TObject } from "@sinclair/typebox";
 import { Type } from "@sinclair/typebox";
-import { sanitizeUser, signInWithDiscord, signInWithEmail, signInWithGithub, signInWithGoogle, signInWithMicrosoft, signUpWithEmail } from "../../auth/user";
+import { createJWT, sanitizeUser, signInWithDiscord, signInWithEmail, signInWithGithub, signInWithGoogle, signInWithMicrosoft, signUpWithEmail } from "../../auth/user";
 import { FullUser, Providers } from "../../database/models/users";
 import { Router } from "../router";
 import { User } from "../../schemas/user";
-import { GenericResponseType } from "../../schemas/generic";
+import { ErrorSchema, GenericResponseType } from "../../schemas/generic";
 
-/**
- * Route arguments for signing a user in
- */
 const SignInSchema = Type.Object({
-    /**
-     * The email of the user
-     */
-    email: Type.String(),
-    /**
-     * The password of the user
-     */
-    password: Type.String(),
-    /**
-     * The code of the user
-     */
-    code: Type.String(),
-    /**
-     * The provider of the user
-     */
-    provider: Type.Enum(Providers)
-})
+    email: Type.Optional(Type.String({description: "The email of the user", format: "email"})),
+    password: Type.Optional(Type.String({description: "The password of the user"})),
+    code: Type.Optional(Type.String({description: "The code of the user (only used for OAuth providers)"})),
+    provider: Type.Optional(Type.Number({description: "The provider of the user ", examples: ["[0: discord, 1: google, 2: microsoft, 3: github]"]}))
+}, {description: "Information about the user to sign in"})
 
 type SignInBody = Static<typeof SignInSchema>
 
-/**
- * Route arguments for signing up a user
- */
 const SignUpSchema = Type.Object({
-    /**
-     * The username of the user
-     */
-    username: Type.String(),
-    /**
-     * The email of the user
-     */
-    email: Type.String(),
-    /**
-     * The password of the user
-     */
-    password: Type.String(),
-    /**
-     * The code of the user
-     */
-    code: Type.String(),
-    /**
-     * The provider of the user
-     */
-    provider: Type.Enum(Providers)
-})
+    username: Type.Optional(Type.String({description: "The username of the user"})),
+    email: Type.Optional(Type.String({description: "The email of the user", format: "email"})),
+    password: Type.Optional(Type.String({description: "The password of the user"})),
+    code: Type.Optional(Type.String({description: "The code of the user (only used for OAuth providers)"})),
+    provider: Type.Optional(Type.Number({description: "The provider of the user", examples: ["[0: discord, 1: google, 2: microsoft, 3: github]"]}))
+}, {description: "Information about the user to sign up"})
 
 type SignUpBody = Static<typeof SignUpSchema>
 
-/**
- * Route for signing a user in
- */
+const AuthResponseSchema = Type.Object({
+    user: User,
+    jwt: Type.String({description: "The JWT for the user"})
+}, {description: "The response for signing a user in"})
+
 Router.app.post<{ 
     Body: SignInBody, 
-    Reply: GenericResponseType<typeof User> 
+    Reply: GenericResponseType<typeof AuthResponseSchema>
 }>("/sign_in", async (req, res) => {
-    let user: FullUser | null = null
+    let result: {user: FullUser, jwt: string} | null = null
+
+    if(!(req.body.email && req.body.password) && !(req.body.provider && req.body.code)) {
+        return res.code(400).send({error: "Email and password or provider and code are required"})
+    }
 
     // Sign in with the provider
     switch (req.body.provider) {
         case Providers.Discord:
-            user = await signInWithDiscord(req.body.code)
+            result = await signInWithDiscord(req.body.code!)
             break;
         case Providers.Google:
-            user = await signInWithGoogle(req.body.code)
+            result = await signInWithGoogle(req.body.code!)
             break;
         case Providers.Microsoft:
-            user = await signInWithMicrosoft(req.body.code)
+            result = await signInWithMicrosoft(req.body.code!)
             break;
         case Providers.Github:
-            user = await signInWithGithub(req.body.code)
+            result = await signInWithGithub(req.body.code!)
             break;
         default:
-            user = await signInWithEmail(req.body.email, req.body.password)
+            result = await signInWithEmail(req.body.email!, req.body.password!)
             break;
     }
-    if(!user) {
+    if(!result) {
         res.code(400).send({error: "Invalid provider"})
     } else {
-        res.code(200).send(sanitizeUser(user))
+        res.code(200).send({user: sanitizeUser(result.user), jwt: result.jwt})
     }
 })
 
-/**
- * Route for signing up a user
- */
 Router.app.post<{ 
     Body: SignUpBody, 
-    Reply: GenericResponseType<typeof User> 
+    Reply: GenericResponseType<typeof AuthResponseSchema>
 }>("/sign_up", async (req, res) => {
+    let result: {user: FullUser, jwt: string} | null = null
     let user: FullUser | null = null
+
+    if(!(req.body.email && req.body.password) && !(req.body.provider && req.body.code)) {
+        return res.code(400).send({error: "Email and password or provider and code are required"})
+    }
 
     // Sign up with the provider
     switch (req.body.provider) {
         case Providers.Discord:
-            user = await signInWithDiscord(req.body.code)
+            result = await signInWithDiscord(req.body.code!)
             break;
         case Providers.Google:
-            user = await signInWithGoogle(req.body.code)
+            result = await signInWithGoogle(req.body.code!)
             break;
         case Providers.Microsoft:
-            user = await signInWithMicrosoft(req.body.code)
+            result = await signInWithMicrosoft(req.body.code!)
             break;
         case Providers.Github:
-            user = await signInWithGithub(req.body.code)
+            result = await signInWithGithub(req.body.code!)
             break;
         default:
-            user = await signUpWithEmail(req.body.username, req.body.email, req.body.password)
+            user = await signUpWithEmail(req.body.username!, req.body.email!, req.body.password!)
             break;
     }
-    if(!user) {
+    if(!result && !user) {
         return res.code(400).send({error: "Invalid email or username"})
     } else {
-        return res.code(200).send(sanitizeUser(user))
+        if(result) {
+            return res.code(200).send({user: sanitizeUser(result.user), jwt: result.jwt})
+        } else {
+            return res.code(200).send({user: sanitizeUser(user!), jwt: createJWT({_id: user!._id, createdDate: new Date()})})
+        }
     }
 })

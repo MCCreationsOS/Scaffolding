@@ -1,7 +1,7 @@
 import { MeiliSearch, MultiSearchResponse } from "meilisearch"
 
 import { Index } from "meilisearch"
-import { Creation } from "../schemas/creation"
+import { ContentType, Creation } from "../schemas/creation"
 import { Database } from "../database"
 
 export type SearchIndex  = "maps" | "datapacks" | "resourcepacks" | "marketplace"
@@ -114,7 +114,10 @@ export class Search {
         this.sortS = `${attr}:${direction}`;
     }
 
-    filter(attr: string, operation: "=" | ">" | "<" | "!=" | "<=" | ">=", value: string | number, combiner?: "AND" | "OR") {
+    filter(attr: string, operation: "=" | ">" | "<" | "!=" | "<=" | ">=" | "TO" | "EXISTS" | "IN", value: string | number | string[], combiner?: "AND" | "OR") {
+        if(operation === "IN") {
+            value = `[${value}]`
+        }
         this.filterS = combiner ? `${this.filterS} ${combiner} ${attr}${operation}${value}` : `${attr} ${operation} ${value}`;
     }
 
@@ -198,6 +201,37 @@ export class Search {
         } catch (error) {
             console.error(error)
         }
+    }
 
+    async addDocument(document: Creation) {
+        this.indexes.forEach(index => {
+            index.addDocuments([document])
+        })
+    }
+
+    async updateDocument(document: Creation) {
+        this.indexes.forEach(index => {
+            index.updateDocuments([document])
+        })
+    }
+
+    async deleteDocument(document: Creation) {
+        this.indexes.forEach(index => {
+            index.deleteDocuments([document._id.toString()])
+        })
     }
 }
+
+export function convertContentTypeToSearchIndex(contentType: ContentType): SearchIndex {
+    switch(contentType) {
+        case "map":
+            return "maps"
+        case "datapack":
+            return "datapacks"
+        case "resourcepack":
+            return "resourcepacks"
+        case "marketplace":
+            return "marketplace"
+    }
+}
+

@@ -71,7 +71,7 @@ export function createJWT(data: any, expiresIn: string = "30d") {
  * @param password The password of the user
  * @returns The user if found, null otherwise
  */
-export async function signInWithEmail(email: string, password: string): Promise<FullUser | null> {
+export async function signInWithEmail(email: string, password: string): Promise<{user: FullUser, jwt: string} | null> {
     const database = new Database<FullUser>("creators")
     let user = await database.findOne({email: email})
     if(!user) return null
@@ -79,7 +79,7 @@ export async function signInWithEmail(email: string, password: string): Promise<
 
     return new Promise((resolve, reject) => {
         bcrypt.compare(password, user.password!, (err, same) => {
-            if(same) resolve(user)
+            if(same) resolve({user: user, jwt: createJWT({_id: user._id, createdDate: new Date()}, "30d")})
             else reject(null)
         })
     })
@@ -123,12 +123,12 @@ export async function signUpWithEmail(username: string, email: string, password:
  * @param code The oauth code (not access token) from discord
  * @returns The user if found, null otherwise
  */
-export async function signInWithDiscord(code: string): Promise<FullUser> {
+export async function signInWithDiscord(code: string): Promise<{user: FullUser, jwt: string}> {
     let access_token = await getDiscordAccessToken(code)
     let discordUser = await getDiscordUser(access_token)
     let existingUser = await findExistingUser(discordUser.id, Providers.Discord)
 
-    if(existingUser) return existingUser
+    if(existingUser) return {user: existingUser, jwt: createJWT({_id: existingUser._id, createdDate: new Date()}, "30d")}
     else return createUserFromProviderData(discordUser.email, discordUser.global_name, Providers.Discord, access_token, "", discordUser.id, discordUser.avatar, discordUser.banner)
 }
 
@@ -178,12 +178,12 @@ export async function getDiscordUser(access_token: string): Promise<DiscordUser>
  * @param code The oauth code (not access token) from github
  * @returns The user if found, null otherwise
  */
-export async function signInWithGithub(code: string): Promise<FullUser> {
+export async function signInWithGithub(code: string): Promise<{user: FullUser, jwt: string}> {
     let access_token = await getGithubAccessToken(code)
     let githubUser = await getGithubUser(access_token)
     let existingUser = await findExistingUser(githubUser.id, Providers.Github)
 
-    if(existingUser) return existingUser
+    if(existingUser) return {user: existingUser, jwt: createJWT({_id: existingUser._id, createdDate: new Date()}, "30d")}
     else return createUserFromProviderData(githubUser.email, githubUser.login, Providers.Github, access_token, "", githubUser.id, githubUser.avatar_url)
 }
 
@@ -229,11 +229,11 @@ export async function getGithubUser(access_token: string): Promise<GithubUser> {
  * @param access_token The access token from google
  * @returns The user if found, null otherwise
  */
-export async function signInWithGoogle(access_token: string): Promise<FullUser> {
+export async function signInWithGoogle(access_token: string): Promise<{user: FullUser, jwt: string}> {
     let googleUser = await getGoogleUser(access_token)
     let existingUser = await findExistingUser(googleUser.id, Providers.Google)
 
-    if(existingUser) return existingUser
+    if(existingUser) return {user: existingUser, jwt: createJWT({_id: existingUser._id, createdDate: new Date()}, "30d")}
     else return createUserFromProviderData(googleUser.email, googleUser.name, Providers.Google, access_token, "", googleUser.id, googleUser.picture)
 }
 
@@ -257,12 +257,12 @@ export async function getGoogleUser(access_token: string): Promise<GoogleUser> {
  * @param code The oauth code (not access token) from microsoft
  * @returns The user if found, null otherwise
  */
-export async function signInWithMicrosoft(code: string): Promise<FullUser> {
+export async function signInWithMicrosoft(code: string): Promise<{user: FullUser, jwt: string}> {
     let access_token = await getMicrosoftAccessToken(code)
     let microsoftUser = await getMicrosoftUser(access_token)
     let existingUser = await findExistingUser(microsoftUser.id, Providers.Microsoft)
 
-    if(existingUser) return existingUser
+    if(existingUser) return {user: existingUser, jwt: createJWT({_id: existingUser._id, createdDate: new Date()}, "30d")}
     else return createUserFromProviderData(microsoftUser.email, microsoftUser.name ?? microsoftUser.givenname + microsoftUser.familyname, Providers.Microsoft, access_token, "", microsoftUser.id, "")
 }
 
@@ -319,7 +319,7 @@ export async function getMicrosoftUser(access_token: string): Promise<MicrosoftU
  * @param bannerURL The banner URL of the user
  * @returns The user that was created
  */
-async function createUserFromProviderData(email: string, username: string, provider: Providers, token: string, refreshToken: string, id: string, iconURL: string, bannerURL?: string): Promise<FullUser> {
+async function createUserFromProviderData(email: string, username: string, provider: Providers, token: string, refreshToken: string, id: string, iconURL: string, bannerURL?: string): Promise<{user: FullUser, jwt: string}> {
     const database = new Database<FullUser>("creators")
 
     let user: FullUser = {
@@ -346,18 +346,18 @@ async function createUserFromProviderData(email: string, username: string, provi
         user.handle = username.toLowerCase().replace(" ", "-");
     }
 
-    return user
+    return {user: user, jwt: createJWT({_id: user._id, createdDate: new Date()}, "30d")}
 
 }
 
-export async function processAuthorizationHeader(authorization: string) {
+export async function processAuthorizationHeader(authorization: string, resolveWithJWT: boolean = true) {
     if(authorization.startsWith("Bearer ")) {
         // Handle API keys
         return undefined
     }
     else {
         // Handle JWT
-        return await getUserFromJWT(authorization)
+        return await getUserFromJWT(authorization, resolveWithJWT)
     }
 }
 
@@ -366,7 +366,7 @@ export async function processAuthorizationHeader(authorization: string) {
  * @param jwtString The JWT
  * @returns The user if found, null otherwise
  */
-export async function getUserFromJWT(jwtString: string) {
+export async function getUserFromJWT(jwtString: string, resolveWithJWT: boolean = true) {
     try {
         let token = jwt.verify(jwtString, JWTKey) as any
         if(token && token._id) {
@@ -374,15 +374,15 @@ export async function getUserFromJWT(jwtString: string) {
             let database = new Database<FullUser>("creators")
             let user = await database.findOne({_id: _id})
             if(user && ((user.last_important_update && token.createdDate && user.last_important_update < token.createdDate) || !user.last_important_update)) {
-                return sanitizeUser(user)
+                return resolveWithJWT ? sanitizeUser(user, jwtString) : sanitizeUser(user)
             } else {
-                throw new Error("Session expired, please sign in and try again")
+                return undefined
             }
         } else {
-            throw new Error("Session expired, please sign in and try again")
+            return undefined
         }
     } catch(err) {
-        throw new Error("Session expired, please sign in and try again")
+        return undefined
     }
 }
 
@@ -399,10 +399,10 @@ export async function _dangerouslyGetUnsanitizedUserFromJWT(jwtString: string) {
             let database = new Database<FullUser>("creators")
             return await database.findOne({_id: _id})
         } else {
-            throw new Error("Session expired, please sign in and try again")
+            return undefined
         }
     } catch(err) {
-        throw new Error("Session expired, please sign in and try again")
+        return undefined
     }
 }
 
@@ -418,7 +418,7 @@ export function getIdFromJWT(jwtString: string) {
             return new ObjectId(token._id)
         }
     } catch(e) {
-        throw new Error("Session expired, please sign in and try again")
+        return undefined
     }
 }
 
@@ -443,8 +443,23 @@ export async function refreshJWTHash() {
  * @param user The user to sanitize
  * @returns The sanitized user
  */
-export function sanitizeUser(user: FullUser): UserType {
-    return {
-        ...{...user, password: undefined, providers: undefined, last_important_update: undefined},
+export function sanitizeUser(user: FullUser, token?: string): UserType {
+    try {
+        let id = jwt.verify(token + "", JWTKey) as any
+        if(id && id._id) {
+            let _id = new ObjectId(id._id)
+            if(user && user._id.equals(_id)) {
+                return {
+                    ...{...user, password: undefined, providers: undefined, last_important_update: undefined},
+                }
+            }
+        }
+        return {
+            ...{...user, password: undefined, providers: undefined, last_important_update: undefined, email: "", settings: undefined, push_subscriptions: undefined},
+        }
+    } catch(e) {
+        return {
+            ...{...user, password: undefined, providers: undefined, last_important_update: undefined, email: "", settings: undefined, push_subscriptions: undefined},
+        }
     }
 }

@@ -2,17 +2,23 @@ import showdown from "showdown";
 import { ContentType, Creation, File } from "../schemas/creation";
 import { ObjectId } from "mongodb";
 import { makeUniqueSlug } from "../utils/database";
-import { convertContentTypeToCollectionName } from "../database";
+import { convertContentTypeToCollectionName } from "../utils/database";
+import { ProgressStream } from "../utils/creations";
+import { Readable } from "stream";
+import { uploadFromStream } from "../storage";
 
-export default async function fetchFromModrinth(url: string, type: ContentType) {
+export default async function fetchFromModrinth(url: string, type: ContentType, stream: ProgressStream) {
+    stream.sendUpdate("progress", {message: "Create.Import.Modrinth", progress: 10})
     let converter = new showdown.Converter();
     let slug = url.substring(url.lastIndexOf('/') + 1)
     let response = await fetch(`https://api.modrinth.com/v2/project/${slug}`, {
+
         headers: {
             'User-Agent': 'MCCreationsOS/mccreations-next (mccreations.net)'
         }
     })
     let project = await response.json()
+    stream.sendUpdate("progress", {message: "Create.Import.Modrinth", progress: 30})
     // console.log(project)
 
     // Check to make sure the project is either a resourcepack or a datapack
@@ -22,10 +28,10 @@ export default async function fetchFromModrinth(url: string, type: ContentType) 
     }
 
     let content: Creation = {
-        _id: new ObjectId(Date.now().toString()),
+        _id: new ObjectId(),
         ratings: [],
         tags: [],
-        updatedDate: new Date().toISOString(),
+        updatedDate: new Date(),
         creators: [],
         title: project.title,
         slug: project.slug,
@@ -36,7 +42,7 @@ export default async function fetchFromModrinth(url: string, type: ContentType) 
         downloads: 0,
         views: 0,
         rating: 0,
-        createdDate: new Date().toISOString(),
+        createdDate: new Date(),
         images: project.gallery.sort((a:any, b:any) => {
             return a.ordering - b.ordering
         }).map((image: any) => image.url),
@@ -54,17 +60,24 @@ export default async function fetchFromModrinth(url: string, type: ContentType) 
         }
     })
     let versions = await vResponse.json()
+    stream.sendUpdate("progress", {message: "Create.Import.Downloading", progress: 60})
 
     // Transform the modrinth versions into our file format
-    content.files = versions.map((version: any): File | undefined => {
+    content.files = await Promise.all(versions.map(async (version: any): Promise<File | undefined> => {
         if(version.loaders.includes('datapack')) {
-            return {type: 'data', url: version.files[0].url, minecraftVersion: version.game_versions, contentVersion: version.version_number, createdDate: new Date().toISOString()}
+            const res = await fetch(version.files[0].url)
+            const stream = Readable.fromWeb(res.body as any)
+            const url = await uploadFromStream(stream, "files", version.files[0].filename + Date.now(), version.files[0].mime_type)
+            return {type: 'data', url: url, minecraftVersion: version.game_versions, contentVersion: version.version_number, createdDate: new Date()}
         } else if (version.loaders.includes('minecraft')) {
-            return {type: 'resource', url: version.files[0].url, minecraftVersion: version.game_versions, contentVersion: version.version_number, createdDate: new Date().toISOString()}
+            const res = await fetch(version.files[0].url)
+            const stream = Readable.fromWeb(res.body as any)
+            const url = await uploadFromStream(stream, "files", version.files[0].filename + Date.now(), version.files[0].mime_type)
+            return {type: 'resource', url: url, minecraftVersion: version.game_versions, contentVersion: version.version_number, createdDate: new Date()}
         } else {
             return undefined
         }
-    }).filter((file: File | undefined): file is File => file !== undefined)
+    }).filter((file: File | undefined): file is File => file !== undefined))
 
     return content
 }
