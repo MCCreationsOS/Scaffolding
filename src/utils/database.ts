@@ -44,12 +44,14 @@ export function convertCollectionNameToContentType(collectionName: CollectionNam
 
 export function convertCommentTypeToCollectionName(commentType: string): CollectionName {
     switch(commentType) {
-        case "maps":
+        case "Maps":
             return "Maps"
         case "datapacks":
             return "datapacks"
         case "resourcepacks":
             return "resourcepacks"
+        case "wall":
+            return "comments"
         default:
             throw new Error("Invalid comment type")
     }
