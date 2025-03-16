@@ -5,10 +5,10 @@ import { Comment, CommentType, TComment } from "../../schemas/comment";
 import { Database } from "../../database";
 import { ObjectId } from "mongodb";
 import { AuthorizationHeader } from '../../schemas/auth';
-import { processAuthorizationHeader } from "../../auth/user";
+import { _dangerouslyGetUnsanitizedUserFromHandle, processAuthorizationHeader } from "../../auth/user";
 import { UserTypes } from "../../schemas/user";
 import { containsProfanity } from "../../utils/text";
-import { createNotificationToCreators } from "../../notifications";
+import { createNotification, createNotificationToCreators } from "../../notifications";
 import { Creation } from "../../schemas/creation";
 import { convertCommentTypeToCollectionName } from "../../utils/database";
 import { NotificationType } from "../../schemas/notifications";
@@ -86,17 +86,19 @@ Router.app.post<{
     if(comment.acknowledged) {
         res.status(200).send()
     } else {
-        return res.status(400).send({
+        res.status(400).send({
             error: "Failed to create comment"
         })
+        return;
     }
 
     let creations = new Database<Creation>(convertCommentTypeToCollectionName(req.body.content_type))
     let creation = await creations.findOne({slug: req.body.slug})
-    if(creation && creation.owner !== req.body.handle && creation.creators.map((creator) => creator.handle).includes(req.body.handle)) {
+    if(creation && ((creation.owner !== req.body.handle && !creation.creators.map((creator) => creator.handle).includes(req.body.handle)) || !req.body.handle)) {
+        console.log("Creating notification")
         createNotificationToCreators({
             content: creation,
-            type: NotificationType.Comment,
+            type: "comment",
             title: {key: "Account.Notifications.NewComment.title"},
             body: {key: "Account.Notifications.NewComment.body", options: {username: req.body.username, content_type: creation.type, title: creation.title}}
         })
@@ -253,5 +255,18 @@ Router.app.post<{
     req.body.createdDate = Date.now()
 
     await database.updateOne({_id: new ObjectId(req.params.id)}, {$push: {replies: req.body}})
-    return res.status(200).send()
+    res.status(200).send()
+
+    if(comment.handle && comment.handle !== req.body.handle) {
+        let user = await _dangerouslyGetUnsanitizedUserFromHandle(comment.handle)
+        if(user) {
+            createNotification({
+                user: user,
+                type: "reply",
+                title: {key: "Account.Notifications.NewReply.title"},
+                body: {key: "Account.Notifications.NewReply.body", options: {username: req.body.username}},
+                link: `/${comment.content_type.toLowerCase()}/${comment.slug}`
+            })
+        }
+    }
 })
