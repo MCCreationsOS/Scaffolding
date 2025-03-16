@@ -74,6 +74,7 @@ Router.app.get<{
 
     const search = new Search(["maps", "resourcepacks", "datapacks"])
     search.filter("creators.handle", "IN", user.following)
+    search.filter("status", ">=", 1, "AND")
     search.paginate(parseInt(req.query.limit ?? "20"), parseInt(req.query.page ?? "0") + 1)
     let documents = await search.execute()
 
@@ -143,7 +144,7 @@ Router.app.post<{
         let database = new Database("content", "creators")
         let result = await database.collection.updateOne({_id: user._id}, {$set: user})
         if(result.acknowledged && result.modifiedCount === 1) {
-            return res.code(200).send()
+            return res.code(200).send({})
         } else {
             return res.code(400).send({error: "Failed to update user"})
         }
