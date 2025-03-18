@@ -73,8 +73,7 @@ Router.app.get<{
     }
 
     const search = new Search(["maps", "resourcepacks", "datapacks"])
-    search.filter("creators.handle", "IN", user.following)
-    search.filter("status", ">=", 1, "AND")
+    search.filter({filter: [{key: "creators.handle", operation: "IN", value: user.following}, {key: "status", operation: ">=", value: 1, combiner: "AND"}]})
     search.paginate(parseInt(req.query.limit ?? "20"), parseInt(req.query.page ?? "0") + 1)
     let documents = await search.execute()
 

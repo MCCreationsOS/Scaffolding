@@ -82,7 +82,7 @@ function sendNotification(notification: NotificationDocument, user: FullUser) {
 async function sendPushNotification(notification: NotificationDocument, user: FullUser) {
     let subscriptions = user.push_subscriptions
 
-    if(!user.settings?.notifications[notification.type].includes("push")) {
+    if(!user.settings || !user.settings?.notifications || !user.settings?.notifications[notification.type] || !user.settings?.notifications[notification.type].includes("push")) {
         return
     }
 

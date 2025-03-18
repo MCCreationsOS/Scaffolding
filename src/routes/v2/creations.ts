@@ -79,7 +79,7 @@ Router.app.get<{
         limit?: string,
         page?: string,
         sort?: Sort,
-        status?: number,
+        status?: string,
         exclusiveStatus?: string,
         version?: string,
         search?: string,
@@ -118,6 +118,7 @@ Router.app.get<{
     }
 
     const search = new Search(indexes)
+    const user = await processAuthorizationHeader(req.headers.authorization + "")
 
     // Build search query
     search.query(req.query.search ?? "", false)
@@ -161,52 +162,67 @@ Router.app.get<{
             break;
     }
 
-    if (req.query.status) {
-        if (req.query.exclusiveStatus && req.query.exclusiveStatus === "true") {
-            search.filter("status", "=", req.query.status)
-        } else {
-            search.filter("status", ">=", req.query.status)
-        }
-    } else {
-        search.filter("status", ">=", 1)
-    }
+    "status = 0 AND version = 1.12 OR creators = CCMM OR includeTags = 'pve' OR excludeTags != 'pvp' AND"
 
+    
     if (req.query.version) {
-        search.filter("files.minecraftVersion", "=", req.query.version)
+        search.filter({filter: {key: "files.minecraftVersion", operation: "=", value: req.query.version}})
     }
-
+    
     if (req.query.creators) {
         if (req.query.creators.includes(",")) {
-            req.query.creators.split(",").forEach(creator => {
-                search.filter("creators.handle", "=", creator, "OR")
-            })
+            search.filter({filter: req.query.creators.split(",").map(creator => {
+                return {key: "creators.handle", operation: "=", value: creator, combiner: "OR"}
+            }), combiner: "AND"})
         } else {
-            search.filter("creators.handle", "=", req.query.creators)
+            search.filter({filter: {key: "creators.handle", operation: "=", value: req.query.creators}})
         }
     }
-
+    
     if (req.query.includeTags) {
-        req.query.includeTags.split(",").forEach(tag => {
-            search.filter("tags", "=", tag, "OR")
-        })
+        search.filter({filter: req.query.includeTags.split(",").map(tag => {
+            return {key: "tags", operation: "=", value: tag, combiner: "OR"}
+        }), combiner: "AND"})
     }
-
+    
     if (req.query.excludeTags) {
-        req.query.excludeTags.split(",").forEach(tag => {
-            search.filter("tags", "!=", tag, "AND")
-        })
+        search.filter({filter: req.query.excludeTags.split(",").map(tag => {
+            return {key: "tags", operation: "!=", value: tag, combiner: "AND"}
+        }), combiner: "AND"})
+    }
+    
+    if (req.query.status) {
+        const status = parseInt(req.query.status)
+        const exclusiveStatus = req.query.exclusiveStatus === "true"
+        const operation = exclusiveStatus ? "=" : ">="
+        if (isNaN(status)) {
+            return res.status(400).send({ error: "Invalid status" })
+        }
+    
+        if(status === 0) {
+            if(user && user.type === UserTypes.Admin) {
+                search.filter({filter: {key: "status", operation: operation, value: 0, combiner: "AND"}})
+            } else {
+                search.filter({filter: {key: "status", operation: operation, value: 0, combiner: "AND"}})
+                search.filter({filter: [{key: "creators.handle", operation: "=", value: user?.handle ?? ""}, {key: "owner", operation: "=", value: user?.handle ?? "", combiner: "OR"}], combiner: "AND"})
+            }
+        } else {
+            search.filter({filter: {key: "status", operation: operation, value: status, combiner: "AND"}})
+        }
+    } else {
+        search.filter({filter: {key: "status", operation: ">=", value: 1, combiner: "AND"}})
     }
 
     if (req.query.limit && req.query.page) {
         search.paginate(parseInt(req.query.limit), parseInt(req.query.page) + 1)
     }
-
+    
     let documents = await search.execute()
-
+    
     if (!documents) {
         return res.status(404).send({ error: "No creations found" })
     }
-
+    
     return res.status(200).send({
         totalCount: documents.totalCount,
         documents: documents.documents
@@ -215,7 +231,7 @@ Router.app.get<{
 
 // Create routes for each content type
 collections.forEach((collection) => {
-
+    
     // Route for getting creations of a specific content type
     Router.app.get<{
         Querystring: {
@@ -321,7 +337,12 @@ collections.forEach((collection) => {
                         return res.status(200).send(creation)
                     }
                 }
+                if(user.type === UserTypes.Admin) {
+                    return res.status(200).send(creation)
+                }
             } else if (user && creation.owner && creation.owner === user.handle) {
+                return res.status(200).send(creation)
+            } else if (user && user.type === UserTypes.Admin) {
                 return res.status(200).send(creation)
             }
             return res.status(401).send({ error: "Creation not found" })

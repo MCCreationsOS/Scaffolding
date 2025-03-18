@@ -6,6 +6,18 @@ import { Database } from "../database"
 
 export type SearchIndex  = "maps" | "datapacks" | "resourcepacks" | "marketplace"
 
+export interface FilterObject {
+    key: string,
+    operation: "=" | ">" | "<" | "!=" | "<=" | ">=" | "TO" | "EXISTS" | "IN",
+    value: string | number | string[],
+    combiner?: "AND" | "OR"
+}
+
+export interface Filter {
+    filter: FilterObject | FilterObject[]
+    combiner?: "AND" | "OR"
+}
+
 export class Search {
 
     public static async initialize() {
@@ -77,16 +89,16 @@ export class Search {
 
     queryS = ''
     sortS = "createdDate:desc"
-    filterS
+    filters: Filter[] = []
     hitsPerPageS
     pageS
     private client
     private indexes: Index<Record<string, any>>[] = []
 
-    constructor(indexes: SearchIndex[], query?: string, sort?: string, filter?: string, hitsPerPage?: number, page?: number) {
+    constructor(indexes: SearchIndex[], query?: string, sort?: string, filters?: Filter[], hitsPerPage?: number, page?: number) {
         (query) ? this.queryS = query : '';
         (sort) ? this.sortS = sort : '';
-        this.filterS = filter;
+        this.filters = filters ?? [];
         this.hitsPerPageS = hitsPerPage;
         this.pageS = page;
 
@@ -114,11 +126,8 @@ export class Search {
         this.sortS = `${attr}:${direction}`;
     }
 
-    filter(attr: string, operation: "=" | ">" | "<" | "!=" | "<=" | ">=" | "TO" | "EXISTS" | "IN", value: string | number | string[], combiner?: "AND" | "OR") {
-        if(operation === "IN") {
-            value = `[${value}]`
-        }
-        this.filterS = combiner ? `${this.filterS} ${combiner} ${attr}${operation}${value}` : `${attr} ${operation} ${value}`;
+    filter(filter: Filter) {
+        this.filters.push(filter)
     }
 
     paginate(hitsPerPage: number, page: number) {
@@ -186,9 +195,20 @@ export class Search {
             options.page = this.pageS
         }
 
-        if(this.filterS) {
-            options.filter = this.filterS;
+        if(this.filters.length > 0) {
+            let filterStrings = this.filters.map((filter, index) => {
+                if(Array.isArray(filter.filter)) {
+                    return `(${filter.filter.map((f) => {
+                        // @ts-ignore
+                        return ` ${f.key} ${f.operation} ${f.value} ${index === filter.filter.length - 1 ? "" : f.combiner ?? "OR"}`
+                    }).join(" ")}) ${filter.combiner && index === this.filters.length - 1 ? "" : filter.combiner ?? "OR"}`
+                } else {
+                    return ` ${filter.filter.key} ${filter.filter.operation} ${filter.filter.value} ${index === this.filters.length - 1 ? "" : filter.combiner ?? "OR"} `
+                }
+            })
+            options.filter = filterStrings.join(" ")
         }
+        console.log(options.filter)
 
         if(this.sortS) {
             options.sort = [this.sortS];
