@@ -25,8 +25,8 @@ export async function downloadFileFromMediafire(page: Page) {
         try {
             subscribeToDownloadEvent(page).then(resolve).catch(reject)
 
-            await page.waitForSelector('#download-button')
-            await page.click('#download-button')
+            await page.waitForSelector('#downloadButton')
+            await page.click('#downloadButton')
     } catch(e) {
             console.log("Error downloading file from mediafire: " + e)
             reject(e)
