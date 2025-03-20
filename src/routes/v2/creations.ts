@@ -57,16 +57,12 @@ Router.app.post<{
 
     res.status(200).send(creation.rating)
 
-    let creatorDatabase = new Database<UserType>("creators")
-    let creator = await creatorDatabase.findOne({handle: creation.owner})
-    if(creator) {
-        createNotificationToCreators({
-            content: creation,
-            type: "rating",
-            title: {key: "Account.Notifications.NewRating.title"},
-            body: {key: "Account.Notifications.NewRating.body", options: {rating: req.body.rating * 5, content_type: creation.title}}
-        })
-    }
+    createNotificationToCreators({
+        content: creation,
+        type: "rating",
+        title: {key: "Account.Notifications.NewRating.title"},
+        body: {key: "Account.Notifications.NewRating.body", options: {rating: req.body.rating * 5, content_type: creation.title}}
+    })
 })
 
 const WithCountCreation = WithCount(TCreation)
@@ -175,7 +171,7 @@ Router.app.get<{
                 return {key: "creators.handle", operation: "=", value: creator, combiner: "OR"}
             }), combiner: "AND"})
         } else {
-            search.filter({filter: {key: "creators.handle", operation: "=", value: req.query.creators}})
+            search.filter({filter: {key: "creators.handle", operation: "=", value: req.query.creators, combiner: "AND"}})
         }
     }
     
@@ -345,6 +341,11 @@ collections.forEach((collection) => {
             } else if (user && user.type === UserTypes.Admin) {
                 return res.status(200).send(creation)
             }
+
+            let id = getIdFromJWT(req.headers.authorization + "")
+            if(id && id.equals(creation._id)) {
+                return res.status(200).send(creation)
+            }
             return res.status(401).send({ error: "Creation not found" })
         }
 
@@ -485,13 +486,12 @@ Router.app.post<{
     if (user) {
         creation.creators = [...creation.creators ?? [], user]
         creation.owner = user.handle
-    } else {
-        creation.key = createJWT({ _id: new ObjectId() }, "24h")
     }
 
     let insertionResult = await database.insertOne(creation)
     if (insertionResult.acknowledged) {
         creation._id = insertionResult.insertedId
+        creation.key = createJWT({ _id: creation._id }, "24h")
         search.addDocument(creation)
         stream.sendUpdate("complete", {creation: creation, status: "success", key: creation.key})
         return stream.end()
