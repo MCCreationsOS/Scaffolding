@@ -203,7 +203,7 @@ export class Search {
                         return ` ${f.key} ${f.operation} ${f.value} ${index === filter.filter.length - 1 ? "" : f.combiner ?? "OR"}`
                     }).join(" ")}) ${filter.combiner && index === this.filters.length - 1 ? "" : filter.combiner ?? "OR"}`
                 } else {
-                    return ` ${filter.filter.key} ${filter.filter.operation} ${filter.filter.value} ${index === this.filters.length - 1 ? "" : filter.combiner ?? "OR"} `
+                    return ` ${filter.filter.key} ${filter.filter.operation} ${filter.filter.value} ${index === this.filters.length - 1 ? "" : filter.filter.combiner ?? "OR"} `
                 }
             })
             options.filter = filterStrings.join(" ")
