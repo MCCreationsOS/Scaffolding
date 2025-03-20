@@ -1,6 +1,7 @@
 import Mail from '@sendgrid/mail';
 import { NotificationDocument } from '../database/models/notifications';
 import { env } from '../env';
+import { getTranslation } from '../translation';
 // import { getTranslation } from '../translation'
 Mail.setApiKey(env.SENDGRID_API_KEY);
 
@@ -38,7 +39,7 @@ export function forgotPasswordEmail(to: string, resetToken: string) {
         templateId: "d-2d2de0fcb0a94ccc884cf71bd3ff4a7d",
         dynamicTemplateData: {
             email: to,
-            resetLink: "https://next.mccreations.net/reset_password?token=" + resetToken
+            resetLink: "https://mccreations.net/reset_password?token=" + resetToken
         }
     })
 }
@@ -92,8 +93,8 @@ export function notificationEmail(to: string, notifications: NotificationDocumen
                 }
 
                 return {
-                    // title: (typeof n.title === "string" ? n.title : getTranslation("en-US", n.title.key, n.title.options)),
-                    // body: (typeof n.body === "string" ? n.body : getTranslation("en-US", n.body.key, n.body.options)),
+                    title: (typeof n.title === "string" ? n.title : getTranslation("en-US", n.title.key, n.title.options)),
+                    body: (typeof n.body === "string" ? n.body : getTranslation("en-US", n.body.key, n.body.options)),
                     link: link
                 }
             }),
