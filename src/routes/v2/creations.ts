@@ -157,9 +157,6 @@ Router.app.get<{
             search.sort("createdDate", "desc")
             break;
     }
-
-    "status = 0 AND version = 1.12 OR creators = CCMM OR includeTags = 'pve' OR excludeTags != 'pvp' AND"
-
     
     if (req.query.version) {
         search.filter({filter: {key: "files.minecraftVersion", operation: "=", value: req.query.version}})

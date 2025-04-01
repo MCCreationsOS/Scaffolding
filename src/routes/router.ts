@@ -1,4 +1,4 @@
-import Fastify, { FastifyReply, FastifyRequest, FastifySchema, RouteHandlerMethod } from "fastify";
+import Fastify from "fastify";
 import fastifyMultipart from "@fastify/multipart";
 import fastifySSE from "fastify-sse-v2";
 import autoload from "@fastify/autoload"
@@ -7,6 +7,7 @@ export class Router {
     static app = Fastify({logger: true})
 
     static async initialize() {
+
         this.app.register(fastifyMultipart, {
             limits: {
                 fileSize: 30 * 1024 * 1024,
