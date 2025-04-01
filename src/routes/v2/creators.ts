@@ -1,7 +1,7 @@
-import { ErrorSchema, GenericResponseType, WithCount } from "../../schemas/generic"
-import { TVoid, Type } from "@sinclair/typebox"
+import { GenericResponseType, WithCount } from "../../schemas/generic"
+import { TVoid } from "@sinclair/typebox"
 import { Router } from "../router"
-import { User, UserType } from "../../schemas/user"
+import { User } from "../../schemas/user"
 import { FullUser } from "../../database/models/users"
 import { processAuthorizationHeader, sanitizeUser } from "../../auth/user"
 import { Database } from "../../database"
@@ -10,6 +10,53 @@ import { AuthorizationHeader } from "../../schemas/auth"
 
 const WithCountComment = WithCount(TComment)
 
+const WithCountUser = WithCount(User)
+
+Router.app.get<{
+    Reply: GenericResponseType<typeof WithCountUser>,
+    Querystring: {
+        limit?: string,
+        page?: string,
+        search?: string,
+    }
+}>("/creators", async (req, res) => {
+    let database = new Database<FullUser>("content", "creators")
+    const pipeline: any[] = []
+    if (req.query.search) {
+        pipeline.push(
+            {
+                "$search": {
+                    "index": "creators",
+                    "text": {
+                        "query": req.query.search,
+                        "path": {
+                            "wildcard": "*"
+                        }
+                    }
+                }
+            }
+        )
+    }
+
+    pipeline.push(
+        {
+            "$limit": parseInt(req.query.limit ?? "20")
+        },
+        {
+            "$skip": parseInt(req.query.page ?? "0") * parseInt(req.query.limit ?? "20")
+        }
+    )
+
+    // let totalCount = await database.countDocuments(pipeline)
+
+    let fullCreators = await database.collection.aggregate<FullUser>(pipeline).toArray()
+    let creators = fullCreators.map(creator => sanitizeUser(creator))
+
+    return res.status(200).send({
+        totalCount: 0,
+        documents: creators
+    })
+})
 Router.app.get<{
     Reply: GenericResponseType<typeof User>
     Params: {

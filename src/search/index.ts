@@ -82,7 +82,7 @@ export class Search {
         }
 
         indexes.forEach(index => {
-            client.index(index).updateFilterableAttributes(["creators.handle", "tags", "files.minecraftVersion", "status"])
+            client.index(index).updateFilterableAttributes(["creators.handle", "tags", "files.minecraftVersion", "status", "owner"])
             client.index(index).updateSortableAttributes(["downloads", "rating", "createdDate", "updatedDate", "title", "creators.username"])
         })
     }
@@ -198,9 +198,9 @@ export class Search {
         if(this.filters.length > 0) {
             let filterStrings = this.filters.map((filter, index) => {
                 if(Array.isArray(filter.filter)) {
-                    return `(${filter.filter.map((f) => {
+                    return `(${filter.filter.map((f, i) => {
                         // @ts-ignore
-                        return ` ${f.key} ${f.operation} ${f.value} ${index === filter.filter.length - 1 ? "" : f.combiner ?? "OR"}`
+                        return ` ${f.key} ${f.operation} ${f.value} ${i === filter.filter.length - 1 ? "" : f.combiner ?? "OR"}`
                     }).join(" ")}) ${filter.combiner && index === this.filters.length - 1 ? "" : filter.combiner ?? "OR"}`
                 } else {
                     return ` ${filter.filter.key} ${filter.filter.operation} ${filter.filter.value} ${index === this.filters.length - 1 ? "" : filter.filter.combiner ?? "OR"} `
