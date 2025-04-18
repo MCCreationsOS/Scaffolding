@@ -333,6 +333,9 @@ collections.forEach((collection) => {
                 if(user.type === UserTypes.Admin) {
                     return res.status(200).send(creation)
                 }
+                if(creation.owner && creation.owner === user.handle) {
+                    return res.status(200).send(creation)
+                }
             } else if (user && creation.owner && creation.owner === user.handle) {
                 return res.status(200).send(creation)
             } else if (user && user.type === UserTypes.Admin) {
