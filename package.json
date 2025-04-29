@@ -27,7 +27,7 @@
     "fastify": "^5.3.1",
     "fastify-sse-v2": "^4.2.1",
     "form-data": "^4.0.0",
-    "formidable": "^3.5.2",
+    "formidable": "^3.5.4",
     "jsdom": "^24.0.0",
     "jsonwebtoken": "^9.0.2",
     "meilisearch": "^0.38.0",
