@@ -47,8 +47,8 @@ export default async function fetchFromPMC(url: string, type: ContentType, strea
                         downloads: 0,
                         views: 0,
                         rating: 0,
-                        createdDate: new Date(),
-                        updatedDate: new Date(),
+                        createdDate: Date.now(),
+                        updatedDate: Date.now(),
                         ratings: [],
                         tags: [],
                         images: [],
@@ -162,9 +162,9 @@ export default async function fetchFromPMC(url: string, type: ContentType, strea
                     }
                     await browser.close()
 
-                    if(type === 'map') map.files = [{type: 'world', url: fileUrl, minecraftVersion: [], createdDate: new Date(), contentVersion: "1.0", extraFiles: []}]
-                    if(type === 'datapack') map.files = [{type: "data", url: fileUrl, minecraftVersion: [], createdDate: new Date(), contentVersion: "1.0", extraFiles: []}]
-                    if(type === 'resourcepack') map.files = [{type: "resource", url: fileUrl, minecraftVersion: [], createdDate: new Date(), contentVersion: "1.0", extraFiles: []}]
+                    if(type === 'map') map.files = [{type: 'world', url: fileUrl, minecraftVersion: [], createdDate: Date.now(), contentVersion: "1.0", extraFiles: []}]
+                    if(type === 'datapack') map.files = [{type: "data", url: fileUrl, minecraftVersion: [], createdDate: Date.now(), contentVersion: "1.0", extraFiles: []}]
+                    if(type === 'resourcepack') map.files = [{type: "resource", url: fileUrl, minecraftVersion: [], createdDate: Date.now(), contentVersion: "1.0", extraFiles: []}]
 
                 } catch(e) {
                     console.log("Error loading page: " + e)

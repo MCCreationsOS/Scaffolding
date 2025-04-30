@@ -4,8 +4,8 @@ import { Creation } from "../schemas/creation";
 export function createDefaultCreation(creation: Creation): Creation {
     return {
         ...creation,
-        createdDate: new Date(),
-        updatedDate: new Date(),
+        createdDate: Date.now(),
+        updatedDate: Date.now(),
         views: 0,
         downloads: 0,
         rating: 0,

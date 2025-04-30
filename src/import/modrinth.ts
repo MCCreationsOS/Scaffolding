@@ -31,7 +31,7 @@ export default async function fetchFromModrinth(url: string, type: ContentType, 
         _id: new ObjectId(),
         ratings: [],
         tags: [],
-        updatedDate: new Date(),
+        updatedDate: Date.now(),
         creators: [],
         title: project.title,
         slug: project.slug,
@@ -42,7 +42,7 @@ export default async function fetchFromModrinth(url: string, type: ContentType, 
         downloads: 0,
         views: 0,
         rating: 0,
-        createdDate: new Date(),
+        createdDate: Date.now(),
         images: project.gallery.sort((a:any, b:any) => {
             return a.ordering - b.ordering
         }).map((image: any) => image.url),
@@ -68,12 +68,12 @@ export default async function fetchFromModrinth(url: string, type: ContentType, 
             const res = await fetch(version.files[0].url)
             const stream = Readable.fromWeb(res.body as any)
             const url = await uploadFromStream(stream, "files", version.files[0].filename + Date.now(), version.files[0].mime_type)
-            return {type: 'data', url: url, minecraftVersion: version.game_versions, contentVersion: version.version_number, createdDate: new Date()}
+            return {type: 'data', url: url, minecraftVersion: version.game_versions, contentVersion: version.version_number, createdDate: Date.now(), updatedDate: Date.now()}
         } else if (version.loaders.includes('minecraft')) {
             const res = await fetch(version.files[0].url)
             const stream = Readable.fromWeb(res.body as any)
             const url = await uploadFromStream(stream, "files", version.files[0].filename + Date.now(), version.files[0].mime_type)
-            return {type: 'resource', url: url, minecraftVersion: version.game_versions, contentVersion: version.version_number, createdDate: new Date()}
+            return {type: 'resource', url: url, minecraftVersion: version.game_versions, contentVersion: version.version_number, createdDate: Date.now(), updatedDate: Date.now()}
         } else {
             return undefined
         }

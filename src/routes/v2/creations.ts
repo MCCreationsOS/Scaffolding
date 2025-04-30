@@ -314,8 +314,10 @@ collections.forEach((collection) => {
     }>(`/creations/${collection.toLowerCase()}/:slug`, async (req, res) => {
         let database = new Database<Creation>(collection)
         let creation = await database.findOne({ slug: req.params.slug })
+        console.log(req.params.slug)
         if (!creation) {
             creation = await database.findOne({ slug: encodeURI(req.params.slug) })
+            console.log(encodeURI(req.params.slug))
             if (!creation) {
                 return res.status(404).send({ error: "Creation not found" })
             }
@@ -425,7 +427,7 @@ Router.app.post<{
     creation.slug = slug
 
     if (!creation.createdDate) {
-        creation.createdDate = new Date()
+        creation.createdDate = Date.now()
     }
 
 
@@ -524,7 +526,8 @@ Router.app.post<{
         } else {
             ignoreOwnerOrCreator = true
         }
-
+    } else if (user && user.type === UserTypes.Admin) {
+        ignoreOwnerOrCreator = true
     }
 
     if (!creation) {
@@ -542,6 +545,7 @@ Router.app.post<{
     }
 
     req.body._id = new ObjectId(req.body._id)
+    req.body.updatedDate = Date.now()
 
     let updateResult = await database.updateOne({ _id: req.body._id }, { $set: req.body })
 
@@ -615,6 +619,8 @@ Router.app.get<{
         } else {
             ignoreOwnerOrCreator = true
         }
+    } else if (user && user.type === UserTypes.Admin) {
+        ignoreOwnerOrCreator = true
     }
 
     if (!ignoreOwnerOrCreator) {
@@ -641,7 +647,7 @@ Router.app.get<{
 
 Router.app.get<{
     Querystring: {
-        type: ContentType
+        type: CollectionName
     }
     Params: {
         slug: string
@@ -658,8 +664,8 @@ Router.app.get<{
         return res.status(401).send({ error: "Unauthorized" })
     }
 
-    let database = new Database<Creation>(convertContentTypeToCollectionName(req.query.type))
-    let search = new Search([convertContentTypeToSearchIndex(req.query.type)])
+    let database = new Database<Creation>(req.query.type)
+    let search = new Search([req.query.type.toLowerCase() as SearchIndex])
     let creation = await database.findOne({ slug: req.params.slug })
     if (!creation) {
         return res.status(404).send({ error: "Creation not found" })

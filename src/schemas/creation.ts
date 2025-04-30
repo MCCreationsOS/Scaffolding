@@ -60,7 +60,8 @@ export const TFile = Type.Object({
     contentVersion: Type.Optional(Type.String()),
     changelog: Type.Optional(Type.String()),
     extraFiles: Type.Optional(Type.Array(TExtraFile)),
-    createdDate: Type.Date()
+    createdDate: Type.Number(),
+    updatedDate: Type.Optional(Type.Number())
 })
 
 export type File = Static<typeof TFile>
@@ -71,8 +72,8 @@ export const TCreation = Type.Object({
     type: TContentType,
     rating: Type.Number(),
     ratings: Type.Array(Type.Number()),
-    createdDate: Type.Date(),
-    updatedDate: Type.Date(),
+    createdDate: Type.Number(),
+    updatedDate: Type.Number(),
     views: Type.Number(),
     downloads: Type.Number(),
     shortDescription: Type.String(),

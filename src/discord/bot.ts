@@ -1,6 +1,7 @@
 import { ChannelType, Client, GatewayIntentBits, Interaction, REST, Routes } from "discord.js"
 import { Search } from "../search"
 import { Creation } from "../schemas/creation"
+import { env } from "../env"
 
 const client = new Client({
     intents: [
@@ -66,10 +67,10 @@ const commands = [
 
 export async function initializeDiscordBot() {
     try {
-        const rest = new REST({version: "10"}).setToken(process.env.DISCORD_BOT_TOKEN + "")
+        const rest = new REST({version: "10"}).setToken(env.DISCORD_BOT_TOKEN + "")
         
         try {
-            await rest.put(Routes.applicationCommands(process.env.DISCORD_CLIENT_ID + ""), {body: commands})
+            await rest.put(Routes.applicationCommands(env.DISCORD_CLIENT_ID + ""), {body: commands})
         } catch(e) {
             console.log(e)
         }
@@ -79,7 +80,7 @@ export async function initializeDiscordBot() {
             handleInteraction(interaction)
         })
         
-        client.login(process.env.DISCORD_BOT_TOKEN + "")
+        client.login(env.DISCORD_BOT_TOKEN + "")
     } catch(e) {
         console.log(e)
     }
@@ -99,19 +100,23 @@ async function searchCommand(interaction: Interaction) {
     if(!interaction.isChatInputCommand()) return;
 
     let query = interaction.options.getString("search")
-    const search = new Search(["maps", "datapacks", "resourcepacks"], query!, undefined, undefined, 3, 0)
+    const search = new Search(["maps", "datapacks", "resourcepacks"])
+    search.paginate(3, 0)
+    search.query(query!, false)
     let results = await search.execute()
+    let embeds = results?.documents.map((doc: Creation) => ({
+        title: doc.title,
+        url: `https://mccreations.net/${doc.type.toLowerCase()}s/${doc.slug}`,
+        image: {
+            url: doc.images[0]
+        },
+        author: {
+            name: doc.creators?.map(creator => creator.username).join(", ")
+        }
+    }))
     interaction.reply({
-        embeds: results?.documents.map((doc: Creation) => ({
-            title: doc.title,
-            url: `https://mccreations.net/${doc.type.toLowerCase()}s/${doc.slug}`,
-            image: {
-                url: doc.images[0]
-            },
-            author: {
-                name: doc.creators?.map(creator => creator.username).join(", ")
-            }
-        }))
+        embeds: embeds,
+        content: (!embeds || embeds.length === 0) ? "No results found" : undefined
     })
 }
 

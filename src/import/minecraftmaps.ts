@@ -39,7 +39,7 @@ export default async function fetchFromMCMaps(url: string, stream: ProgressStrea
         let downloads = 0;
         let views = 0;
         let rating = 0;
-        let createdDate = new Date();
+        let createdDate = Date.now();
         let username = statsPanel?.querySelectorAll('tr')[0].querySelectorAll('span')[1].textContent + ""
     
         let map: Creation = {
@@ -67,7 +67,7 @@ export default async function fetchFromMCMaps(url: string, stream: ProgressStrea
             url: "https://minecraftmaps.com" + html.querySelector('.jdbutton')?.getAttribute('href'), 
             minecraftVersion: [statsPanel?.querySelectorAll('tr')[3].querySelectorAll('span')[1].textContent + ""], 
             contentVersion: statsPanel?.querySelectorAll('tr')[2].querySelectorAll('span')[1].textContent + "", 
-            createdDate: new Date()}]
+            createdDate: Date.now(), updatedDate: Date.now()}]
     
         // let images = html.querySelector('table')?.querySelector('table')?.querySelector('td')?.querySelectorAll('img')
     
