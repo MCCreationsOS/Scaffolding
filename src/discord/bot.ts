@@ -165,7 +165,7 @@ export async function postNewCreation(creation: Creation, message: string) {
         })
 
         client.channels.fetch("1032320126978113636").then(channel => {
-            if(channel && channel.isTextBased() && channel.type === ChannelType.GuildAnnouncement) {
+            if(channel && channel.isSendable()) {
                 for(let i = 0; i < embeds.length; i += 10) {
                     channel.send({
                         content: message,
@@ -185,7 +185,7 @@ export async function postNewCreation(creation: Creation, message: string) {
 
 export async function sendMessage(message: string, channel: string) {
     client.channels.fetch(channel).then(channel => {
-        if(channel && channel.isTextBased() && channel.type === ChannelType.GuildAnnouncement) {
+        if(channel && channel.isSendable()) {
             channel.send(message)
         }
     }).catch(console.log)

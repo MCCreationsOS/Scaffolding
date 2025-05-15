@@ -15,7 +15,7 @@ export let JWTKey = env.JWTKey
  * @param provider The provider of the user
  * @returns The user if found, null otherwise
  */
-async function findExistingUser(id: string, provider: Providers): Promise<FullUser | null> {
+async function findExistingUser(id: string, provider: Providers): Promise<FullUser | undefined> {
     const database = new Database<FullUser>("creators")
     let user = await database.findOne({ "providers.id": id, "providers.provider": provider})
     if(user && user.providers && user.providers.length > 0) {
@@ -25,7 +25,7 @@ async function findExistingUser(id: string, provider: Providers): Promise<FullUs
         })
         if(foundProvider) return user
     }
-    return null
+    return undefined
 }
 
 /**
@@ -129,7 +129,19 @@ export async function signInWithDiscord(code: string): Promise<{user: FullUser, 
     let existingUser = await findExistingUser(discordUser.id, Providers.Discord)
 
     if(existingUser) return {user: existingUser, jwt: createJWT({_id: existingUser._id, createdDate: new Date()}, "30d")}
-    else return createUserFromProviderData(discordUser.email, discordUser.global_name, Providers.Discord, access_token, "", discordUser.id, discordUser.avatar, discordUser.banner)
+    else {
+        let user = await createUserFromProviderData(discordUser.email, discordUser.global_name, Providers.Discord, access_token, "", discordUser.id, discordUser.avatar, discordUser.banner)
+
+        let database = new Database<FullUser>("creators")
+        let existingUser = await database.findOne({email: user.user.email})
+        if(existingUser) {
+            existingUser.providers = [...(existingUser.providers ?? []), {provider: Providers.Discord, id: discordUser.id, token: access_token, refreshToken: ""}]
+            user = {user: existingUser, jwt: createJWT({_id: existingUser._id, createdDate: new Date()}, "30d")}
+            await database.updateOne({_id: existingUser._id}, {$set: existingUser})
+        }
+        return user
+    }
+
 }
 
 /**
@@ -184,7 +196,18 @@ export async function signInWithGithub(code: string): Promise<{user: FullUser, j
     let existingUser = await findExistingUser(githubUser.id, Providers.Github)
 
     if(existingUser) return {user: existingUser, jwt: createJWT({_id: existingUser._id, createdDate: new Date()}, "30d")}
-    else return createUserFromProviderData(githubUser.email, githubUser.login, Providers.Github, access_token, "", githubUser.id, githubUser.avatar_url)
+    else {
+        let user = await createUserFromProviderData(githubUser.email, githubUser.login, Providers.Github, access_token, "", githubUser.id, githubUser.avatar_url)
+
+        let database = new Database<FullUser>("creators")
+        let existingUser = await database.findOne({email: user.user.email})
+        if(existingUser) {
+            existingUser.providers = [...(existingUser.providers ?? []), {provider: Providers.Github, id: githubUser.id, token: access_token, refreshToken: ""}]
+            user = {user: existingUser, jwt: createJWT({_id: existingUser._id, createdDate: new Date()}, "30d")}
+            await database.updateOne({_id: existingUser._id}, {$set: existingUser})
+        }
+        return user
+    }
 }
 
 /**
@@ -231,10 +254,23 @@ export async function getGithubUser(access_token: string): Promise<GithubUser> {
  */
 export async function signInWithGoogle(access_token: string): Promise<{user: FullUser, jwt: string}> {
     let googleUser = await getGoogleUser(access_token)
+    console.log("Google user: " + JSON.stringify(googleUser))
     let existingUser = await findExistingUser(googleUser.id, Providers.Google)
+    console.log("Existing user: " + JSON.stringify(existingUser))
 
     if(existingUser) return {user: existingUser, jwt: createJWT({_id: existingUser._id, createdDate: new Date()}, "30d")}
-    else return createUserFromProviderData(googleUser.email, googleUser.name, Providers.Google, access_token, "", googleUser.id, googleUser.picture)
+    else {
+        let user = await createUserFromProviderData(googleUser.email, googleUser.name, Providers.Google, access_token, "", googleUser.id, googleUser.picture)
+
+        let database = new Database<FullUser>("creators")
+        let existingUser = await database.findOne({email: user.user.email})
+        if(existingUser) {
+            existingUser.providers = [...(existingUser.providers ?? []), {provider: Providers.Google, id: googleUser.id, token: access_token, refreshToken: ""}]
+            user = {user: existingUser, jwt: createJWT({_id: existingUser._id, createdDate: new Date()}, "30d")}
+            await database.updateOne({_id: existingUser._id}, {$set: existingUser})
+        }
+        return user
+    }
 }
 
 /**
@@ -263,7 +299,19 @@ export async function signInWithMicrosoft(code: string): Promise<{user: FullUser
     let existingUser = await findExistingUser(microsoftUser.id, Providers.Microsoft)
 
     if(existingUser) return {user: existingUser, jwt: createJWT({_id: existingUser._id, createdDate: new Date()}, "30d")}
-    else return createUserFromProviderData(microsoftUser.email, microsoftUser.name ?? microsoftUser.givenname + microsoftUser.familyname, Providers.Microsoft, access_token, "", microsoftUser.id, "")
+    else {
+        let user = await createUserFromProviderData(microsoftUser.email, microsoftUser.name ?? microsoftUser.givenname + microsoftUser.familyname, Providers.Microsoft, access_token, "", microsoftUser.id, "")
+        
+        let database = new Database<FullUser>("creators")
+        let existingUser = await database.findOne({email: user.user.email})
+        if(existingUser) {
+            existingUser.providers = [...(existingUser.providers ?? []), {provider: Providers.Microsoft, id: microsoftUser.id, token: access_token, refreshToken: ""}]
+            user = {user: existingUser, jwt: createJWT({_id: existingUser._id, createdDate: new Date()}, "30d")}
+            await database.updateOne({_id: existingUser._id}, {$set: existingUser})
+        }
+
+        return user
+    }
 }
 
 /**
@@ -320,6 +368,7 @@ export async function getMicrosoftUser(access_token: string): Promise<MicrosoftU
  * @returns The user that was created
  */
 async function createUserFromProviderData(email: string, username: string, provider: Providers, token: string, refreshToken: string, id: string, iconURL: string, bannerURL?: string): Promise<{user: FullUser, jwt: string}> {
+    console.log("Creating user from provider data")
     const database = new Database<FullUser>("creators")
 
     let user: FullUser = {
@@ -376,12 +425,16 @@ export async function getUserFromJWT(jwtString: string, resolveWithJWT: boolean 
             if(user && ((user.last_important_update && token.createdDate && new Date(user.last_important_update).getTime() < new Date(token.createdDate).getTime()) || !user.last_important_update)) {
                 return resolveWithJWT ? sanitizeUser(user, jwtString) : sanitizeUser(user)
             } else {
+                console.log(`User has not updated in a while, refreshing JWT. last_important_update: ${user?.last_important_update}, token.createdDate: ${token.createdDate} : ${new Date(user?.last_important_update ?? 0).getTime() < new Date(token.createdDate).getTime()}`)
+                console.log(`User: ${JSON.stringify(user)}, token: ${JSON.stringify(token)}, _id: ${_id}`)
                 return undefined
             }
         } else {
+            console.log("User is not valid, returning undefined")
             return undefined
         }
     } catch(err) {
+        console.log("Error getting user from JWT, returning undefined")
         return undefined
     }
 }

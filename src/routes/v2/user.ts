@@ -136,12 +136,8 @@ Router.app.post<{
             return res.code(401).send({error: "Unauthorized"})
         }
 
-        user.username = req.body.username
-        user.iconURL = req.body.icon
-        user.bannerURL = req.body.banner
-
         let database = new Database("content", "creators")
-        let result = await database.collection.updateOne({_id: user._id}, {$set: user})
+        let result = await database.collection.updateOne({_id: user._id}, {$set: {username: req.body.username, iconURL: req.body.icon, bannerURL: req.body.banner}})
         if(result.acknowledged && result.modifiedCount === 1) {
             return res.code(200).send({})
         } else {
@@ -172,10 +168,8 @@ Router.app.post<{
             return res.code(401).send({error: "Unauthorized"})
         }
 
-        user.profileLayout = req.body.layout
-
         let database = new Database("content", "creators")
-        let result = await database.collection.updateOne({_id: user._id}, {$set: user})
+        let result = await database.collection.updateOne({_id: user._id}, {$set: {profileLayout: req.body.layout}})
         if(result.acknowledged && result.modifiedCount === 1) {
             return res.code(200).send()
         } else {
@@ -212,10 +206,8 @@ Router.app.post<{
             return res.code(401).send({error: "Unauthorized"})
         }
 
-        user.settings = req.body
-
         let database = new Database("content", "creators")
-        let result = await database.collection.updateOne({_id: user._id}, {$set: user})
+        let result = await database.collection.updateOne({_id: user._id}, {$set: {settings: req.body}})
         if(result.acknowledged && result.modifiedCount === 1) {
             return res.code(200).send()
         } else {
@@ -245,21 +237,21 @@ Router.app.post<{
             return res.code(401).send({error: "Unauthorized"})
         }
 
-        user.handle = req.body.handle
+        const handle = req.body.handle
 
         let database = new Database("content", "creators")
-        let existingUser = await database.collection.findOne({handle: req.body.handle})
+        let existingUser = await database.collection.findOne({handle: handle})
         if(existingUser) {
             return res.code(400).send({error: "Another account is already using that handle"})
         }
 
-        let result = await database.collection.updateOne({_id: user._id}, {$set: user})
+        let result = await database.collection.updateOne({_id: user._id}, {$set: {handle: handle}})
         if(result.acknowledged && result.modifiedCount === 1) {
             // Update handle in all content
             for(let content of ["Maps", "datapacks", "resourcepacks", "marketplace", "comments", "leaderboards", "notifications"] as CollectionName[]) {
                 database = new Database("content", content)
-                await database.collection.updateMany({"creators.handle": user.handle}, {$set: {"creators.$.handle": req.body.handle}})
-                await database.collection.updateMany({"owner": user.handle}, {$set: {"owner": req.body.handle}})
+                await database.collection.updateMany({"creators.handle": user.handle}, {$set: {"creators.$.handle": handle}})
+                await database.collection.updateMany({"owner": user.handle}, {$set: {"owner": handle}})
             }
             
             return res.code(200).send()

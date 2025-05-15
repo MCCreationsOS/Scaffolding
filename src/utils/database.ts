@@ -57,3 +57,6 @@ export function convertCommentTypeToCollectionName(commentType: string): Collect
     }
 }
 
+export function convertToMeilisearchDate(date: Date) {
+    return date.getTime()
+}

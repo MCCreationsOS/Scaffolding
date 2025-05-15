@@ -7,7 +7,7 @@ import { ObjectId } from "mongodb";
 import { AuthorizationHeader } from "../../schemas/auth";
 import { createJWT, getIdFromJWT, processAuthorizationHeader } from "../../auth/user";
 import { convertContentTypeToSearchIndex, Search, SearchIndex } from "../../search";
-import { checkIfSlugUnique, convertCollectionNameToContentType, convertContentTypeToCollectionName, makeUniqueSlug } from "../../utils/database";
+import { checkIfSlugUnique, convertCollectionNameToContentType, convertContentTypeToCollectionName, convertToMeilisearchDate, makeUniqueSlug } from "../../utils/database";
 import fetchFromMCMaps from "../../import/minecraftmaps";
 import fetchFromPMC from "../../import/planetminecraft";
 import fetchFromModrinth from "../../import/modrinth";
@@ -550,7 +550,7 @@ Router.app.post<{
     let updateResult = await database.updateOne({ _id: req.body._id }, { $set: req.body })
 
     if (updateResult.acknowledged) {
-        search.updateDocument(req.body)
+        search.updateDocument({...req.body, updatedDate: convertToMeilisearchDate(new Date())})
         return res.status(200).send(req.body)
     } else {
         return res.status(500).send({ error: "Failed to update creation" })
@@ -631,7 +631,7 @@ Router.app.get<{
 
     await database.updateOne({ slug: req.params.slug }, { $set: { status: 1 } })
     creation.status = 1
-    search.updateDocument(creation)
+    search.updateDocument({...creation, updatedDate: convertToMeilisearchDate(new Date())})
     res.status(200).send(creation)
 
     let link = `https://mccreations.net/${req.query.type.toLowerCase()}/${creation.slug}`

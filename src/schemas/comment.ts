@@ -15,12 +15,12 @@ const SubComment = Type.Object({
     username: Type.String(),
     handle: Type.Optional(Type.String()),
     comment: Type.String(),
-    createdDate: Type.Number(),
-    updatedDate: Type.Optional(Type.Number()),
+    date: Type.Number(),
     approved: Type.Boolean(),
     content_type: CommentType,
     slug: Type.String(),
-    likes: Type.Number()
+    likes: Type.Number(),
+    rating: Type.Optional(Type.Number())
 })
 
 export const TComment = Type.Object({

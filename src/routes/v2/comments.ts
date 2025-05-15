@@ -9,7 +9,7 @@ import { _dangerouslyGetUnsanitizedUserFromHandle, processAuthorizationHeader } 
 import { UserTypes } from "../../schemas/user";
 import { containsProfanity } from "../../utils/text";
 import { createNotification, createNotificationToCreators } from "../../notifications";
-import { Creation } from "../../schemas/creation";
+import { Creation, TSort } from "../../schemas/creation";
 import { convertCommentTypeToCollectionName } from "../../utils/database";
 import { NotificationType } from "../../schemas/notifications";
 
@@ -18,7 +18,8 @@ import { NotificationType } from "../../schemas/notifications";
  */
 const GetCommentsQuery = Type.Object({
     slug: Type.String(),
-    content_type: CommentType
+    content_type: CommentType,
+    sort: TSort
 })
 
 type GetCommentsQuery = Static<typeof GetCommentsQuery>
@@ -40,7 +41,21 @@ Router.app.get<{
     if(req.query.slug) query.slug = req.query.slug
     if(req.query.content_type) query.content_type = req.query.content_type
 
-    let comments = await database.find(query)
+    let sort: any = {}
+
+    switch (req.query.sort) {
+        case "newest":
+            sort.date = -1
+            break;
+        case "oldest":
+            sort.date = 1
+            break;
+        default:
+            sort.date = -1
+            break;
+    }
+
+    let comments = await database.find(query, 20, 0, sort)
     return res.status(200).send({
         totalCount: comments.length,
         documents: comments
@@ -196,7 +211,7 @@ Router.app.put<{
             req.body.approved = true
         }
 
-        req.body.updatedDate = Date.now()
+        // req.body.updatedDate = Date.now()
 
         await database.updateOne({_id: new ObjectId(req.params.id)}, {$set: req.body})
         res.status(200).send()
@@ -252,7 +267,7 @@ Router.app.post<{
         req.body.approved = true
     }
 
-    req.body.createdDate = Date.now()
+    req.body.date = Date.now()
 
     await database.updateOne({_id: new ObjectId(req.params.id)}, {$push: {replies: req.body}})
     res.status(200).send()

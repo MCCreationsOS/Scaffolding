@@ -46,6 +46,7 @@ Router.app.post<{
             result = await signInWithDiscord(req.body.code!)
             break;
         case Providers.Google:
+            console.log("Signing in with Google")
             result = await signInWithGoogle(req.body.code!)
             break;
         case Providers.Microsoft:

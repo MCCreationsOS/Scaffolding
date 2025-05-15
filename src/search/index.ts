@@ -38,46 +38,18 @@ export class Search {
         const marketplaceCursor = marketplace.collection.find({})
 
         for await (const doc of mapsCursor) {
-            let timestampInMilliseconds = Date.parse(doc.createdDate);
-            let timestamp = timestampInMilliseconds / 1000; 
-            doc.createdDate = timestamp;
-
-            timestampInMilliseconds = Date.parse(doc.updatedDate);
-            timestamp = timestampInMilliseconds / 1000;
-            doc.updatedDate = timestamp;
             client.index("maps").addDocuments([doc])
         }
 
         for await (const doc of datapacksCursor) {
-            let timestampInMilliseconds = Date.parse(doc.createdDate);
-            let timestamp = timestampInMilliseconds / 1000; 
-            doc.createdDate = timestamp;
-
-            timestampInMilliseconds = Date.parse(doc.updatedDate);
-            timestamp = timestampInMilliseconds / 1000;
-            doc.updatedDate = timestamp;
             client.index("datapacks").addDocuments([doc])
         }
 
         for await (const doc of resourcepacksCursor) {
-            let timestampInMilliseconds = Date.parse(doc.createdDate);
-            let timestamp = timestampInMilliseconds / 1000; 
-            doc.createdDate = timestamp;
-
-            timestampInMilliseconds = Date.parse(doc.updatedDate);
-            timestamp = timestampInMilliseconds / 1000;
-            doc.updatedDate = timestamp;
             client.index("resourcepacks").addDocuments([doc])
         }
 
         for await (const doc of marketplaceCursor) {
-            let timestampInMilliseconds = Date.parse(doc.createdDate);
-            let timestamp = timestampInMilliseconds / 1000; 
-            doc.createdDate = timestamp;
-
-            timestampInMilliseconds = Date.parse(doc.updatedDate);
-            timestamp = timestampInMilliseconds / 1000;
-            doc.updatedDate = timestamp;
             client.index("marketplace").addDocuments([doc])
         }
 

@@ -4,7 +4,10 @@ import fastifySSE from "fastify-sse-v2";
 import autoload from "@fastify/autoload"
 import path from "path"
 export class Router {
-    static app = Fastify({logger: true})
+    static app = Fastify({
+        logger: true,
+        trustProxy: true  // Trust the proxy
+    })
 
     static async initialize() {
 
