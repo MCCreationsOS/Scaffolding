@@ -16,6 +16,7 @@ export let JWTKey = env.JWTKey
  * @returns The user if found, null otherwise
  */
 async function findExistingUser(id: string, provider: Providers): Promise<FullUser | undefined> {
+    if(id === undefined || provider === undefined || id === "" || id === null || provider === null) return undefined
     const database = new Database<FullUser>("creators")
     let user = await database.findOne({ "providers.id": id, "providers.provider": provider})
     if(user && user.providers && user.providers.length > 0) {
@@ -134,10 +135,12 @@ export async function signInWithDiscord(code: string): Promise<{user: FullUser, 
 
         let database = new Database<FullUser>("creators")
         let existingUser = await database.findOne({email: user.user.email})
-        if(existingUser) {
+        if(existingUser && user.user.email) {
             existingUser.providers = [...(existingUser.providers ?? []), {provider: Providers.Discord, id: discordUser.id, token: access_token, refreshToken: ""}]
             user = {user: existingUser, jwt: createJWT({_id: existingUser._id, createdDate: new Date()}, "30d")}
             await database.updateOne({_id: existingUser._id}, {$set: existingUser})
+        } else {
+            database.insertOne(user.user)
         }
         return user
     }
@@ -201,10 +204,12 @@ export async function signInWithGithub(code: string): Promise<{user: FullUser, j
 
         let database = new Database<FullUser>("creators")
         let existingUser = await database.findOne({email: user.user.email})
-        if(existingUser) {
+        if(existingUser && user.user.email) {
             existingUser.providers = [...(existingUser.providers ?? []), {provider: Providers.Github, id: githubUser.id, token: access_token, refreshToken: ""}]
             user = {user: existingUser, jwt: createJWT({_id: existingUser._id, createdDate: new Date()}, "30d")}
             await database.updateOne({_id: existingUser._id}, {$set: existingUser})
+        } else {
+            database.insertOne(user.user)
         }
         return user
     }
@@ -264,10 +269,12 @@ export async function signInWithGoogle(access_token: string): Promise<{user: Ful
 
         let database = new Database<FullUser>("creators")
         let existingUser = await database.findOne({email: user.user.email})
-        if(existingUser) {
+        if(existingUser && user.user.email) {
             existingUser.providers = [...(existingUser.providers ?? []), {provider: Providers.Google, id: googleUser.id, token: access_token, refreshToken: ""}]
             user = {user: existingUser, jwt: createJWT({_id: existingUser._id, createdDate: new Date()}, "30d")}
             await database.updateOne({_id: existingUser._id}, {$set: existingUser})
+        } else {
+            database.insertOne(user.user)
         }
         return user
     }
@@ -300,14 +307,16 @@ export async function signInWithMicrosoft(code: string): Promise<{user: FullUser
 
     if(existingUser) return {user: existingUser, jwt: createJWT({_id: existingUser._id, createdDate: new Date()}, "30d")}
     else {
-        let user = await createUserFromProviderData(microsoftUser.email, microsoftUser.name ?? microsoftUser.givenname + microsoftUser.familyname, Providers.Microsoft, access_token, "", microsoftUser.id, "")
+        let user = await createUserFromProviderData(microsoftUser.email, microsoftUser.name ?? microsoftUser.given_name + " " + microsoftUser.family_name, Providers.Microsoft, access_token, "", microsoftUser.id, "")
         
         let database = new Database<FullUser>("creators")
         let existingUser = await database.findOne({email: user.user.email})
-        if(existingUser) {
+        if(existingUser && user.user.email) {
             existingUser.providers = [...(existingUser.providers ?? []), {provider: Providers.Microsoft, id: microsoftUser.id, token: access_token, refreshToken: ""}]
             user = {user: existingUser, jwt: createJWT({_id: existingUser._id, createdDate: new Date()}, "30d")}
             await database.updateOne({_id: existingUser._id}, {$set: existingUser})
+        } else {
+            database.insertOne(user.user)
         }
 
         return user
@@ -387,12 +396,15 @@ async function createUserFromProviderData(email: string, username: string, provi
             }
         ]
     }
-    let userWithHandle = await database.findOne({handle: user.username})
+
+    const handle = username.toLowerCase().replace(" ", "-")
+
+    let userWithHandle = await database.findOne({handle: handle})
     if(userWithHandle) {
-        user.handle = username.toLowerCase().replace(" ", "-") + Math.floor(Math.random() * 10000)
+        user.handle = handle + Math.floor(Math.random() * 10000)
     }
     else {
-        user.handle = username.toLowerCase().replace(" ", "-");
+        user.handle = handle;
     }
 
     return {user: user, jwt: createJWT({_id: user._id, createdDate: new Date()}, "30d")}

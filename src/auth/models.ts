@@ -6,8 +6,8 @@ export interface MicrosoftUser {
     email: string,
     sub: string,
     name?: string
-    givenname: string
-    familyname: string
+    given_name: string
+    family_name: string
 }
 
 /**

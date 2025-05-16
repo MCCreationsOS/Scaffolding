@@ -36,7 +36,7 @@ Router.app.post<{
 }>("/sign_in", async (req, res) => {
     let result: {user: FullUser, jwt: string} | null = null
 
-    if(!(req.body.email && req.body.password) && !(req.body.provider && req.body.code)) {
+    if((req.body.email === undefined || req.body.password === undefined) && (req.body.provider === undefined || req.body.code === undefined)) {
         return res.code(400).send({error: "Email and password or provider and code are required"})
     }
 

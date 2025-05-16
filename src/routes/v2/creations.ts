@@ -159,7 +159,7 @@ Router.app.get<{
     }
     
     if (req.query.version) {
-        search.filter({filter: {key: "files.minecraftVersion", operation: "=", value: req.query.version}})
+        search.filter({filter: {key: "files.minecraftVersion", operation: "=", value: req.query.version, combiner: "AND"}})
     }
     
     if (req.query.creators) {
