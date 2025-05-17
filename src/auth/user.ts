@@ -131,7 +131,7 @@ export async function signInWithDiscord(code: string): Promise<{user: FullUser, 
 
     if(existingUser) return {user: existingUser, jwt: createJWT({_id: existingUser._id, createdDate: new Date()}, "30d")}
     else {
-        let user = await createUserFromProviderData(discordUser.email, discordUser.global_name, Providers.Discord, access_token, "", discordUser.id, discordUser.avatar, discordUser.banner)
+        let user = await createUserFromProviderData(discordUser.email, discordUser.global_name, Providers.Discord, access_token, "", discordUser.id, `https://cdn.discordapp.com/avatars/${discordUser.id}/${discordUser.avatar}`, `https://cdn.discordapp.com/banners/${discordUser.id}/${discordUser.banner}`)
 
         let database = new Database<FullUser>("creators")
         let existingUser = await database.findOne({email: user.user.email})
