@@ -24,7 +24,7 @@
     "@sinclair/typebox": "^0.34.9",
     "bcrypt": "^5.1.1",
     "body-parser": "^1.20.2",
-    "discord.js": "^14.16.2",
+    "discord.js": "^14.22.1",
     "fastify": "^5.3.1",
     "fastify-sse-v2": "^4.2.1",
     "form-data": "^4.0.0",
