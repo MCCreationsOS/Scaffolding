@@ -6,7 +6,8 @@ export const TContentType = Type.Enum({
     MAP: "map",
     DATAPACK: "datapack",
     RESOURCEPACK: "resourcepack",
-    MARKETPLACE: "marketplace"
+    MARKETPLACE: "marketplace",
+    BLOG: "blog"
 })
 
 export type ContentType = Static<typeof TContentType>
@@ -15,7 +16,8 @@ export const TCollectionName = Type.Enum({
     MAPS: "Maps",
     DATAPACKS: "datapacks",
     RESOURCEPACKS: "resourcepacks",
-    MARKETPLACE: "marketplace"
+    MARKETPLACE: "marketplace",
+    BLOG: "blog"
 })
 
 export type CollectionName = Static<typeof TCollectionName>
@@ -104,8 +106,8 @@ export const TSort = Type.Enum({
     CREATOR_DESCENDING: "creator_descending",
     HIGHEST_RATED: "highest_rated",
     LOWEST_RATED: "lowest_rated",
-    MOST_DOWNLOADED: "most_downloaded",
-    LEAST_DOWNLOADED: "least_downloaded"
+    HIGHEST_DOWNLOADS: "highest_downloads",
+    LOWEST_DOWNLOADS: "lowest_downloads"
 })
 
 export type Sort = Static<typeof TSort>

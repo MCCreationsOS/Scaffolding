@@ -2,14 +2,15 @@
 import { Static, TVoid, Type } from "@sinclair/typebox";
 import { _dangerouslyGetUnsanitizedUserFromJWT, bcryptHash, createJWT, getDiscordAccessToken, getDiscordUser, getGithubAccessToken, getGithubUser, getGoogleUser, getMicrosoftAccessToken, getMicrosoftUser, processAuthorizationHeader } from "../../auth/user";
 import { CollectionName, Database } from "../../database";
-import { NotificationOption, ProfileLayout, User } from "../../schemas/user";
+import { NotificationOption, ProfileLayout, SocialLink, User } from "../../schemas/user";
 import { Router } from "../router";
 import { AuthorizationHeader } from "../../schemas/auth";
 import { ErrorSchema, GenericResponseType, WithCount } from "../../schemas/generic";
 import { Providers } from "../../database/models/users";
 import { forgotPasswordEmail } from "../../email";
-import { TCreation } from "../../schemas/creation";
+import { Creation, TCreation } from "../../schemas/creation";
 import { Search } from "../../search";
+import { Comment, TComment } from "../../schemas/comment";
 
 Router.app.get<{ 
     Reply: GenericResponseType<typeof User>, 
@@ -53,7 +54,10 @@ Router.app.get<{
     return res.code(200).send({settings: user.settings!, push_subscriptions: user.push_subscriptions ?? []})
 })
 
-const WithCountFeed = WithCount(TCreation)
+const WithCountFeed = Type.Object({
+    totalCount: Type.Number(),
+    documents: Type.Array(Type.Union([TCreation, TComment]))
+})
 
 Router.app.get<{
     Querystring: {
@@ -72,22 +76,27 @@ Router.app.get<{
         return res.code(200).send({totalCount: 0, documents: []})
     }
 
-    const search = new Search(["maps", "resourcepacks", "datapacks"])
-    search.filter({filter: [{key: "creators.handle", operation: "IN", value: user.following}, {key: "status", operation: ">=", value: 1, combiner: "AND"}]})
+    const search = new Search<Creation>(["maps", "resourcepacks", "datapacks"])
+    search.filter({filter: {key: "status", operation: ">=", value: 1, combiner: "AND"}, combiner: "AND"})
+    search.filter({filter: user.following?.map(creator => {
+        return {key: "creators.handle", operation: "=", value: creator, combiner: "OR"}
+    }) ?? [], combiner: "AND"})
     search.paginate(parseInt(req.query.limit ?? "20"), parseInt(req.query.page ?? "0") + 1)
     let documents = await search.execute()
 
-    const database = new Database("content", "comments")
+    const database = new Database<Comment>("content", "comments")
     const comments = await database.collection.find({handle: {$in: user.following}, approved: true, content_type: "wall"}).toArray()
 
     const feed = [...documents?.documents ?? [], ...comments]
     feed.sort((a, b) => {
-        return (b['createdDate'] ?? b['date']) - (a['createdDate'] ?? a['date'])
+        let aDate = (a as any)['createdDate'] ?? (a as any)['date']
+        let bDate = (b as any)['createdDate'] ?? (b as any)['date']
+        return bDate - aDate
     })
 
-    if(!documents) {
-        return res.code(400).send({error: "Failed to fetch feed"})
-    }
+    // if(feed.length === 0) {
+    //     return res.code(400).send({error: "Failed to fetch feed"})
+    // }
     return res.code(200).send({totalCount: feed.length, documents: feed})
 })
 
@@ -118,7 +127,9 @@ Router.app.delete<{
 const UpdateProfileSchema = Type.Object({
     username: Type.String(),
     icon: Type.String(),
-    banner: Type.String()
+    banner: Type.String(),
+    about: Type.String(),
+    customCSS: Type.String()
 })
 
 type UpdateProfileBody = Static<typeof UpdateProfileSchema>
@@ -137,13 +148,44 @@ Router.app.post<{
         }
 
         let database = new Database("content", "creators")
-        let result = await database.collection.updateOne({_id: user._id}, {$set: {username: req.body.username, iconURL: req.body.icon, bannerURL: req.body.banner}})
+        let result = await database.collection.updateOne({_id: user._id}, {$set: {username: req.body.username, iconURL: req.body.icon, bannerURL: req.body.banner, about: req.body.about, customCSS: req.body.customCSS}})
         if(result.acknowledged && result.modifiedCount === 1) {
             return res.code(200).send({})
         } else {
             return res.code(400).send({error: "Failed to update user"})
         }
 
+    }).catch((err) => {
+        return res.code(401).send({error: "Unauthorized"})
+    })
+})
+
+const UpdateSocialLinksBody = Type.Object({
+    links: Type.Array(SocialLink)
+})
+
+type UpdateSocialLinksBody = Static<typeof UpdateSocialLinksBody>
+
+Router.app.post<{
+    Body: UpdateSocialLinksBody,
+    Headers: AuthorizationHeader,
+    Reply: GenericResponseType<TVoid>
+}>("/user/updateSocialLinks", async (req, res) => {
+    if(req.headers.authorization.startsWith("Bearer ")) {
+        return res.code(401).send({error: "Unauthorized"})
+    }
+    processAuthorizationHeader(req.headers.authorization).then(async (user) => {
+        if(!user) {
+            return res.code(401).send({error: "Unauthorized"})
+        }
+
+        let database = new Database("content", "creators")
+        let result = await database.collection.updateOne({_id: user._id}, {$set: {socialLinks: req.body.links}})
+        if(result.acknowledged && result.modifiedCount === 1) {
+            return res.code(200).send()
+        } else {
+            return res.code(400).send({error: "Failed to update user"})
+        }
     }).catch((err) => {
         return res.code(401).send({error: "Unauthorized"})
     })
@@ -175,6 +217,7 @@ Router.app.post<{
         } else {
             return res.code(400).send({error: "Failed to update user"})
         }
+    }).catch((err) => {
     }).catch((err) => {
         return res.code(401).send({error: "Unauthorized"})
     })

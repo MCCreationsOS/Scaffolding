@@ -3,7 +3,7 @@ import { env } from "../env";
 
 export const client = new MongoClient(env.MONGODB_URI);
 
-export type CollectionName = "Maps" | "datapacks" | "resourcepacks" | "creators" | "comments" | "notifications" | "leaderboards" | "marketplace" | "translations" | "files"
+export type CollectionName = "Maps" | "datapacks" | "resourcepacks" | "creators" | "comments" | "notifications" | "leaderboards" | "marketplace" | "translations" | "files" | "blog"
 
 /**
  * A database class for interacting with the database

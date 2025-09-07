@@ -2,6 +2,7 @@ import Fastify from "fastify";
 import fastifyMultipart from "@fastify/multipart";
 import fastifySSE from "fastify-sse-v2";
 import autoload from "@fastify/autoload"
+import cors from "@fastify/cors"
 import path from "path"
 export class Router {
     static app = Fastify({
@@ -24,6 +25,8 @@ export class Router {
             // matchFilter: (path) => path.endsWith("creations.ts"),
             logLevel: "debug"
         })
+
+        // this.app.register(cors, {})
 
         await this.app.ready()
         this.app.listen({port: 8080, host: "::"}, () => {

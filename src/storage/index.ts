@@ -71,3 +71,15 @@ export function uploadFromFile(file: Uint8Array, key: string, filename: string, 
         uploadFromStream(stream, key, filename, mimetype).then(resolve).catch(reject)
     })
 }
+
+export function downloadFile(url: string) {
+    return new Promise<Uint8Array>(async (resolve, reject) => {
+        const response = await fetch(url)
+        if(response.ok) {
+            const arrayBuffer = await response.arrayBuffer()
+            resolve(new Uint8Array(arrayBuffer))
+        } else {
+            reject(new Error("Error downloading file from s3"))
+        }
+    })
+}

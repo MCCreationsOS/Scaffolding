@@ -100,7 +100,7 @@ async function searchCommand(interaction: Interaction) {
     if(!interaction.isChatInputCommand()) return;
 
     let query = interaction.options.getString("search")
-    const search = new Search(["maps", "datapacks", "resourcepacks"])
+    const search = new Search<Creation>(["maps", "datapacks", "resourcepacks"])
     search.paginate(3, 0)
     search.query(query!, false)
     let results = await search.execute()

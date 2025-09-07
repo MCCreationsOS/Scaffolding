@@ -1,7 +1,7 @@
 import { Static, TNumber, TString, TVoid, Type } from "@sinclair/typebox";
 import { Router } from "../router";
 import { ErrorSchema, GenericResponseType, WithCount } from "../../schemas/generic";
-import { TCollectionName, Creation, TCreation, Sort, CollectionName, ContentType, TSort, TStatus, TContentType } from "../../schemas/creation";
+import { TCollectionName, Creation, TCreation, Sort, CollectionName, ContentType, TSort, TStatus, TContentType, File } from "../../schemas/creation";
 import { Database } from "../../database";
 import { ObjectId } from "mongodb";
 import { AuthorizationHeader } from "../../schemas/auth";
@@ -67,7 +67,7 @@ Router.app.post<{
 
 const WithCountCreation = WithCount(TCreation)
 
-type SearchContentTypes = "maps" | "datapacks" | "resourcepacks" | "marketplace" | "all" | "content"
+type SearchContentTypes = "maps" | "datapacks" | "resourcepacks" | "marketplace" | "blog" | "all" | "content"
 
 Router.app.get<{
     Querystring: {
@@ -91,7 +91,7 @@ Router.app.get<{
     let indexes: SearchIndex[] = []
     switch (req.query.contentType?.toLowerCase()) {
         case "all":
-            indexes.push("maps", "datapacks", "resourcepacks", "marketplace")
+            indexes.push("maps", "datapacks", "resourcepacks", "marketplace", "blog")
             break
         case "content":
             indexes.push("maps", "datapacks", "resourcepacks")
@@ -108,12 +108,15 @@ Router.app.get<{
         case "resourcepacks":
             indexes.push("resourcepacks")
             break
+        case "blog":
+            indexes.push("blog")
+            break
         default:
-            indexes = ["maps", "datapacks", "resourcepacks", "marketplace"]
+            indexes = ["maps", "datapacks", "resourcepacks", "marketplace", "blog"]
             break
     }
 
-    const search = new Search(indexes)
+    const search = new Search<Creation>(indexes)
     const user = await processAuthorizationHeader(req.headers.authorization + "")
 
     // Build search query
@@ -147,11 +150,11 @@ Router.app.get<{
         case "creator_descending":
             search.sort("creators.username", "desc")
             break;
-        case "least_downloaded":
-            search.sort("downloads", "asc")
-            break;
-        case "most_downloaded":
+        case "highest_downloads":
             search.sort("downloads", "desc")
+            break;
+        case "lowest_downloads":
+            search.sort("downloads", "asc")
             break;
         default:
             search.sort("createdDate", "desc")
@@ -286,10 +289,10 @@ collections.forEach((collection) => {
             case "creator_descending":
                 sort.creators.username = -1
                 break
-            case "most_downloaded":
+            case "highest_downloads":
                 sort.downloads = -1
                 break
-            case "least_downloaded":
+            case "lowest_downloads":
                 sort.downloads = 1
                 break
             default:
@@ -358,11 +361,15 @@ collections.forEach((collection) => {
         Params: {
             slug: string
         }
+        Querystring: {
+            version?: string
+        }
         Reply: GenericResponseType<TVoid>
         Headers: AuthorizationHeader
     }>(`/creations/${collection.toLowerCase()}/:slug/download`, async (req, res) => {
         let database = new Database<Creation>(collection)
-        await database.updateOne({ slug: req.params.slug }, { $inc: { downloads: 1 } })
+        database.updateOne({ slug: req.params.slug }, { $inc: { downloads: 1 } })
+
         return res.status(200).send()
     })
 })
@@ -376,7 +383,8 @@ Router.app.get<{
     if (req.params.type === "map") {
         return res.status(200).send({
             genre: ["adventure", "parkour", "survival", "puzzle", "game", "build"],
-            subgenre: ["horror", "PVE", "PVP", "episodic", "challenge", 'CTM', "RPG", "trivia", "escape", "finding", "maze", "unfair", "dropper", "elytra", "city", "park", "multiplayer", "singleplayer", "co-op"],
+            subgenre: ["horror", "PVE", "PVP", "episodic", "challenge", 'CTM', "RPG", "trivia", "escape", "finding", "maze", "unfair", "dropper", "elytra", "city", "park", "multiplayer", "co-op"],
+            player_count: ["singleplayer", "player_count_2", "player_count_3", "player_count_4+"],
             difficulty: ["chill", "easy", "normal", "hard", "hardcore"],
             theme: ["medieval", "modern", "fantasy", "sci-fi", "realistic", "vanilla"],
             length: ["short", "medium", "long"]

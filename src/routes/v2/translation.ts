@@ -7,21 +7,6 @@ import { Database } from "../../database";
 Router.app.get<{
     Params: {
         lang: string
-        key: string
-    }
-    Reply: GenericResponseType<TString>
-}>("/translation/:lang/:key", async (req, res) => {
-    let translation = await getTranslation(req.params.lang, req.params.key)
-    if(translation) {
-        return res.status(200).send(translation)
-    } else {
-        return res.status(404).send({error: "Translation not found"})
-    }
-})
-
-Router.app.get<{
-    Params: {
-        lang: string
     }
     Reply: GenericResponseType<any>
 }>("/translation/:lang", async (req, res) => {
@@ -41,16 +26,13 @@ Router.app.post<{
     Params: {
         lang: string
     }
-    Body: Object
+    Body: string
     Reply: GenericResponseType<any>
 }>("/translation/:lang", async (req, res) => {
     const database = new Database("backend", "translations")
-    let language = await database.collection.findOneAndUpdate({language_code: req.params.lang + "_queue"}, {$set: {...req.body, language_code: req.params.lang + "_queue"}}, {upsert: true})
+    let language = await database.collection.findOneAndUpdate({language_code: req.params.lang}, {$set: {...JSON.parse(req.body), updated_at: new Date()}}, {upsert: true})
     if(language) {
         return res.status(200).send(language)
-    } else {
-        database.insertOne({language_code: req.params.lang + "_queue", ...req.body})
-        return res.status(200).send(req.body)
     }
 })
 
@@ -59,16 +41,13 @@ Router.app.put<{
         lang: string
     }
     Reply: GenericResponseType<any>
-}>("/translation/:lang/approve", async (req, res) => {
+}>("/translation/approve/:lang", async (req, res) => {
     const database = new Database("backend", "translations")
-    let queue = await database.collection.findOne({language_code: req.params.lang + "_queue"})
-    if(queue) {
-        const {_id, language_code, ...rest} = queue
-        await database.collection.updateOne({language_code: req.params.lang}, {$set: {...rest}})
-        await database.collection.deleteOne({_id})
-        return res.status(200).send(queue)
+    let language = await database.collection.findOne({language_code: req.params.lang})
+    if(language) {
+        return res.status(200).send(language)
     } else {
-        return res.status(404).send({error: "Queue not found"})
+        return res.status(404).send({error: "Language not found"})
     }
 })
 

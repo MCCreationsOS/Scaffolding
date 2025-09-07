@@ -99,7 +99,7 @@ Router.app.post<{
     let database = new Database<Comment>("content", "comments")
     let comment = await database.insertOne(req.body)
     if(comment.acknowledged) {
-        res.status(200).send()
+        res.status(200).send(req.body.comment)
     } else {
         res.status(400).send({
             error: "Failed to create comment"
@@ -270,7 +270,7 @@ Router.app.post<{
     req.body.date = Date.now()
 
     await database.updateOne({_id: new ObjectId(req.params.id)}, {$push: {replies: req.body}})
-    res.status(200).send()
+    res.status(200).send(req.body.comment)
 
     if(comment.handle && comment.handle !== req.body.handle) {
         let user = await _dangerouslyGetUnsanitizedUserFromHandle(comment.handle)

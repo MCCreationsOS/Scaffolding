@@ -22,3 +22,12 @@ export type WithCountType<T extends TSchema> = Static<ReturnType<typeof WithCoun
 
 export const Translatable = Type.Union([Type.String(), Type.Object({key: Type.String(), options: Type.Optional(Type.Any())})], {description: "A translatable string. If a string is provided, it will be used as is. If an object is provided, the key will be used to look up the string in the translations file and the options will be passed to it."})
 export type Translatable = string | {key: string, options?: any}
+
+export const TMinecraftVersion = Type.Object({
+    id: Type.String({description: "The id of the version"}),
+    type: Type.String({description: "The type of the version"}),
+    url: Type.String({description: "The url of the version"}),
+    time: Type.String({description: "The time of the version"})
+}, {description: "A minecraft version"})
+
+export type MinecraftVersion = Static<typeof TMinecraftVersion>
