@@ -1,5 +1,8 @@
 import { Duplex } from "stream";
 import { Creation } from "../schemas/creation";
+import { UserType, UserTypes } from "../schemas/user";
+import { getIdFromJWT, processAuthorizationHeader } from "../auth/user";
+import { ObjectId } from "mongodb";
 
 export function createDefaultCreation(creation: Creation): Creation {
     return {
@@ -45,4 +48,32 @@ export class ProgressStream extends Duplex {
         this.push(chunk)
         callback()
     }
+}
+
+export async function authorizedToEdit(creation: Creation, authorization: string) {
+    let user = await processAuthorizationHeader(authorization)
+    if (!user) {
+        return false
+    }
+    let ignoreOwnerOrCreator = false
+    if (!user) {
+        let key = getIdFromJWT(authorization)
+        if (!key) {
+            return false
+        } else if (key instanceof ObjectId && !key.equals(creation?._id)) {
+            return false
+        } else {
+            ignoreOwnerOrCreator = true
+        }
+    } else if (user && user.type === UserTypes.Admin) {
+        ignoreOwnerOrCreator = true
+    }
+
+    if (!ignoreOwnerOrCreator) {
+        if (creation.owner !== user?.handle && creation.creators.filter(creator => creator.handle === user?.handle).length === 0) {
+            return false
+        }
+    }
+
+    return true
 }

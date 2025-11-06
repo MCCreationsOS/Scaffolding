@@ -14,7 +14,7 @@ import fetchFromModrinth from "../../import/modrinth";
 import { postNewCreation, sendMessage } from "../../discord/bot";
 import { UserType, UserTypes } from "../../schemas/user";
 import { createNotificationsForSubscribers, createNotificationToCreators } from "../../notifications";
-import { createDefaultCreation, ProgressStream } from "../../utils/creations";
+import { authorizedToEdit, createDefaultCreation, ProgressStream } from "../../utils/creations";
 import { approvedEmail } from "../../email";
 import { Duplex, Readable } from "stream";
 const collections: CollectionName[] = ["Maps", "datapacks", "resourcepacks", "marketplace"]
@@ -383,7 +383,7 @@ Router.app.get<{
     if (req.params.type === "map") {
         return res.status(200).send({
             genre: ["adventure", "parkour", "survival", "puzzle", "game", "build"],
-            subgenre: ["horror", "PVE", "PVP", "episodic", "challenge", 'CTM', "RPG", "trivia", "escape", "finding", "maze", "unfair", "dropper", "elytra", "city", "park", "multiplayer", "co-op"],
+            subgenre: ["horror", "PVE", "PVP", "episodic", "challenge", 'CTM', "RPG", "trivia", "escape", "finding", "maze", "unfair", "dropper", "elytra", "city", "park", "multiplayer", "co-op", "bosses", "arena", "metroidvania"],
             player_count: ["singleplayer", "player_count_2", "player_count_3", "player_count_4+"],
             difficulty: ["chill", "easy", "normal", "hard", "hardcore"],
             theme: ["medieval", "modern", "fantasy", "sci-fi", "realistic", "vanilla"],
@@ -521,31 +521,12 @@ Router.app.post<{
     let database = new Database<Creation>(convertContentTypeToCollectionName(req.body.type))
     let search = new Search([convertContentTypeToSearchIndex(req.body.type)])
     let creation = await database.findOne({ _id: new ObjectId(req.body._id) })
-
-
-    let user = await processAuthorizationHeader(req.headers.authorization + "")
-    let ignoreOwnerOrCreator = false
-    if (!user) {
-        let key = getIdFromJWT(req.headers.authorization + "")
-        if (!key) {
-            return res.status(401).send({ error: "Unauthorized" })
-        } else if (key instanceof ObjectId && !key.equals(creation?._id)) {
-            return res.status(401).send({ error: "Unauthorized" })
-        } else {
-            ignoreOwnerOrCreator = true
-        }
-    } else if (user && user.type === UserTypes.Admin) {
-        ignoreOwnerOrCreator = true
-    }
-
     if (!creation) {
         return res.status(404).send({ error: "Creation not found" })
     }
 
-    if (!ignoreOwnerOrCreator) {
-        if (creation.owner !== user?.handle && creation.creators.filter(creator => creator.handle === user?.handle).length === 0) {
-            return res.status(401).send({ error: "Unauthorized" })
-        }
+    if(!await authorizedToEdit(creation, req.headers.authorization)) {
+        return res.status(401).send({ error: "Unauthorized" })
     }
 
     if (req.body.slug !== creation.slug) {
@@ -574,11 +555,6 @@ Router.app.delete<{
     },
     Headers: AuthorizationHeader
 }>("/creations/:slug", async (req, res) => {
-    let user = await processAuthorizationHeader(req.headers.authorization + "")
-    if (!user) {
-        return res.status(401).send({ error: "Unauthorized" })
-    }
-
     let database = new Database<Creation>(req.query.type)
     let search = new Search([req.query.type.toLowerCase() as SearchIndex])
     let creation = await database.findOne({ slug: req.params.slug })
@@ -589,7 +565,7 @@ Router.app.delete<{
         }
     }
 
-    if (creation.owner !== user?.handle && creation.creators.filter(creator => creator.handle === user?.handle).length === 0) {
+    if(!await authorizedToEdit(creation, req.headers.authorization)) {
         return res.status(401).send({ error: "Unauthorized" })
     }
 
@@ -616,26 +592,10 @@ Router.app.get<{
         return res.status(404).send({ error: "Creation not found" })
     }
 
-    let user = await processAuthorizationHeader(req.headers.authorization + "")
-    let ignoreOwnerOrCreator = false
-    if (!user) {
-        let key = getIdFromJWT(req.headers.authorization + "")
-        if (!key) {
-            return res.status(401).send({ error: "Unauthorized" })
-        } else if (key instanceof ObjectId && !key.equals(creation?._id)) {
-            return res.status(401).send({ error: "Unauthorized" })
-        } else {
-            ignoreOwnerOrCreator = true
-        }
-    } else if (user && user.type === UserTypes.Admin) {
-        ignoreOwnerOrCreator = true
+    if(!await authorizedToEdit(creation, req.headers.authorization)) {
+        return res.status(401).send({ error: "Unauthorized" })
     }
-
-    if (!ignoreOwnerOrCreator) {
-        if (creation.owner !== user?.handle && creation.creators.filter(creator => creator.handle === user?.handle).length === 0) {
-            return res.status(401).send({ error: "Unauthorized" })
-        }
-    }
+    let user = await processAuthorizationHeader(req.headers.authorization)
 
     await database.updateOne({ slug: req.params.slug }, { $set: { status: 1 } })
     creation.status = 1
