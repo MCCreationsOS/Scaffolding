@@ -18,6 +18,9 @@ export function uploadFromStream(stream: Readable, key: string, filename: string
     if(!process.env.AWS_REGION) throw new Error("AWS_REGION is not set")
     if(!process.env.AWS_ACCESS_KEY_ID) throw new Error("AWS_ACCESS_KEY_ID is not set")
     if(!process.env.AWS_SECRET_ACCESS_KEY) throw new Error("AWS_SECRET_ACCESS_KEY is not set")
+
+    let uniqueId = crypto.randomUUID()
+    filename = `${uniqueId}-${filename}`
     
     let database = new Database("backend", "files")
     return new Promise<string>((resolve, reject) => {
