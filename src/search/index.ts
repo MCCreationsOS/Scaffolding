@@ -5,7 +5,7 @@ import { ContentType, Creation } from "../schemas/creation"
 import { Database } from "../database"
 import { exec } from "child_process"
 
-export type SearchIndex  = "maps" | "datapacks" | "resourcepacks" | "marketplace" | "minecraft_versions" | "blog"
+export type SearchIndex = "maps" | "datapacks" | "resourcepacks" | "marketplace" | "minecraft_versions" | "blog"
 
 export interface FilterObject {
     key: string,
@@ -82,7 +82,7 @@ export class Search<T extends Record<string, any>> {
             .then(res => res.json())
             .then(data => {
                 console.log(data.versions)
-                client.index("minecraft_versions").addDocuments(data.versions.slice(0, 10).map((version: any) => {
+                client.index("minecraft_versions").addDocuments(data.versions.map((version: any) => {
                     return {
                         id: version.id.replaceAll(".", "-").replaceAll(" ", "_"),
                         type: version.type,
@@ -150,7 +150,7 @@ export class Search<T extends Record<string, any>> {
         let totalCount = 0;
         let documents: T[] = []
         response.results.forEach(res => {
-            if(res.totalHits) {
+            if (res.totalHits) {
                 totalCount += res.totalHits;
             } else {
                 totalCount += res.estimatedTotalHits!;
@@ -160,7 +160,7 @@ export class Search<T extends Record<string, any>> {
         })
 
         documents.sort((a: T, b: T) => {
-            switch(this.sortS) {
+            switch (this.sortS) {
                 case "createdDate:desc":
                     return new Date(b.createdDate).getTime() - new Date(a.createdDate).getTime()
                 case "createdDate:asc":
@@ -196,23 +196,23 @@ export class Search<T extends Record<string, any>> {
 
         documents = documents.slice(0, this.hitsPerPageS)
         // if(totalCount > this.hitsPerPageS!) totalCount = this.hitsPerPageS!;
-        return {totalCount, documents}
+        return { totalCount, documents }
     }
 
     async execute() {
-        if(!this.client || this.indexes.length === 0) {
+        if (!this.client || this.indexes.length === 0) {
             return;
         }
         let options: any = {}
 
-        if(this.hitsPerPageS) {
+        if (this.hitsPerPageS) {
             options.hitsPerPage = this.hitsPerPageS;
             options.page = this.pageS
         }
 
-        if(this.filters.length > 0) {
+        if (this.filters.length > 0) {
             let filterStrings = this.filters.map((filter, index) => {
-                if(Array.isArray(filter.filter)) {
+                if (Array.isArray(filter.filter)) {
                     return `(${filter.filter.map((f, i) => {
                         // @ts-ignore
                         return ` ${f.key} ${f.operation} ${typeof f.value === "string" ? `"${f.value}"` : f.value} ${i === filter.filter.length - 1 ? "" : f.combiner ?? "OR"}`
@@ -225,13 +225,13 @@ export class Search<T extends Record<string, any>> {
         }
         console.log(options.filter)
 
-        if(this.sortS) {
+        if (this.sortS) {
             options.sort = [this.sortS];
         }
-        try{
-            let response = await this.client.multiSearch<T>({queries: this.indexes.map(index => {return {indexUid: index.uid, q: this.queryS, ...options}})})
+        try {
+            let response = await this.client.multiSearch<T>({ queries: this.indexes.map(index => { return { indexUid: index.uid, q: this.queryS, ...options } }) })
             console.log(response)
-            
+
             return this.reformatResults(response)
         } catch (error) {
             console.error(error)
@@ -258,7 +258,7 @@ export class Search<T extends Record<string, any>> {
 }
 
 export function convertContentTypeToSearchIndex(contentType: ContentType): SearchIndex {
-    switch(contentType) {
+    switch (contentType) {
         case "map":
             return "maps"
         case "datapack":

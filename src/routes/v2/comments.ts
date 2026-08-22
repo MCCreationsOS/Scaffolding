@@ -19,7 +19,8 @@ import { NotificationType } from "../../schemas/notifications";
 const GetCommentsQuery = Type.Object({
     slug: Type.String(),
     content_type: CommentType,
-    sort: TSort
+    sort: TSort,
+    page: Type.String()
 })
 
 type GetCommentsQuery = Static<typeof GetCommentsQuery>
@@ -38,8 +39,10 @@ Router.app.get<{
 }>("/comments", async (req, res) => {
     let database = new Database<Comment>("content", "comments")
     let query: any = {}
-    if(req.query.slug) query.slug = req.query.slug
-    if(req.query.content_type) query.content_type = req.query.content_type
+    if (req.query.slug) query.slug = req.query.slug
+    if (req.query.content_type) query.content_type = req.query.content_type
+    let page = 0
+    if (req.query.page) page = parseInt(req.query.page)
 
     let sort: any = {}
 
@@ -55,7 +58,7 @@ Router.app.get<{
             break;
     }
 
-    let comments = await database.find(query, 20, 0, sort)
+    let comments = await database.find(query, 20, page, sort)
     return res.status(200).send({
         totalCount: comments.length,
         documents: comments
@@ -72,8 +75,8 @@ Router.app.get<{
     Reply: GenericResponseType<typeof TComment>
 }>("/comment/:id", async (req, res) => {
     let database = new Database<Comment>("content", "comments")
-    let comment = await database.findOne({_id: new ObjectId(req.params.id)})
-    if(comment) {
+    let comment = await database.findOne({ _id: new ObjectId(req.params.id) })
+    if (comment) {
         return res.status(200).send(comment)
     } else {
         return res.status(404).send({
@@ -90,7 +93,7 @@ Router.app.post<{
     Reply: GenericResponseType<TVoid>
 }>("/comment", async (req, res) => {
 
-    if(containsProfanity(req.body.comment)) {
+    if (containsProfanity(req.body.comment)) {
         req.body.approved = false
     } else {
         req.body.approved = true
@@ -98,7 +101,7 @@ Router.app.post<{
 
     let database = new Database<Comment>("content", "comments")
     let comment = await database.insertOne(req.body)
-    if(comment.acknowledged) {
+    if (comment.acknowledged) {
         res.status(200).send(req.body.comment)
     } else {
         res.status(400).send({
@@ -108,14 +111,14 @@ Router.app.post<{
     }
 
     let creations = new Database<Creation>(convertCommentTypeToCollectionName(req.body.content_type))
-    let creation = await creations.findOne({slug: req.body.slug})
-    if(creation && ((creation.owner !== req.body.handle && !creation.creators.map((creator) => creator.handle).includes(req.body.handle)) || !req.body.handle)) {
+    let creation = await creations.findOne({ slug: req.body.slug })
+    if (creation && ((creation.owner !== req.body.handle && !creation.creators.map((creator) => creator.handle).includes(req.body.handle)) || !req.body.handle)) {
         console.log("Creating notification")
         createNotificationToCreators({
             content: creation,
             type: "comment",
-            title: {key: "Account.Notifications.NewComment.title"},
-            body: {key: "Account.Notifications.NewComment.body", options: {username: req.body.username, content_type: creation.type, title: creation.title}}
+            title: { key: "Account.Notifications.NewComment.title" },
+            body: { key: "Account.Notifications.NewComment.body", options: { username: req.body.username, content_type: creation.type, title: creation.title } }
         })
     }
 })
@@ -129,7 +132,7 @@ Router.app.delete<{
     },
     Headers: AuthorizationHeader
 }>("/comment/:id", async (req, res) => {
-    if(req.headers.authorization.includes("Bearer")) {
+    if (req.headers.authorization.includes("Bearer")) {
         return res.status(401).send({
             error: "Unauthorized"
         })
@@ -137,27 +140,27 @@ Router.app.delete<{
 
     // Check if the user is authorized
     processAuthorizationHeader(req.headers.authorization).then(async (user) => {
-        if(!user) {
+        if (!user) {
             return res.status(401).send({
                 error: "Unauthorized"
             })
         }
 
         let database = new Database<Comment>("content", "comments")
-        let comment = await database.findOne({_id: new ObjectId(req.params.id)})
-        if(!comment) {
+        let comment = await database.findOne({ _id: new ObjectId(req.params.id) })
+        if (!comment) {
             return res.status(404).send({
                 error: "Comment not found"
             })
         }
 
-        if(comment?.handle !== user!.handle && user!.type !== UserTypes.Admin) {
+        if (comment?.handle !== user!.handle && user!.type !== UserTypes.Admin) {
             return res.status(401).send({
                 error: "Unauthorized"
             })
         }
 
-        await database.deleteOne({_id: new ObjectId(req.params.id)})
+        await database.deleteOne({ _id: new ObjectId(req.params.id) })
         res.status(200).send()
     }).catch((err) => {
         return res.status(401).send({
@@ -177,7 +180,7 @@ Router.app.put<{
     Reply: GenericResponseType<TVoid>
     Headers: AuthorizationHeader
 }>("/comment/:id", async (req, res) => {
-    if(req.headers.authorization.includes("Bearer")) {
+    if (req.headers.authorization.includes("Bearer")) {
         return res.status(401).send({
             error: "Unauthorized"
         })
@@ -185,27 +188,27 @@ Router.app.put<{
 
     // Check if the user is authorized
     processAuthorizationHeader(req.headers.authorization).then(async (user) => {
-        if(!user) {
+        if (!user) {
             return res.status(401).send({
                 error: "Unauthorized"
             })
         }
 
         let database = new Database<Comment>("content", "comments")
-        let comment = await database.findOne({_id: new ObjectId(req.params.id)})
-        if(!comment) {
+        let comment = await database.findOne({ _id: new ObjectId(req.params.id) })
+        if (!comment) {
             return res.status(404).send({
                 error: "Comment not found"
             })
         }
 
-        if(comment?.handle !== user!.handle && user!.type !== UserTypes.Admin) {
+        if (comment?.handle !== user!.handle && user!.type !== UserTypes.Admin) {
             return res.status(401).send({
                 error: "Unauthorized"
             })
         }
 
-        if(containsProfanity(req.body.comment)) {
+        if (containsProfanity(req.body.comment)) {
             req.body.approved = false
         } else {
             req.body.approved = true
@@ -213,7 +216,7 @@ Router.app.put<{
 
         // req.body.updatedDate = Date.now()
 
-        await database.updateOne({_id: new ObjectId(req.params.id)}, {$set: req.body})
+        await database.updateOne({ _id: new ObjectId(req.params.id) }, { $set: req.body })
         res.status(200).send()
     }).catch((err) => {
         return res.status(401).send({
@@ -232,14 +235,14 @@ Router.app.get<{
     Reply: GenericResponseType<TVoid>
 }>("/comment/:id/like", async (req, res) => {
     let database = new Database<Comment>("content", "comments")
-    let comment = await database.findOne({_id: new ObjectId(req.params.id)})
-    if(!comment) {
+    let comment = await database.findOne({ _id: new ObjectId(req.params.id) })
+    if (!comment) {
         return res.status(404).send({
             error: "Comment not found"
         })
     }
 
-    await database.updateOne({_id: new ObjectId(req.params.id)}, {$inc: {likes: 1}})
+    await database.updateOne({ _id: new ObjectId(req.params.id) }, { $inc: { likes: 1 } })
     return res.status(200).send()
 })
 
@@ -254,14 +257,14 @@ Router.app.post<{
     Reply: GenericResponseType<TVoid>
 }>("/comment/:id/reply", async (req, res) => {
     let database = new Database<Comment>("content", "comments")
-    let comment = await database.findOne({_id: new ObjectId(req.params.id)})
-    if(!comment) {
+    let comment = await database.findOne({ _id: new ObjectId(req.params.id) })
+    if (!comment) {
         return res.status(404).send({
             error: "Comment not found"
         })
     }
 
-    if(containsProfanity(req.body.comment)) {
+    if (containsProfanity(req.body.comment)) {
         req.body.approved = false
     } else {
         req.body.approved = true
@@ -269,17 +272,17 @@ Router.app.post<{
 
     req.body.date = Date.now()
 
-    await database.updateOne({_id: new ObjectId(req.params.id)}, {$push: {replies: req.body}})
+    await database.updateOne({ _id: new ObjectId(req.params.id) }, { $push: { replies: req.body } })
     res.status(200).send(req.body.comment)
 
-    if(comment.handle && comment.handle !== req.body.handle) {
+    if (comment.handle && comment.handle !== req.body.handle) {
         let user = await _dangerouslyGetUnsanitizedUserFromHandle(comment.handle)
-        if(user) {
+        if (user) {
             createNotification({
                 user: user,
                 type: "reply",
-                title: {key: "Account.Notifications.NewReply.title"},
-                body: {key: "Account.Notifications.NewReply.body", options: {username: req.body.username}},
+                title: { key: "Account.Notifications.NewReply.title" },
+                body: { key: "Account.Notifications.NewReply.body", options: { username: req.body.username } },
                 link: `/${comment.content_type.toLowerCase()}/${comment.slug}`
             })
         }

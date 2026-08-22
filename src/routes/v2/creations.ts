@@ -382,33 +382,33 @@ Router.app.get<{
 }>("/creations/tags/:type", async (req, res) => {
     if (req.params.type === "map") {
         return res.status(200).send({
-            genre: ["adventure", "parkour", "survival", "puzzle", "game", "build"],
-            subgenre: ["horror", "PVE", "PVP", "episodic", "challenge", 'CTM', "RPG", "trivia", "escape", "finding", "maze", "unfair", "dropper", "elytra", "city", "park", "multiplayer", "co-op", "bosses", "arena", "metroidvania"],
+            genre: ["adventure", "build", "game", "parkour", "puzzle", "survival"],
+            subgenre: ["PVE", "PVP", "RPG", "arena", "bosses", "challenge", "city", "co-op", "dropper", "elytra", "episodic", "escape", "finding", "horror", "maze", "metroidvania", "multiplayer", "park", "trivia", "unfair", 'CTM'],
             player_count: ["singleplayer", "player_count_2", "player_count_3", "player_count_4+"],
             difficulty: ["chill", "easy", "normal", "hard", "hardcore"],
-            theme: ["medieval", "modern", "fantasy", "sci-fi", "realistic", "vanilla"],
+            theme: ["fantasy", "medieval", "modern", "realistic", "sci-fi", "vanilla"],
             length: ["short", "medium", "long"]
         })
     } else if (req.params.type === "datapack") {
         return res.status(200).send({
-            genre: ["adventure", "survival", "game", "tool", "overhaul", "creative", "qol"],
-            subgenre: ["PVE", "PVP", "challenge", "unfair", "multiplayer", "singleplayer", "crafting", "exploration", "tweak", "magic", "tech", "mobs", "bosses", "weapons", "tools"],
+            genre: ["adventure", "creative", "game", "overhaul", "qol", "survival", "tool"],
+            subgenre: ["PVE", "PVP", "bosses", "challenge", "crafting", "exploration", "magic", "mobs", "multiplayer", "singleplayer", "tech", "tools", "tweak", "unfair", "weapons"],
             difficulty: ["chill", "easy", "normal", "hard", "hardcore"],
-            theme: ["medieval", "modern", "fantasy", "sci-fi", "realistic", "vanilla"]
+            theme: ["fantasy", "medieval", "modern", "realistic", "sci-fi", "vanilla"]
         })
     } else if (req.params.type === "marketplace") {
         return res.status(200).send({
             genre: ["map", "datapack", "resourcepack"],
-            subgenre: ["adventure", "parkour", "survival", "puzzle", "game", "build", "pvp", "pve", "creative", "qol", "utility", "other", "tool", "overhaul", "realistic", "simple", "themed"],
+            subgenre: ["adventure", "build", "creative", "game", "other", "overhaul", "parkour", "puzzle", "pve", "pvp", "qol", "realistic", "simple", "survival", "themed", "tool", "utility"],
             difficulty: ["chill", "easy", "normal", "hard", "hardcore"],
-            theme: ["medieval", "modern", "fantasy", "sci-fi", "realistic", "vanilla"]
+            theme: ["fantasy", "medieval", "modern", "realistic", "sci-fi", "vanilla"]
         })
     } else if (req.params.type === "resourcepack") {
         return res.status(200).send({
-            genre: ["realistic", "simple", "themed", "utility", "other"],
-            subgenre: ["cartoon", "smooth", "faithful", "other", "PVP", "entities", "items", "blocks", "GUI", "font", "sound", "music", "language", "weapons", "funny", "cosmetic", "models", "shaders", "skybox"],
+            genre: ["other", "realistic", "simple", "themed", "utility"],
+            subgenre: ["GUI", "PVP", "blocks", "cartoon", "cosmetic", "entities", "faithful", "font", "funny", "items", "language", "models", "music", "other", "shaders", "skybox", "smooth", "sound", "weapons"],
             resolution: ["8x", "16x", "32x", "64x", "128x", "256x", "512x", "1024x +"],
-            theme: ["medieval", "modern", "fantasy", "sci-fi", "realistic", "vanilla", "anime"]
+            theme: ["anime", "fantasy", "medieval", "modern", "realistic", "sci-fi", "vanilla"]
         })
     }
 })

@@ -4,6 +4,7 @@ import { Readable } from "stream";
 import { Database } from "../database";
 import { User } from "discord.js";
 import { ObjectId } from "mongodb";
+import crypto from "crypto";
 
 const bucket = new S3({
     region: process.env.AWS_REGION,
