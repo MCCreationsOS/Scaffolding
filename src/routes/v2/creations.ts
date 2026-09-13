@@ -1,7 +1,7 @@
 import { Static, TNumber, TString, TVoid, Type } from "@sinclair/typebox";
 import { Router } from "../router";
 import { ErrorSchema, GenericResponseType, WithCount } from "../../schemas/generic";
-import { TCollectionName, Creation, TCreation, Sort, CollectionName, ContentType, TSort, TStatus, TContentType, File } from "../../schemas/creation";
+import { TCollectionName, Creation, TCreation, Sort, CollectionName, ContentType, TSort, TStatus, TContentType, File, FileType } from "../../schemas/creation";
 import { Database } from "../../database";
 import { ObjectId } from "mongodb";
 import { AuthorizationHeader } from "../../schemas/auth";
@@ -16,7 +16,7 @@ import { UserType, UserTypes } from "../../schemas/user";
 import { createNotificationsForSubscribers, createNotificationToCreators } from "../../notifications";
 import { authorizedToEdit, createDefaultCreation, ProgressStream } from "../../utils/creations";
 import { approvedEmail } from "../../email";
-import { Duplex, Readable } from "stream";
+import dompurify from "dompurify";
 const collections: CollectionName[] = ["Maps", "datapacks", "resourcepacks", "marketplace"]
 
 /**
@@ -536,10 +536,52 @@ Router.app.post<{
     req.body._id = new ObjectId(req.body._id)
     req.body.updatedDate = Date.now()
 
-    let updateResult = await database.updateOne({ _id: req.body._id }, { $set: req.body })
+    try {
+        creation.creators = []
+        req.body.creators.forEach((creator: UserType) => {
+            creation.creators.push({
+                _id: creator._id,
+                email: creator.email,
+                handle: creator.handle,
+                username: creator.username,
+                type: creator.type
+            })
+        })
+        creation.description = dompurify.sanitize(req.body.description)
+        creation.files = req.body.files
+        if(req.body.files) {
+            creation.files = []
+            req.body.files.forEach((file: File) => {
+                creation.files!.push({
+                    updatedDate: file.updatedDate,
+                    createdDate: file.createdDate,
+                    contentVersion: file.contentVersion,
+                    changelog: file.changelog,
+                    extraFiles: file.extraFiles,
+                    minecraftVersion: file.minecraftVersion,
+                    type: file.type,
+                    url: file.url
+                })
+            })
+        }
+        creation.images = req.body.images
+        creation.key = req.body.key
+        creation.owner = req.body.owner
+        creation.shortDescription = req.body.shortDescription
+        creation.slug = req.body.slug
+        creation.tags = req.body.tags
+        creation.title = req.body.title
+        creation.updatedDate = req.body.updatedDate
+        creation.videoUrl = req.body.videoUrl
+    } catch (error) {
+        return res.status(400).send({ error: "Invalid creation data" })
+    }
+
+    let updateResult = await database.updateOne({ _id: req.body._id }, { $set: creation })
 
     if (updateResult.acknowledged) {
-        search.updateDocument({...req.body, updatedDate: convertToMeilisearchDate(new Date())})
+        search.updateDocument({...creation, updatedDate: convertToMeilisearchDate(new Date())})
+        fetch(`https://mccreations.net/api/cache/revalidate?tag=${req.body.slug}`)
         return res.status(200).send(req.body)
     } else {
         return res.status(500).send({ error: "Failed to update creation" })
@@ -571,6 +613,7 @@ Router.app.delete<{
 
     search.deleteDocument(creation)
     let deletionResult = await database.deleteOne({ slug: creation.slug })
+    fetch(`https://mccreations.net/api/cache/revalidate?tag=${creation.slug}`)
     return res.status(200).send(deletionResult)
 
 })
@@ -646,6 +689,7 @@ Router.app.get<{
     res.status(200).send(creation)
 
     postNewCreation(creation, "<@&883788946327347210>")
+    fetch(`https://mccreations.net/api/cache/revalidate?tag=${creation.slug}`)
 
     let creators = creation.creators
     creators?.forEach(async (creator) => {

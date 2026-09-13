@@ -11,7 +11,7 @@ import { containsProfanity } from "../../utils/text";
 import { createNotification, createNotificationToCreators } from "../../notifications";
 import { Creation, TSort } from "../../schemas/creation";
 import { convertCommentTypeToCollectionName } from "../../utils/database";
-import { NotificationType } from "../../schemas/notifications";
+import dompurify from "dompurify";
 
 /**
  * Query for getting comments
@@ -98,6 +98,8 @@ Router.app.post<{
     } else {
         req.body.approved = true
     }
+
+    req.body.comment = dompurify.sanitize(req.body.comment)
 
     let database = new Database<Comment>("content", "comments")
     let comment = await database.insertOne(req.body)
@@ -269,6 +271,8 @@ Router.app.post<{
     } else {
         req.body.approved = true
     }
+
+    req.body.comment = dompurify.sanitize(req.body.comment)
 
     req.body.date = Date.now()
 

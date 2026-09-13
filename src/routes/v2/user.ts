@@ -11,6 +11,7 @@ import { forgotPasswordEmail } from "../../email";
 import { Creation, TCreation } from "../../schemas/creation";
 import { Search } from "../../search";
 import { Comment, TComment } from "../../schemas/comment";
+import dompurify from "dompurify";
 
 Router.app.get<{ 
     Reply: GenericResponseType<typeof User>, 
@@ -146,6 +147,9 @@ Router.app.post<{
         if(!user) {
             return res.code(401).send({error: "Unauthorized"})
         }
+
+        req.body.about = dompurify.sanitize(req.body.about)
+        req.body.customCSS = dompurify.sanitize(req.body.customCSS)
 
         let database = new Database("content", "creators")
         let result = await database.collection.updateOne({_id: user._id}, {$set: {username: req.body.username, iconURL: req.body.icon, bannerURL: req.body.banner, about: req.body.about, customCSS: req.body.customCSS}})
