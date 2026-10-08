@@ -63,6 +63,7 @@ export function bcryptHash(password: string): Promise<string> {
  * @returns The JWT
  */
 export function createJWT(data: any, expiresIn: string = "30d") {
+    // @ts-ignore - Too lazy to import ms and deal with that. 30d is valid for jwt.sign
     return jwt.sign(data, JWTKey, { expiresIn: expiresIn })
 }
 

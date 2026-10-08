@@ -5,3 +5,4 @@ node_modules
 nginx.conf
 .parcel-cache
 dist
+image-migration-log.jsonl

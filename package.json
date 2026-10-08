@@ -9,7 +9,8 @@
     "start": "ts-node src/index.ts",
     "dev": "nodemon --exec ts-node src/index.ts",
     "build": "tsc",
-    "serve": "node dist/index.js"
+    "serve": "node dist/index.js",
+    "optimize-images": "ts-node src/scripts/optimize-bucket-images.ts"
   },
   "author": "",
   "license": "ISC",
@@ -39,6 +40,7 @@
     "puppeteer-extra": "^3.3.6",
     "puppeteer-extra-plugin-stealth": "^2.11.2",
     "schedule-jobs-with-cron": "^1.5.4",
+    "sharp": "^0.35.5",
     "showdown": "^2.1.0",
     "web-push": "^3.6.7"
   },
