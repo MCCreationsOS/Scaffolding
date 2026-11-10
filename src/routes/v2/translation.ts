@@ -11,13 +11,8 @@ Router.app.get<{
     Reply: GenericResponseType<any>
 }>("/translation/:lang", async (req, res) => {
     let translations = await getTranslations(req.params.lang)
-    if(!translations && req.params.lang.includes("queue")) {
-        let queue = await getTranslations(req.params.lang.replace("_queue", ""))
-        if(queue) {
-            return res.status(200).send(queue)
-        } else {
-            return res.status(404).send({error: "Queue not found"})
-        }
+    if(!translations) {
+        return res.status(404).send({error: "Language not found"})
     }
     return res.status(200).send(translations)
 })

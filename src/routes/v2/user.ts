@@ -85,10 +85,7 @@ Router.app.get<{
     search.paginate(parseInt(req.query.limit ?? "20"), parseInt(req.query.page ?? "0") + 1)
     let documents = await search.execute()
 
-    const database = new Database<Comment>("content", "comments")
-    const comments = await database.collection.find({handle: {$in: user.following}, approved: true, content_type: "wall"}).toArray()
-
-    const feed = [...documents?.documents ?? [], ...comments]
+    const feed = [...documents?.documents ?? []]
     feed.sort((a, b) => {
         let aDate = (a as any)['createdDate'] ?? (a as any)['date']
         let bDate = (b as any)['createdDate'] ?? (b as any)['date']
@@ -163,7 +160,7 @@ Router.app.post<{
 
         let database = new Database("content", "creators")
         let result = await database.collection.updateOne({_id: user._id}, {$set: update})
-        if(result.acknowledged && result.matchedCount === 1) {
+        if(result.acknowledged) {
             return res.code(200).send({})
         } else {
             return res.code(400).send({error: "Failed to update user"})
@@ -195,7 +192,7 @@ Router.app.post<{
 
         let database = new Database("content", "creators")
         let result = await database.collection.updateOne({_id: user._id}, {$set: {socialLinks: req.body.links}})
-        if(result.acknowledged && result.modifiedCount === 1) {
+        if(result.acknowledged) {
             return res.code(200).send()
         } else {
             return res.code(400).send({error: "Failed to update user"})
@@ -226,7 +223,7 @@ Router.app.post<{
 
         let database = new Database("content", "creators")
         let result = await database.collection.updateOne({_id: user._id}, {$set: {profileLayout: req.body.layout}})
-        if(result.acknowledged && result.modifiedCount === 1) {
+        if(result.acknowledged) {
             return res.code(200).send()
         } else {
             return res.code(400).send({error: "Failed to update user"})
@@ -265,7 +262,7 @@ Router.app.post<{
 
         let database = new Database("content", "creators")
         let result = await database.collection.updateOne({_id: user._id}, {$set: {settings: req.body}})
-        if(result.acknowledged && result.modifiedCount === 1) {
+        if(result.acknowledged) {
             return res.code(200).send()
         } else {
             return res.code(400).send({error: "Failed to update user"})
@@ -303,7 +300,7 @@ Router.app.post<{
         }
 
         let result = await database.collection.updateOne({_id: user._id}, {$set: {handle: handle}})
-        if(result.acknowledged && result.modifiedCount === 1) {
+        if(result.acknowledged) {
             // Update handle in all content
             for(let content of ["Maps", "datapacks", "resourcepacks", "marketplace", "comments", "leaderboards", "notifications"] as CollectionName[]) {
                 database = new Database("content", content)
@@ -349,7 +346,7 @@ Router.app.post<{
         }
 
         let result = await database.collection.updateOne({_id: user._id}, {$set: user})
-        if(result.acknowledged && result.modifiedCount === 1) {
+        if(result.acknowledged) {
             return res.code(200).send()
         } else {
             return res.code(400).send({error: "Failed to update user"})

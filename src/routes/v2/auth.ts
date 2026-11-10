@@ -73,7 +73,7 @@ Router.app.post<{
     let result: {user: FullUser, jwt: string} | null = null
     let user: FullUser | null = null
 
-    if(!(req.body.email && req.body.password) && !(req.body.provider && req.body.code)) {
+    if(!(req.body.email && req.body.password) && (req.body.provider == undefined || req.body.code == undefined)) {
         return res.code(400).send({error: "Email and password or provider and code are required"})
     }
 

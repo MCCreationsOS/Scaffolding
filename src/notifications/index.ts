@@ -9,6 +9,7 @@ import { Creation } from "../schemas/creation";
 import { FullUser } from "../database/models/users";
 import { getTranslation } from "../translation";
 import { CronJob } from "schedule-jobs-with-cron";
+import { convertContentTypeToCollectionName } from "../utils/database";
 
 webpush.setVapidDetails(
     'mailto:crazycowmm@gmail.com',
@@ -71,7 +72,7 @@ export async function createNotificationToCreators(options: {
     let creators = new Database("content", "creators")
     let users = await creators.collection.find<FullUser>({handle: {$in: options.content.creators?.map(creator => creator.handle) ?? []}}).toArray()
     users.forEach(async (user) => {
-        await createNotification({...options, user: user, link: `/${options.content.type.toLowerCase()}/${options.content.slug}`, createdByUser: options.createdByUser})
+        await createNotification({...options, user: user, link: `/${convertContentTypeToCollectionName(options.content.type)}/${options.content.slug}`, createdByUser: options.createdByUser})
     })
 }
 

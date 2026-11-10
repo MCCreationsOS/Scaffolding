@@ -40,10 +40,10 @@ Router.app.get<{
 
     pipeline.push(
         {
-            "$limit": parseInt(req.query.limit ?? "20")
+            "$skip": parseInt(req.query.page ?? "0") * parseInt(req.query.limit ?? "20")
         },
         {
-            "$skip": parseInt(req.query.page ?? "0") * parseInt(req.query.limit ?? "20")
+            "$limit": parseInt(req.query.limit ?? "20")
         }
     )
 
@@ -100,8 +100,8 @@ Router.app.get<{
     }
 
     let database = new Database<FullUser>("content", "creators")
-    await database.updateOne({handle: req.params.handle}, {$push: {followers: user._id.toString()}})
-    await database.updateOne({_id: user._id}, {$push: {following: req.params.handle}})
+    await database.updateOne({handle: req.params.handle}, {$addToSet: {followers: user._id.toString()}})
+    await database.updateOne({_id: user._id}, {$addToSet: {following: req.params.handle}})
     return res.status(200).send({})
 })
 

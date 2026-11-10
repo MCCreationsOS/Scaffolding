@@ -204,6 +204,7 @@ async function migrateKey(s3: S3, bucketName: string, key: string, hits: Hit[], 
     const outputType = svg ? (contentType || "image/svg+xml") : "image/webp"
     if (!svg && !settled) {
         try {
+            // @ts-ignore It's a single run script type checking is ok
             body = await encodeWebp(buffer)
         } catch (error) {
             stats.failed++

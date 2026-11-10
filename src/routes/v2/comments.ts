@@ -44,6 +44,8 @@ Router.app.get<{
     let page = 0
     if (req.query.page) page = parseInt(req.query.page)
 
+    query.approved = true
+
     let sort: any = {}
 
     switch (req.query.sort) {
@@ -58,7 +60,7 @@ Router.app.get<{
             break;
     }
 
-    let comments = await database.find(query, 20, page, sort)
+    let comments = await database.find(query, 20, page * 20, sort)
     return res.status(200).send({
         totalCount: comments.length,
         documents: comments
