@@ -16,7 +16,7 @@ import { UserType, UserTypes } from "../../schemas/user";
 import { createNotificationsForSubscribers, createNotificationToCreators } from "../../notifications";
 import { authorizedToEdit, createDefaultCreation, ProgressStream } from "../../utils/creations";
 import { approvedEmail } from "../../email";
-import dompurify from "dompurify";
+import dompurify from "isomorphic-dompurify";
 const collections: CollectionName[] = ["Maps", "datapacks", "resourcepacks", "marketplace"]
 
 /**
@@ -67,7 +67,7 @@ Router.app.post<{
 
 const WithCountCreation = WithCount(TCreation)
 
-type SearchContentTypes = "maps" | "datapacks" | "resourcepacks" | "marketplace" | "blog" | "all" | "content"
+type SearchContentTypes = "maps" | "datapacks" | "resourcepacks" | "marketplace" | "all" | "content"
 
 Router.app.get<{
     Querystring: {
@@ -91,7 +91,7 @@ Router.app.get<{
     let indexes: SearchIndex[] = []
     switch (req.query.contentType?.toLowerCase()) {
         case "all":
-            indexes.push("maps", "datapacks", "resourcepacks", "marketplace", "blog")
+            indexes.push("maps", "datapacks", "resourcepacks", "marketplace")
             break
         case "content":
             indexes.push("maps", "datapacks", "resourcepacks")
@@ -108,11 +108,8 @@ Router.app.get<{
         case "resourcepacks":
             indexes.push("resourcepacks")
             break
-        case "blog":
-            indexes.push("blog")
-            break
         default:
-            indexes = ["maps", "datapacks", "resourcepacks", "marketplace", "blog"]
+            indexes = ["maps", "datapacks", "resourcepacks", "marketplace"]
             break
     }
 

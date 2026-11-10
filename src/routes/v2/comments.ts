@@ -11,7 +11,7 @@ import { containsProfanity } from "../../utils/text";
 import { createNotification, createNotificationToCreators } from "../../notifications";
 import { Creation, TSort } from "../../schemas/creation";
 import { convertCommentTypeToCollectionName } from "../../utils/database";
-import dompurify from "dompurify";
+import dompurify from "isomorphic-dompurify";
 
 /**
  * Query for getting comments

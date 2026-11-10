@@ -11,7 +11,7 @@ import { forgotPasswordEmail } from "../../email";
 import { Creation, TCreation } from "../../schemas/creation";
 import { Search } from "../../search";
 import { Comment, TComment } from "../../schemas/comment";
-import dompurify from "dompurify";
+import dompurify from "isomorphic-dompurify";
 
 Router.app.get<{ 
     Reply: GenericResponseType<typeof User>, 

@@ -5,7 +5,7 @@ import { ContentType, Creation } from "../schemas/creation"
 import { Database } from "../database"
 import { exec } from "child_process"
 
-export type SearchIndex = "maps" | "datapacks" | "resourcepacks" | "marketplace" | "minecraft_versions" | "blog"
+export type SearchIndex = "maps" | "datapacks" | "resourcepacks" | "marketplace" | "minecraft_versions"
 
 export interface FilterObject {
     key: string,
@@ -39,18 +39,16 @@ export class Search<T extends Record<string, any>> {
             await client.isHealthy()
         }
 
-        const indexes = ["maps", "datapacks", "resourcepacks", "marketplace", "blog"]
+        const indexes = ["maps", "datapacks", "resourcepacks", "marketplace"]
         const maps = new Database("content", "Maps")
         const datapacks = new Database("content", "datapacks")
         const resourcepacks = new Database("content", "resourcepacks")
         const marketplace = new Database("content", "marketplace")
-        const blog = new Database("content", "blog")
 
         const mapsCursor = maps.collection.find({})
         const datapacksCursor = datapacks.collection.find({})
         const resourcepacksCursor = resourcepacks.collection.find({})
         const marketplaceCursor = marketplace.collection.find({})
-        const blogCursor = blog.collection.find({})
 
         for await (const doc of mapsCursor) {
             client.index("maps").addDocuments([doc])
@@ -66,10 +64,6 @@ export class Search<T extends Record<string, any>> {
 
         for await (const doc of marketplaceCursor) {
             client.index("marketplace").addDocuments([doc])
-        }
-
-        for await (const doc of blogCursor) {
-            client.index("blog").addDocuments([doc])
         }
 
         indexes.forEach(index => {
@@ -267,8 +261,6 @@ export function convertContentTypeToSearchIndex(contentType: ContentType): Searc
             return "resourcepacks"
         case "marketplace":
             return "marketplace"
-        case "blog":
-            return "blog"
     }
 }
 
