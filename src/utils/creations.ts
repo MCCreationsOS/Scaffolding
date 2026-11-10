@@ -3,6 +3,7 @@ import { Creation } from "../schemas/creation";
 import { UserType, UserTypes } from "../schemas/user";
 import { getIdFromJWT, processAuthorizationHeader } from "../auth/user";
 import { ObjectId } from "mongodb";
+import { env } from "../env";
 
 export function createDefaultCreation(creation: Creation): Creation {
     return {
@@ -50,30 +51,41 @@ export class ProgressStream extends Duplex {
     }
 }
 
-export async function authorizedToEdit(creation: Creation, authorization: string) {
-    let user = await processAuthorizationHeader(authorization)
-    if (!user) {
+export async function authorizedToEdit(creation: Creation, authorization?: string) {
+    if (!authorization || !creation) {
         return false
     }
-    let ignoreOwnerOrCreator = false
+
+    let user: UserType | undefined | null = undefined
+    try {
+        user = await processAuthorizationHeader(authorization)
+    } catch (e) {
+        user = undefined
+    }
+
     if (!user) {
-        let key = getIdFromJWT(authorization)
-        if (!key) {
-            return false
-        } else if (key instanceof ObjectId && !key.equals(creation?._id)) {
-            return false
-        } else {
-            ignoreOwnerOrCreator = true
-        }
-    } else if (user && user.type === UserTypes.Admin) {
-        ignoreOwnerOrCreator = true
+        // People without an account edit with the creation key issued when the creation was uploaded.
+        // The key is a JWT whose _id is the creation's _id, so it only unlocks that one creation.
+        const key = getIdFromJWT(authorization)
+        return !!key && !!creation._id && key.equals(creation._id)
     }
 
-    if (!ignoreOwnerOrCreator) {
-        if (creation.owner !== user?.handle && creation.creators.filter(creator => creator.handle === user?.handle).length === 0) {
-            return false
-        }
+    if (user.type === UserTypes.Admin) {
+        return true
     }
 
-    return true
+    return creation.owner === user.handle || (creation.creators ?? []).some(creator => creator.handle === user!.handle)
+}
+
+/**
+ * Tell the frontend to drop its cached copy of a tag. Requires REVALIDATE_SECRET to match the frontend's.
+ */
+export function revalidateFrontend(tag: string) {
+    if (!env.REVALIDATE_SECRET) {
+        console.warn("REVALIDATE_SECRET is not set; skipping frontend revalidation for", tag)
+        return
+    }
+    fetch(`${env.FRONTEND_URL}/api/cache/revalidate?tag=${encodeURIComponent(tag)}`, {
+        headers: { "x-revalidate-secret": env.REVALIDATE_SECRET }
+    }).catch((e) => console.error("Failed to revalidate frontend tag", tag, e))
 }

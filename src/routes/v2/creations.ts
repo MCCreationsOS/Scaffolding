@@ -14,7 +14,7 @@ import fetchFromModrinth from "../../import/modrinth";
 import { postNewCreation, sendMessage } from "../../discord/bot";
 import { UserType, UserTypes } from "../../schemas/user";
 import { createNotificationsForSubscribers, createNotificationToCreators } from "../../notifications";
-import { authorizedToEdit, createDefaultCreation, ProgressStream } from "../../utils/creations";
+import { authorizedToEdit, createDefaultCreation, ProgressStream, revalidateFrontend } from "../../utils/creations";
 import { approvedEmail } from "../../email";
 import dompurify from "isomorphic-dompurify";
 const collections: CollectionName[] = ["Maps", "datapacks", "resourcepacks", "marketplace"]
@@ -34,6 +34,18 @@ Router.app.post<{
     Body: RateBody,
     Reply: GenericResponseType<TNumber>
 }>("/rate", async (req, res) => {
+    // Rating stays open to people without accounts, but only for content collections and only with
+    // values the UI can produce (0.2 - 1, i.e. 1-5 stars)
+    const ratableCollections: CollectionName[] = ["Maps", "datapacks", "resourcepacks", "marketplace"]
+    const rating = Number(req.body.rating)
+    if (!ratableCollections.includes(req.body.collection) || !Number.isFinite(rating) || rating < 0.2 || rating > 1) {
+        return res.status(400).send({ error: "Invalid rating" })
+    }
+    if (!ObjectId.isValid(req.body.id)) {
+        return res.status(400).send({ error: "Invalid creation id" })
+    }
+    req.body.rating = rating
+
     let database = new Database<Creation>(req.body.collection)
     let creation = await database.findOne({ _id: new ObjectId(req.body.id) })
     if (!creation) {
@@ -545,7 +557,6 @@ Router.app.post<{
             })
         })
         creation.description = dompurify.sanitize(req.body.description)
-        creation.files = req.body.files
         if(req.body.files) {
             creation.files = []
             req.body.files.forEach((file: File) => {
@@ -557,13 +568,16 @@ Router.app.post<{
                     extraFiles: file.extraFiles,
                     minecraftVersion: file.minecraftVersion,
                     type: file.type,
-                    url: file.url
+                    url: file.url,
+                    // Older creations store their download in one of these instead of url
+                    worldUrl: file.worldUrl,
+                    dataUrl: file.dataUrl,
+                    resourceUrl: file.resourceUrl
                 })
             })
         }
         creation.images = req.body.images
-        creation.key = req.body.key
-        creation.owner = req.body.owner
+        // owner and key are server-managed and are never taken from the request body
         creation.shortDescription = req.body.shortDescription
         creation.slug = req.body.slug
         creation.tags = req.body.tags
@@ -578,7 +592,7 @@ Router.app.post<{
 
     if (updateResult.acknowledged) {
         search.updateDocument({...creation, updatedDate: convertToMeilisearchDate(new Date())})
-        fetch(`https://mccreations.net/api/cache/revalidate?tag=${req.body.slug}`)
+        revalidateFrontend(req.body.slug)
         return res.status(200).send(req.body)
     } else {
         return res.status(500).send({ error: "Failed to update creation" })
@@ -610,7 +624,7 @@ Router.app.delete<{
 
     search.deleteDocument(creation)
     let deletionResult = await database.deleteOne({ slug: creation.slug })
-    fetch(`https://mccreations.net/api/cache/revalidate?tag=${creation.slug}`)
+    revalidateFrontend(creation.slug)
     return res.status(200).send(deletionResult)
 
 })
@@ -686,7 +700,7 @@ Router.app.get<{
     res.status(200).send(creation)
 
     postNewCreation(creation, "<@&883788946327347210>")
-    fetch(`https://mccreations.net/api/cache/revalidate?tag=${creation.slug}`)
+    revalidateFrontend(creation.slug)
 
     let creators = creation.creators
     creators?.forEach(async (creator) => {
@@ -725,13 +739,31 @@ Router.app.post<{
     }
 
     let user = await processAuthorizationHeader(req.headers.authorization + "")
-    let key = Object.keys(req.body.translation)[0]
-
-    if(user) {
-        req.body.translation[key].author = user.handle!
+    let key = Object.keys(req.body.translation ?? {})[0]
+    const submitted = key ? req.body.translation[key] : undefined
+    if (!key || !submitted || typeof submitted !== "object") {
+        return res.status(400).send({ error: "Invalid translation" })
     }
 
-    req.body.translation[key].date = new Date().toISOString()
+    // Anyone can suggest a translation, but only people who can edit the creation can approve one.
+    // Unapproved translations are never shown on the creation page.
+    const canApprove = await authorizedToEdit(creation, req.headers.authorization)
+    const existing = (creation as any).translations?.[key]
+    if (!canApprove && existing?.approved) {
+        // Don't let anonymous suggestions replace (and un-approve) a translation the creator already approved
+        return res.status(403).send({ error: "This translation has already been approved by the creator" })
+    }
+    req.body.translation = {
+        [key]: {
+            title: String(submitted.title ?? ""),
+            shortDescription: String(submitted.shortDescription ?? ""),
+            description: dompurify.sanitize(String(submitted.description ?? "")),
+            author: user?.handle ?? "",
+            // Editors' translations are approved unless they explicitly say otherwise
+            approved: canApprove && submitted.approved !== false,
+            date: new Date().toISOString()
+        }
+    }
 
     let cursor = await database.collection.aggregate<Creation>([
         {

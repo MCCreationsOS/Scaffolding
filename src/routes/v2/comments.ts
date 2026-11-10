@@ -86,12 +86,34 @@ Router.app.get<{
 })
 
 /**
+ * Comments and replies can be posted without an account. A handle links the comment to a creator
+ * profile (avatar, delete rights, notifications), so it is only kept when the request is signed in
+ * as that creator; otherwise the comment is posted under the plain username only.
+ */
+async function verifiedHandle(claimedHandle: string | undefined, authorization: string | undefined) {
+    if (!claimedHandle) return undefined
+    try {
+        const user = await processAuthorizationHeader(authorization + "")
+        return user && user.handle === claimedHandle ? claimedHandle : undefined
+    } catch (e) {
+        return undefined
+    }
+}
+
+/**
  * Route for creating a comment
  */
 Router.app.post<{
     Body: Comment
     Reply: GenericResponseType<TVoid>
+    Headers: Partial<AuthorizationHeader>
 }>("/comment", async (req, res) => {
+    req.body.handle = await verifiedHandle(req.body.handle, req.headers.authorization)
+    // Server-owned fields: never trust these from the client
+    req.body.likes = 0
+    req.body.replies = []
+    req.body.date = Date.now()
+    delete (req.body as any)._id
 
     if (containsProfanity(req.body.comment)) {
         req.body.approved = false
@@ -104,7 +126,7 @@ Router.app.post<{
     let database = new Database<Comment>("content", "comments")
     let comment = await database.insertOne(req.body)
     if (comment.acknowledged) {
-        res.status(200).send(req.body.comment)
+        res.status(200).send(req.body)
     } else {
         res.status(400).send({
             error: "Failed to create comment"
@@ -257,7 +279,15 @@ Router.app.post<{
     }
     Body: Comment
     Reply: GenericResponseType<TVoid>
+    Headers: Partial<AuthorizationHeader>
 }>("/comment/:id/reply", async (req, res) => {
+    if (!ObjectId.isValid(req.params.id)) {
+        return res.status(400).send({ error: "Invalid comment id" })
+    }
+    req.body.handle = await verifiedHandle(req.body.handle, req.headers.authorization)
+    req.body.likes = 0
+    req.body._id = new ObjectId()
+
     let database = new Database<Comment>("content", "comments")
     let comment = await database.findOne({ _id: new ObjectId(req.params.id) })
     if (!comment) {
@@ -277,7 +307,7 @@ Router.app.post<{
     req.body.date = Date.now()
 
     await database.updateOne({ _id: new ObjectId(req.params.id) }, { $push: { replies: req.body } })
-    res.status(200).send(req.body.comment)
+    res.status(200).send(req.body)
 
     if (comment.handle && comment.handle !== req.body.handle) {
         let user = await _dangerouslyGetUnsanitizedUserFromHandle(comment.handle)

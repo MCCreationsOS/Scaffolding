@@ -6,7 +6,10 @@ import { Router } from "../router";
 Router.app.post("/upload", async (req, res) => {
     const parts = req.files()
     // A creations slug when images are uploaded to a creation or a users handle when images are uploaded to a user profile
-    const uploadLocation = (await req.formData()).get("forWhat")
+    // Uploads stay open to people without accounts, but forWhat becomes part of the storage path,
+    // so only allow simple path-safe characters
+    const rawLocation = (await req.formData()).get("forWhat")
+    const uploadLocation = String(rawLocation ?? "").replace(/[^A-Za-z0-9_\-]/g, "_").slice(0, 100) || "misc"
     let files: {type: string, name: string, location: string}[] = []
     for await (const data of parts) {
         if(data.mimetype.includes("image")) {

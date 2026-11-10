@@ -148,12 +148,22 @@ Router.app.post<{
             return res.code(401).send({error: "Unauthorized"})
         }
 
-        req.body.about = dompurify.sanitize(req.body.about)
-        req.body.customCSS = dompurify.sanitize(req.body.customCSS)
+        // Only update the fields that were actually sent, so partial updates (e.g. just the username)
+        // don't wipe the rest of the profile
+        const update: Record<string, string> = {}
+        if(typeof req.body.username === "string") update.username = req.body.username
+        if(typeof req.body.icon === "string") update.iconURL = req.body.icon
+        if(typeof req.body.banner === "string") update.bannerURL = req.body.banner
+        if(typeof req.body.about === "string") update.about = dompurify.sanitize(req.body.about)
+        if(typeof req.body.customCSS === "string") update.customCSS = dompurify.sanitize(req.body.customCSS)
+
+        if(Object.keys(update).length === 0) {
+            return res.code(400).send({error: "No fields to update"})
+        }
 
         let database = new Database("content", "creators")
-        let result = await database.collection.updateOne({_id: user._id}, {$set: {username: req.body.username, iconURL: req.body.icon, bannerURL: req.body.banner, about: req.body.about, customCSS: req.body.customCSS}})
-        if(result.acknowledged && result.modifiedCount === 1) {
+        let result = await database.collection.updateOne({_id: user._id}, {$set: update})
+        if(result.acknowledged && result.matchedCount === 1) {
             return res.code(200).send({})
         } else {
             return res.code(400).send({error: "Failed to update user"})

@@ -13,6 +13,10 @@ export const env = {
     JWTKey: process.env.JWTKey || "",
     STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY || "",
 
+    // Shared with the frontend so only the API can purge the frontend's cache
+    REVALIDATE_SECRET: process.env.REVALIDATE_SECRET || "",
+    FRONTEND_URL: process.env.FRONTEND_URL || "https://mccreations.net",
+
     DISCORD_CLIENT_ID: process.env.DISCORD_CLIENT_ID || "",
     DISCORD_SECRET: process.env.DISCORD_SECRET || "",
     DISCORD_BOT_TOKEN: process.env.DISCORD_BOT_TOKEN || "",
