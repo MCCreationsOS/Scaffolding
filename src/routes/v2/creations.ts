@@ -541,7 +541,7 @@ Router.app.post<{
     if (req.body.slug !== creation.slug) {
         req.body.slug = await makeUniqueSlug(req.body.slug, convertContentTypeToCollectionName(req.body.type))
     }
-
+    
     req.body._id = new ObjectId(req.body._id)
     req.body.updatedDate = Date.now()
 
@@ -550,7 +550,7 @@ Router.app.post<{
         req.body.creators.forEach((creator: UserType) => {
             creation.creators.push({
                 _id: creator._id,
-                email: creator.email,
+                email: "",
                 handle: creator.handle,
                 username: creator.username,
                 type: creator.type
@@ -584,16 +584,17 @@ Router.app.post<{
         creation.title = req.body.title
         creation.updatedDate = req.body.updatedDate
         creation.videoUrl = req.body.videoUrl
+        creation._id = req.body._id
     } catch (error) {
-        return res.status(400).send({ error: "Invalid creation data" })
+        return res.status(400).send({ error: "Invalid creation data " + error })
     }
 
     let updateResult = await database.updateOne({ _id: req.body._id }, { $set: creation })
 
     if (updateResult.acknowledged) {
         search.updateDocument({...creation, updatedDate: convertToMeilisearchDate(new Date())})
-        revalidateFrontend(req.body.slug)
-        return res.status(200).send(req.body)
+        revalidateFrontend(creation.slug)
+        return res.status(200).send(creation)
     } else {
         return res.status(500).send({ error: "Failed to update creation" })
     }
