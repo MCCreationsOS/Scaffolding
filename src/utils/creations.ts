@@ -80,12 +80,16 @@ export async function authorizedToEdit(creation: Creation, authorization?: strin
 /**
  * Tell the frontend to drop its cached copy of a tag. Requires REVALIDATE_SECRET to match the frontend's.
  */
-export function revalidateFrontend(tag: string) {
+export async function revalidateFrontend(tag: string) {
     if (!env.REVALIDATE_SECRET) {
         console.warn("REVALIDATE_SECRET is not set; skipping frontend revalidation for", tag)
         return
     }
-    fetch(`${env.FRONTEND_URL}/api/cache/revalidate?tag=${encodeURIComponent(tag)}`, {
-        headers: { "x-revalidate-secret": env.REVALIDATE_SECRET }
-    }).catch((e) => console.error("Failed to revalidate frontend tag", tag, e))
+    try {
+        await fetch(`${env.FRONTEND_URL}/api/cache/revalidate?tag=${encodeURIComponent(tag)}`, {
+            headers: { "x-revalidate-secret": env.REVALIDATE_SECRET }
+        })
+    } catch (e) {
+        console.error("Failed to revalidate frontend tag", tag, e)
+    }
 }

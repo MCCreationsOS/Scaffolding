@@ -431,7 +431,8 @@ export async function processAuthorizationHeader(authorization: string, resolveW
 export async function getUserFromJWT(jwtString: string, resolveWithJWT: boolean = true) {
     try {
         let token = jwt.verify(jwtString, JWTKey) as any
-        if(token && token._id) {
+        // Purpose-limited tokens (e.g. password reset links) never sign anyone in
+        if(token && token._id && !token.purpose) {
             let _id = new ObjectId(token._id)
             let database = new Database<FullUser>("creators")
             let user = await database.findOne({_id: _id})
@@ -439,7 +440,6 @@ export async function getUserFromJWT(jwtString: string, resolveWithJWT: boolean 
                 return resolveWithJWT ? sanitizeUser(user, jwtString) : sanitizeUser(user)
             } else {
                 console.log(`User has not updated in a while, refreshing JWT. last_important_update: ${user?.last_important_update}, token.createdDate: ${token.createdDate} : ${new Date(user?.last_important_update ?? 0).getTime() < new Date(token.createdDate).getTime()}`)
-                console.log(`User: ${JSON.stringify(user)}, token: ${JSON.stringify(token)}, _id: ${_id}`)
                 return undefined
             }
         } else {
@@ -461,7 +461,7 @@ export async function getUserFromJWT(jwtString: string, resolveWithJWT: boolean 
 export async function _dangerouslyGetUnsanitizedUserFromJWT(jwtString: string) {
     try {
         let token = jwt.verify(jwtString, JWTKey) as any
-        if(token && token._id) {
+        if(token && token._id && !token.purpose) {
             let _id = new ObjectId(token._id)
             let database = new Database<FullUser>("creators")
             return await database.findOne({_id: _id})
@@ -506,6 +506,30 @@ export async function _dangerouslyGetUnsanitizedUserFromID(id: string) {
  * @param jwtString The JWT
  * @returns The id if found, null otherwise
  */
+export const PASSWORD_RESET_PURPOSE = "password_reset"
+
+/** Creates the token sent in password reset emails. It can only be used to set a new password. */
+export function createPasswordResetJWT(userId: ObjectId) {
+    return createJWT({_id: userId, purpose: PASSWORD_RESET_PURPOSE, createdDate: new Date()}, "30min")
+}
+
+/**
+ * Resolves the (unsanitized) user for a password reset token. The token stops working once the
+ * password has been changed, so each reset link can only be used once.
+ */
+export async function getUserFromPasswordResetJWT(jwtString: string) {
+    try {
+        const token = jwt.verify(jwtString, JWTKey) as any
+        if(!token || token.purpose !== PASSWORD_RESET_PURPOSE || !token._id) return undefined
+        const user = await new Database<FullUser>("creators").findOne({_id: new ObjectId(token._id)})
+        if(!user) return undefined
+        if(user.last_important_update && new Date(user.last_important_update).getTime() >= new Date(token.createdDate).getTime()) return undefined
+        return user
+    } catch(e) {
+        return undefined
+    }
+}
+
 export function getIdFromJWT(jwtString: string) {
     try {
         let token = jwt.verify(jwtString, JWTKey) as any

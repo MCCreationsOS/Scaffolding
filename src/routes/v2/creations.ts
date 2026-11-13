@@ -538,10 +538,11 @@ Router.app.post<{
         return res.status(401).send({ error: "Unauthorized" })
     }
 
+    const previousSlug = creation.slug
     if (req.body.slug !== creation.slug) {
         req.body.slug = await makeUniqueSlug(req.body.slug, convertContentTypeToCollectionName(req.body.type))
     }
-    
+
     req.body._id = new ObjectId(req.body._id)
     req.body.updatedDate = Date.now()
 
@@ -585,6 +586,23 @@ Router.app.post<{
         creation.updatedDate = req.body.updatedDate
         creation.videoUrl = req.body.videoUrl
         creation._id = req.body._id
+        // Only editors reach this point, so they may set translations (including approving them)
+        // (translations aren't part of the Creation schema, so they're handled untyped like in /translate)
+        const submittedTranslations = (req.body as any).translations
+        if (submittedTranslations && typeof submittedTranslations === "object") {
+            const translations: Record<string, any> = {}
+            for (const [locale, translation] of Object.entries<any>(submittedTranslations)) {
+                if (!translation || typeof translation !== "object") continue
+                translations[locale] = {
+                    ...translation,
+                    title: String(translation.title ?? ""),
+                    shortDescription: String(translation.shortDescription ?? ""),
+                    description: dompurify.sanitize(String(translation.description ?? "")),
+                    approved: translation.approved !== false
+                }
+            }
+            (creation as any).translations = translations
+        }
     } catch (error) {
         return res.status(400).send({ error: "Invalid creation data " + error })
     }
@@ -594,6 +612,10 @@ Router.app.post<{
     if (updateResult.acknowledged) {
         search.updateDocument({...creation, updatedDate: convertToMeilisearchDate(new Date())})
         revalidateFrontend(creation.slug)
+    revalidateFrontend("creations")
+        if (previousSlug !== creation.slug) revalidateFrontend(previousSlug)
+        // Listings, the home page and search results are cached under this tag
+        revalidateFrontend("creations")
         return res.status(200).send(creation)
     } else {
         return res.status(500).send({ error: "Failed to update creation" })
@@ -626,6 +648,7 @@ Router.app.delete<{
     search.deleteDocument(creation)
     let deletionResult = await database.deleteOne({ slug: creation.slug })
     revalidateFrontend(creation.slug)
+    revalidateFrontend("creations")
     return res.status(200).send(deletionResult)
 
 })
@@ -702,6 +725,7 @@ Router.app.get<{
 
     postNewCreation(creation, "<@&883788946327347210>")
     revalidateFrontend(creation.slug)
+    revalidateFrontend("creations")
 
     let creators = creation.creators
     creators?.forEach(async (creator) => {

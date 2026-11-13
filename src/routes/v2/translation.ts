@@ -24,25 +24,25 @@ Router.app.post<{
     Body: string
     Reply: GenericResponseType<any>
 }>("/translation/:lang", async (req, res) => {
-    const database = new Database("backend", "translations")
-    let language = await database.collection.findOneAndUpdate({language_code: req.params.lang}, {$set: {...JSON.parse(req.body), updated_at: new Date()}}, {upsert: true})
-    if(language) {
-        return res.status(200).send(language)
+    let language: Record<string, unknown>
+    try {
+        language = typeof req.body === "string" ? JSON.parse(req.body) : req.body
+    } catch (e) {
+        return res.status(400).send({error: "Invalid JSON"})
     }
-})
+    if (!language || typeof language !== "object" || Array.isArray(language)) {
+        return res.status(400).send({error: "Invalid language"})
+    }
+    // Never let the body move the document to a different language or replace its id
+    delete (language as any)._id
+    delete (language as any).language_code
 
-Router.app.put<{
-    Params: {
-        lang: string
-    }
-    Reply: GenericResponseType<any>
-}>("/translation/approve/:lang", async (req, res) => {
     const database = new Database("backend", "translations")
-    let language = await database.collection.findOne({language_code: req.params.lang})
-    if(language) {
-        return res.status(200).send(language)
-    } else {
-        return res.status(404).send({error: "Language not found"})
-    }
+    // returnDocument "after" so a newly created language is returned too (otherwise this is null and no reply is sent)
+    const updated = await database.collection.findOneAndUpdate(
+        {language_code: req.params.lang},
+        {$set: {...language, language_code: req.params.lang, updated_at: new Date()}},
+        {upsert: true, returnDocument: "after"}
+    )
+    return res.status(200).send(updated ?? {})
 })
-

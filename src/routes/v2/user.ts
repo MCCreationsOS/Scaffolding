@@ -1,6 +1,6 @@
 
 import { Static, TVoid, Type } from "@sinclair/typebox";
-import { _dangerouslyGetUnsanitizedUserFromJWT, bcryptHash, createJWT, getDiscordAccessToken, getDiscordUser, getGithubAccessToken, getGithubUser, getGoogleUser, getMicrosoftAccessToken, getMicrosoftUser, processAuthorizationHeader } from "../../auth/user";
+import { _dangerouslyGetUnsanitizedUserFromJWT, bcryptCompare, bcryptHash, createPasswordResetJWT, getUserFromPasswordResetJWT, getDiscordAccessToken, getDiscordUser, getGithubAccessToken, getGithubUser, getGoogleUser, getMicrosoftAccessToken, getMicrosoftUser, processAuthorizationHeader } from "../../auth/user";
 import { CollectionName, Database } from "../../database";
 import { NotificationOption, ProfileLayout, SocialLink, User } from "../../schemas/user";
 import { Router } from "../router";
@@ -12,6 +12,7 @@ import { Creation, TCreation } from "../../schemas/creation";
 import { Search } from "../../search";
 import { Comment, TComment } from "../../schemas/comment";
 import dompurify from "isomorphic-dompurify";
+import { revalidateFrontend } from "../../utils/creations";
 
 Router.app.get<{ 
     Reply: GenericResponseType<typeof User>, 
@@ -95,7 +96,8 @@ Router.app.get<{
     // if(feed.length === 0) {
     //     return res.code(400).send({error: "Failed to fetch feed"})
     // }
-    return res.code(200).send({totalCount: feed.length, documents: feed})
+    // The total across all pages (not just this page), so the frontend can paginate
+    return res.code(200).send({totalCount: documents?.totalCount ?? feed.length, documents: feed})
 })
 
 Router.app.delete<{ 
@@ -161,6 +163,8 @@ Router.app.post<{
         let database = new Database("content", "creators")
         let result = await database.collection.updateOne({_id: user._id}, {$set: update})
         if(result.acknowledged) {
+            // Creator pages are cached; refresh them so the change shows up straight away
+            await revalidateFrontend("creator")
             return res.code(200).send({})
         } else {
             return res.code(400).send({error: "Failed to update user"})
@@ -193,6 +197,8 @@ Router.app.post<{
         let database = new Database("content", "creators")
         let result = await database.collection.updateOne({_id: user._id}, {$set: {socialLinks: req.body.links}})
         if(result.acknowledged) {
+            // Creator pages are cached; refresh them so the change shows up straight away
+            await revalidateFrontend("creator")
             return res.code(200).send()
         } else {
             return res.code(400).send({error: "Failed to update user"})
@@ -224,6 +230,8 @@ Router.app.post<{
         let database = new Database("content", "creators")
         let result = await database.collection.updateOne({_id: user._id}, {$set: {profileLayout: req.body.layout}})
         if(result.acknowledged) {
+            // Creator pages are cached; refresh them so the change shows up straight away
+            await revalidateFrontend("creator")
             return res.code(200).send()
         } else {
             return res.code(400).send({error: "Failed to update user"})
@@ -308,6 +316,8 @@ Router.app.post<{
                 await database.collection.updateMany({"owner": user.handle}, {$set: {"owner": handle}})
             }
             
+            // Creator pages are cached; refresh them so the change shows up straight away
+            await revalidateFrontend("creator")
             return res.code(200).send()
         } else {
             return res.code(400).send({error: "Failed to update user"})
@@ -318,8 +328,19 @@ Router.app.post<{
     })
 })
 
+/**
+ * Accounts with a password must confirm it before changing their email or password, so a leaked
+ * session token alone can't take over the account. Accounts that only use OAuth have no password.
+ */
+async function confirmsCurrentPassword(user: { password?: string | null }, currentPassword?: string) {
+    if (!user.password) return true
+    if (!currentPassword) return false
+    return bcryptCompare(currentPassword, user.password).catch(() => false)
+}
+
 const UpdateEmailBody = Type.Object({
-    email: Type.String()
+    email: Type.String(),
+    currentPassword: Type.Optional(Type.String())
 })
 
 type UpdateEmailBody = Static<typeof UpdateEmailBody>
@@ -332,20 +353,28 @@ Router.app.post<{
     if(req.headers.authorization.startsWith("Bearer ")) {
         return res.code(401).send({error: "Unauthorized"})
     }
-    processAuthorizationHeader(req.headers.authorization).then(async (user) => {
-        if(!user) {
+    _dangerouslyGetUnsanitizedUserFromJWT(req.headers.authorization).then(async (user) => {
+        // processAuthorizationHeader also checks the token hasn't been invalidated by a password change
+        if(!user || !await processAuthorizationHeader(req.headers.authorization)) {
             return res.code(401).send({error: "Unauthorized"})
         }
 
-        user.email = req.body.email.toLowerCase()
+        if(!await confirmsCurrentPassword(user, req.body.currentPassword)) {
+            return res.code(403).send({error: "Your current password is incorrect"})
+        }
+
+        const email = String(req.body.email ?? "").trim().toLowerCase()
+        if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            return res.code(400).send({error: "Invalid email"})
+        }
 
         let database = new Database("content", "creators")
-        let existingUser = await database.collection.findOne({email: req.body.email.toLowerCase(), _id: {$ne: user._id}})
+        let existingUser = await database.collection.findOne({email: email, _id: {$ne: user._id}})
         if(existingUser) {
             return res.code(400).send({error: "Another account is already using that email"})
         }
 
-        let result = await database.collection.updateOne({_id: user._id}, {$set: user})
+        let result = await database.collection.updateOne({_id: user._id}, {$set: {email: email}})
         if(result.acknowledged) {
             return res.code(200).send()
         } else {
@@ -379,6 +408,8 @@ Router.app.post<{
         if(user.providers?.find((provider) => provider.provider === req.body.provider)) {
             return res.code(400).send({error: "Provider already added"})
         }
+        // Accounts created with email and password start without a providers list
+        user.providers = user.providers ?? []
 
         if(req.body.provider === Providers.Discord) {
             let token = await getDiscordAccessToken(req.body.code)
@@ -464,7 +495,8 @@ Router.app.delete<{
 })
 
 const UpdatePasswordBody = Type.Object({
-    password: Type.String()
+    password: Type.String(),
+    currentPassword: Type.Optional(Type.String())
 })
 
 type UpdatePasswordBody = Static<typeof UpdatePasswordBody>
@@ -477,26 +509,35 @@ Router.app.post<{
     if(req.headers.authorization.startsWith("Bearer ")) {
         return res.code(401).send({error: "Unauthorized"})
     }
-    _dangerouslyGetUnsanitizedUserFromJWT(req.headers.authorization).then(async (user) => {
+    try {
+        // Either a password reset link (no current password needed) or a signed-in session
+        let user = await getUserFromPasswordResetJWT(req.headers.authorization)
         if(!user) {
-            return res.code(401).send({error: "Unauthorized"})
+            const sessionUser = await _dangerouslyGetUnsanitizedUserFromJWT(req.headers.authorization)
+            if(!sessionUser || !await processAuthorizationHeader(req.headers.authorization)) {
+                return res.code(401).send({error: "Unauthorized"})
+            }
+            if(!await confirmsCurrentPassword(sessionUser, req.body.currentPassword)) {
+                return res.code(403).send({error: "Your current password is incorrect"})
+            }
+            user = sessionUser
         }
 
-        bcryptHash(req.body.password).then((hash) => {
-            user.password = hash
-            user.last_important_update = new Date()
-        }).then(async () => {
-            let database = new Database("content", "creators")
-            let result = await database.collection.updateOne({_id: user._id}, {$set: user})
-            if(result.acknowledged && result.modifiedCount === 1) {
-                return res.code(200).send()
-            } else {
-                return res.code(400).send({error: "Failed to update user"})
-            }
-        })
-    }).catch((err) => {
+        if(!req.body.password || req.body.password.length < 9) {
+            return res.code(400).send({error: "Password is too short"})
+        }
+
+        const hash = await bcryptHash(req.body.password)
+        let database = new Database("content", "creators")
+        let result = await database.collection.updateOne({_id: user._id}, {$set: {password: hash, last_important_update: new Date()}})
+        if(result.acknowledged && result.matchedCount === 1) {
+            return res.code(200).send()
+        } else {
+            return res.code(400).send({error: "Failed to update user"})
+        }
+    } catch(err) {
         return res.code(401).send({error: "Unauthorized"})
-    })
+    }
 })
 
 const ForgotPasswordBody = Type.Object({
@@ -510,11 +551,10 @@ Router.app.post<{
     Reply: GenericResponseType<TVoid>
 }>("/user/forgotPassword", async (req, res) => {
     let database = new Database("content", "creators")
-    let user = await database.collection.findOne({email: req.body.email.toLowerCase()})
+    let user = await database.collection.findOne({email: String(req.body.email ?? "").toLowerCase()})
     if(user) {
-        forgotPasswordEmail(req.body.email.toLowerCase(), createJWT({_id: user._id}, "30min"))
-        return res.code(200).send()
-    } else {
-        return res.code(400).send({error: "User not found"})
+        forgotPasswordEmail(req.body.email.toLowerCase(), createPasswordResetJWT(user._id))
     }
+    // Same response either way so this can't be used to find out which emails have accounts
+    return res.code(200).send()
 })

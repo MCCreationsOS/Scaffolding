@@ -60,9 +60,13 @@ Router.app.get<{
             break;
     }
 
-    let comments = await database.find(query, 20, page * 20, sort)
+    if (!Number.isFinite(page) || page < 0) page = 0
+    let [comments, totalCount] = await Promise.all([
+        database.find(query, 20, page * 20, sort),
+        database.countDocuments(query)
+    ])
     return res.status(200).send({
-        totalCount: comments.length,
+        totalCount: totalCount,
         documents: comments
     })
 })

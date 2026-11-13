@@ -29,15 +29,31 @@ Router.app.get<{
         page?: string
         user?: string
     }
+    Headers: Partial<AuthorizationHeader>
     Reply: GenericResponseType<typeof WithCountFile>
 }>("/files", async (req, res) => {
+    // The full upload list (with who uploaded what) is an admin tool
+    const user = await processAuthorizationHeader(req.headers.authorization + "").catch(() => undefined)
+    if (!user || user.type !== UserTypes.Admin) {
+        return res.status(401).send({ error: "Unauthorized" })
+    }
+
     const database = new Database<FileDocument>("backend", "files")
-    const limit = parseInt(req.query.limit ?? "20")
-    const page = parseInt(req.query.page ?? "0")
+    const limit = Math.min(Math.max(parseInt(req.query.limit ?? "20") || 20, 1), 100)
+    const page = Math.max(parseInt(req.query.page ?? "0") || 0, 0)
 
     const query: Record<string, unknown> = {}
     if (req.query.user) {
-        query.user = req.query.user
+        // `user` has been stored as an id string, an ObjectId, or an embedded user object over time
+        const value = req.query.user
+        const ids: unknown[] = [value]
+        if (ObjectId.isValid(value)) ids.push(new ObjectId(value))
+        query.$or = [
+            { user: { $in: ids } },
+            { "user._id": { $in: ids } },
+            { "user.id": value },
+            { "user.handle": value },
+        ]
     }
 
     const [documents, totalCount] = await Promise.all([

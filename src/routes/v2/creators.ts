@@ -1,3 +1,4 @@
+import { revalidateFrontend } from "../../utils/creations";
 import { GenericResponseType, WithCount } from "../../schemas/generic"
 import { TVoid } from "@sinclair/typebox"
 import { Router } from "../router"
@@ -102,6 +103,7 @@ Router.app.get<{
     let database = new Database<FullUser>("content", "creators")
     await database.updateOne({handle: req.params.handle}, {$addToSet: {followers: user._id.toString()}})
     await database.updateOne({_id: user._id}, {$addToSet: {following: req.params.handle}})
+    revalidateFrontend("creator")
     return res.status(200).send({})
 })
 
@@ -120,5 +122,6 @@ Router.app.get<{
     let database = new Database<FullUser>("content", "creators")
     await database.updateOne({handle: req.params.handle}, {$pull: {followers: user._id.toString()}})
     await database.updateOne({_id: user._id}, {$pull: {following: req.params.handle}})
+    revalidateFrontend("creator")
     return res.status(200).send({})
 })
